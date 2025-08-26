@@ -31,6 +31,8 @@
         "list": "cpp",
         "string": "cpp",
         "unordered_set": "cpp",
-        "xhash": "cpp"
+        "xhash": "cpp",
+        "stdexcept": "cpp",
+        "system_error": "cpp"
     }
 }

@@ -22,10 +22,10 @@ enum class TokenType {
     CLOSE,         /// </tag>
     CLOSE_SELF,    /// <tag ... />
     FORCE_QUIRKS,  /// 浏览器怪异模式触发
-    DONE,          /// 输入结束 EOF
     TEXT,          /// Text
     COMMENT,       /// <!-- ... -->
     DOCTYPE,       /// <!DOCTYPE ...>
+    DONE,          /// 输入结束 EOF
 };
 
 class Token : public NonCopyable {

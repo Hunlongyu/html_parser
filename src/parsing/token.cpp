@@ -64,5 +64,4 @@ bool Token::is_doctype() const noexcept {
 bool Token::is_tag(std::string_view name) const noexcept {
     return m_name == name;
 }
-
 }  // namespace hps
