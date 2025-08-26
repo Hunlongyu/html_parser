@@ -1,0 +1,185 @@
+# .clang-tidy
+# Modern C++20/23 clang-tidy configuration
+# Compatible with clang-tidy 14+
+
+Checks: >
+  -*,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-exception-escape,
+  cert-*,
+  -cert-dcl21-cpp,
+  -cert-dcl50-cpp,
+  -cert-env33-c,
+  clang-analyzer-*,
+  concurrency-*,
+  cppcoreguidelines-*,
+  -cppcoreguidelines-avoid-c-arrays,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -cppcoreguidelines-macro-usage,
+  -cppcoreguidelines-non-private-member-variables-in-classes,
+  -cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+  -cppcoreguidelines-pro-bounds-constant-array-index,
+  -cppcoreguidelines-pro-bounds-pointer-arithmetic,
+  -cppcoreguidelines-pro-type-reinterpret-cast,
+  -cppcoreguidelines-pro-type-union-access,
+  google-*,
+  -google-build-using-namespace,
+  -google-readability-todo,
+  -google-runtime-references,
+  hicpp-*,
+  -hicpp-avoid-c-arrays,
+  -hicpp-no-array-decay,
+  -hicpp-signed-bitwise,
+  -hicpp-vararg,
+  llvm-*,
+  -llvm-header-guard,
+  -llvm-include-order,
+  misc-*,
+  -misc-non-private-member-variables-in-classes,
+  modernize-*,
+  -modernize-use-trailing-return-type,
+  performance-*,
+  portability-*,
+  readability-*,
+  -readability-function-cognitive-complexity,
+  -readability-identifier-length,
+  -readability-magic-numbers,
+  -readability-named-parameter
+
+# === 检查选项配置 ===
+CheckOptions:
+  # === 命名规范 ===
+  readability-identifier-naming.NamespaceCase: lower_case
+  readability-identifier-naming.ClassCase: CamelCase
+  readability-identifier-naming.StructCase: CamelCase
+  readability-identifier-naming.TemplateParameterCase: CamelCase
+  readability-identifier-naming.FunctionCase: lower_case
+  readability-identifier-naming.VariableCase: lower_case
+  readability-identifier-naming.MemberCase: lower_case
+  readability-identifier-naming.MemberSuffix: _
+  readability-identifier-naming.PrivateMemberSuffix: _
+  readability-identifier-naming.ProtectedMemberSuffix: _
+  readability-identifier-naming.EnumConstantCase: UPPER_CASE
+  readability-identifier-naming.ConstantCase: UPPER_CASE
+  readability-identifier-naming.StaticConstantCase: UPPER_CASE
+  readability-identifier-naming.GlobalConstantCase: UPPER_CASE
+  readability-identifier-naming.EnumCase: CamelCase
+  readability-identifier-naming.MacroDefinitionCase: UPPER_CASE
+  readability-identifier-naming.TypeAliasCase: CamelCase
+  readability-identifier-naming.UnionCase: CamelCase
+  
+  # === 函数长度限制 ===
+  readability-function-size.LineThreshold: 150
+  readability-function-size.StatementThreshold: 200
+  readability-function-size.BranchThreshold: 15
+  readability-function-size.ParameterThreshold: 8
+  readability-function-size.NestingThreshold: 6
+  
+  # === 布尔表达式复杂度 ===
+  readability-simplify-boolean-expr.ChainedConditionalReturn: true
+  readability-simplify-boolean-expr.ChainedConditionalAssignment: true
+  
+  # === 魔术数字 ===
+  cppcoreguidelines-avoid-magic-numbers.IgnoredIntegerValues: "1;2;3;4;8;16;32;64;100;1024"
+  cppcoreguidelines-avoid-magic-numbers.IgnoredFloatingPointValues: "1.0;2.0;0.5"
+  
+  # === 性能相关 ===
+  performance-unnecessary-copy-initialization.AllowedTypes: "std::shared_ptr;std::unique_ptr"
+  performance-for-range-copy.WarnOnAllAutoCopies: true
+  performance-for-range-copy.AllowedTypes: ""
+  
+  # === 现代化建议 ===
+  modernize-use-nullptr.NullMacros: "NULL"
+  modernize-make-shared.MakeSmartPtrFunction: "std::make_shared"
+  modernize-make-shared.MakeSmartPtrFunctionHeader: "<memory>"
+  modernize-make-unique.MakeSmartPtrFunction: "std::make_unique"
+  modernize-make-unique.MakeSmartPtrFunctionHeader: "<memory>"
+  modernize-pass-by-value.IncludeStyle: llvm
+  modernize-replace-auto-ptr.IncludeStyle: llvm
+  modernize-use-auto.MinTypeNameLength: 5
+  modernize-use-auto.RemoveStars: false
+  modernize-use-emplace.ContainersWithPushBack: "::std::vector;::std::list;::std::deque"
+  modernize-use-emplace.SmartPointers: "::std::shared_ptr;::std::unique_ptr;::std::auto_ptr;::std::weak_ptr"
+  modernize-use-emplace.TupleMakeFunctions: "::std::make_pair;::std::make_tuple"
+  modernize-use-emplace.TupleTypes: "::std::pair;::std::tuple"
+  
+  # === 异常安全 ===
+  cert-err58-cpp.CheckThrowTemporary: true
+  
+  # === 内存管理 ===
+  cppcoreguidelines-owning-memory.LegacyResourceProducers: "::malloc;::aligned_alloc;::realloc;::calloc;::fopen;::freopen;::tmpfile"
+  cppcoreguidelines-owning-memory.LegacyResourceConsumers: "::free;::realloc;::freopen;::fclose"
+  
+  # === 字符串处理 ===
+  readability-string-compare.StringLikeClasses: "::std::basic_string;::std::basic_string_view"
+  
+  # === 容器使用 ===
+  modernize-use-transparent-functors.SafeMode: false
+  
+  # === 宏相关 ===
+  cppcoreguidelines-macro-usage.AllowedRegexp: "^(HPS_|DEBUG_|FORCE_INLINE|LIKELY|UNLIKELY).*"
+  
+  # === LLVM相关 ===
+  llvm-namespace-comment.ShortNamespaceLines: 1
+  llvm-namespace-comment.SpacesBeforeComments: 1
+  
+  # === Google风格 ===
+  google-readability-function-size.StatementThreshold: 200
+  google-readability-namespace-comments.ShortNamespaceLines: 1
+  google-readability-namespace-comments.SpacesBeforeComments: 2
+  
+  # === 可读性 ===
+  readability-braces-around-statements.ShortStatementLines: 1
+  readability-implicit-bool-conversion.AllowPointerConditions: true
+  readability-implicit-bool-conversion.AllowIntegerConditions: false
+  readability-redundant-declaration.IgnoreMacros: true
+  readability-uppercase-literal-suffix.NewSuffixes: "L;LL;LU;LLU"
+  readability-else-after-return.WarnOnUnfixable: false
+  readability-else-after-return.WarnOnConditionVariables: false
+  
+  # === 杂项 ===
+  misc-non-private-member-variables-in-classes.IgnoreClassesWithAllMemberVariablesBeingPublic: true
+  misc-throw-by-value-catch-by-reference.CheckThrowTemporary: true
+  
+  # === Bugprone相关 ===
+  bugprone-argument-comment.StrictMode: false
+  bugprone-assert-side-effect.AssertMacros: "assert"
+  bugprone-dangling-handle.HandleClasses: "std::basic_string_view;std::experimental::basic_string_view"
+  bugprone-dynamic-static-initializers.HeaderFileExtensions: "h;hh;hpp;hxx"
+  bugprone-lambda-function-name.IgnoreMacros: true
+  bugprone-misplaced-widening-cast.CheckImplicitCasts: false
+  bugprone-sizeof-expression.WarnOnSizeOfConstant: true
+  bugprone-sizeof-expression.WarnOnSizeOfIntegerExpression: false
+  bugprone-sizeof-expression.WarnOnSizeOfThis: true
+  bugprone-string-constructor.WarnOnLargeLength: true
+  bugprone-string-constructor.LargeLengthThreshold: 0x800000
+  bugprone-suspicious-enum-usage.StrictMode: false
+  bugprone-suspicious-missing-comma.SizeThreshold: 5
+  bugprone-suspicious-missing-comma.RatioThreshold: 0.2
+  bugprone-suspicious-missing-comma.MaxConcatenatedTokens: 5
+  bugprone-suspicious-string-compare.WarnOnImplicitComparison: true
+  bugprone-suspicious-string-compare.WarnOnLogicalNotComparison: true
+  bugprone-swapped-arguments.QualifiersMix: false
+  bugprone-too-small-loop-variable.MagnitudeBitsUpperLimit: 16
+
+# === 头文件过滤 ===
+HeaderFilterRegex: '^(include/hps/.*|src/.*|tests/.*)\.hpp?$'
+
+# === 格式化样式 ===
+FormatStyle: file
+
+# === 系统头文件 ===
+SystemHeaders: false
+
+# === 用户定义的字面量 ===
+User: hps
+
+# === 警告视为错误 ===
+WarningsAsErrors: >
+  bugprone-*,
+  cert-*,
+  cppcoreguidelines-*,
+  modernize-*,
+  performance-*,
+  readability-*

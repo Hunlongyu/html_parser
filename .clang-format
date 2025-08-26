@@ -1,0 +1,94 @@
+# .clang-format
+# 简洁实用的现代C++格式化配置
+# 兼容 clang-format 10+
+
+---
+Language: Cpp
+BasedOnStyle: Google
+
+# === 基本设置 ===
+Standard: c++20
+TabWidth: 4
+IndentWidth: 4
+UseTab: Never
+ColumnLimit: 100
+
+# === 大括号风格 ===
+BreakBeforeBraces: Attach
+Cpp11BracedListStyle: true
+
+# === 缩进设置 ===
+IndentCaseLabels: true
+IndentPPDirectives: None
+ContinuationIndentWidth: 4
+ConstructorInitializerIndentWidth: 4
+AccessModifierOffset: -2
+
+# === 指针和引用对齐 ===
+DerivePointerAlignment: false
+PointerAlignment: Left
+
+# === 函数参数 ===
+AllowAllParametersOfDeclarationOnNextLine: false
+BinPackParameters: false
+BinPackArguments: false
+
+# === 短语句处理 ===
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortBlocksOnASingleLine: Never
+AllowShortLambdasOnASingleLine: All
+
+# === 换行控制 ===
+AlwaysBreakTemplateDeclarations: Yes
+BreakBeforeTernaryOperators: true
+BreakConstructorInitializers: BeforeColon
+BreakInheritanceList: BeforeColon
+MaxEmptyLinesToKeep: 1
+
+# === 空格控制 ===
+SpaceAfterTemplateKeyword: true
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeParens: ControlStatements
+SpaceInEmptyParentheses: false
+SpacesInAngles: false
+SpacesInContainerLiterals: false
+SpacesInCStyleCastParentheses: false
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+SpacesBeforeTrailingComments: 2
+
+# === 对齐设置 ===
+AlignAfterOpenBracket: Align
+AlignConsecutiveAssignments: true
+AlignConsecutiveBitFields: true
+AlignConsecutiveDeclarations: true
+AlignEscapedNewlines: Left
+AlignOperands: true
+AlignTrailingComments: true
+
+# === 排序和包含 ===
+SortIncludes: true
+SortUsingDeclarations: true
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex: '^"htmlcrawler/'
+    Priority: 1
+  - Regex: '^"'
+    Priority: 2
+  - Regex: '^<.*\.h>'
+    Priority: 3
+  - Regex: '^<.*'
+    Priority: 4
+
+# === 注释 ===
+ReflowComments: true
+FixNamespaceComments: true
+
+# === 其他设置 ===
+CompactNamespaces: false
+KeepEmptyLinesAtTheStartOfBlocks: false
+SpaceAfterCStyleCast: false
+SpaceBeforeCpp11BracedList: false
