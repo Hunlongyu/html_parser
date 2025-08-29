@@ -16,7 +16,13 @@ option(HPS_BUILD_EXAMPLES "Build examples" OFF)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-set(SOURCE "src/hps.cpp")
+set(SOURCE 
+    "src/core/node.cpp"
+    "src/core/text_node.cpp"
+    "src/core/element.cpp"
+    "src/parsing/token.cpp"
+    "src/parsing/tokenizer.cpp"
+)
 
 add_library(hps ${SOURCE})
 

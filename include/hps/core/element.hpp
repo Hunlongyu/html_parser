@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/node.hpp"
+#include "hps/core/node.hpp"
 
 #include <string>
 #include <unordered_set>

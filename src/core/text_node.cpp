@@ -1,4 +1,4 @@
-#include "core/text_node.hpp"
+#include "hps/core/text_node.hpp"
 
 namespace hps {
 

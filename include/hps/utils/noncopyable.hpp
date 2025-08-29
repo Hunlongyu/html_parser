@@ -16,6 +16,7 @@ class NonCopyable {
     NonCopyable(NonCopyable&&)            = default;
     NonCopyable& operator=(NonCopyable&&) = default;
 
+  public:
     // 禁止拷贝
     NonCopyable(const NonCopyable&)            = delete;
     NonCopyable& operator=(const NonCopyable&) = delete;

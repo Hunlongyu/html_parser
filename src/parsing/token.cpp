@@ -1,4 +1,4 @@
-#include "parsing/token.hpp"
+#include "hps/parsing/token.hpp"
 
 namespace hps {
 
@@ -15,6 +15,10 @@ std::string_view Token::name() const noexcept {
 
 std::string_view Token::value() const noexcept {
     return m_value;
+}
+
+void Token::set_type(const TokenType type) noexcept {
+    m_type = type;
 }
 
 void Token::add_attr(const TokenAttribute& attr) {

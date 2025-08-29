@@ -1,4 +1,4 @@
-#include "core/element.hpp"
+#include "hps/core/element.hpp"
 
 namespace hps {
 Element::Element(std::string_view tag_name) : Node(NodeType::Element), m_tag_name(tag_name) {}

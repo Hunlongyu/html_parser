@@ -1,12 +1,31 @@
 #pragma once
-#include "parsing/token.hpp"
-#include "utils/noncopyable.hpp"
+#include "hps/parsing/token.hpp"
+#include "hps/utils/exception.hpp"
+#include "hps/utils/noncopyable.hpp"
 
+#include <iostream>
 #include <optional>
 #include <string>
 #include <string_view>
 
 namespace hps {
+
+// 错误处理策略
+enum class ErrorHandlingMode {
+    Strict,   // 严格模式，遇到错误立即抛出异常
+    Lenient,  // 宽松模式，尝试恢复并继续解析
+    Ignore    // 忽略模式，记录错误但继续解析
+};
+
+// 解析错误信息
+struct ParseError {
+    ParseException::ErrorCode code;
+    std::string               message;
+    size_t                    position;
+
+    ParseError(ParseException::ErrorCode c, std::string msg, size_t pos)
+        : code(c), message(std::move(msg)), position(pos) {}
+};
 
 enum class TokenizerState {
     Data,        /// 普通文本
@@ -53,6 +72,14 @@ struct TokenBuilder {
     bool                        is_self_closing = false;
     std::vector<TokenAttribute> attrs;
 
+    void add_attr(const TokenAttribute& attr) {
+        attrs.push_back(attr);
+    }
+
+    void add_attr(std::string_view name, std::string_view value, bool has_value = true) {
+        attrs.emplace_back(name, value, has_value);
+    }
+
     void reset() {
         tag_name.clear();
         attr_name.clear();
@@ -61,19 +88,34 @@ struct TokenBuilder {
         is_self_closing = false;
         attrs.clear();
     }
+
+    void finish_current_attribute() {
+        if (!attr_name.empty()) {
+            add_attr(attr_name, attr_value);
+            attr_name.clear();
+            attr_value.clear();
+        }
+    }
 };
 
 class Tokenizer : public NonCopyable {
   public:
-    explicit Tokenizer(std::string_view source);
+    explicit Tokenizer(std::string_view source, ErrorHandlingMode mode = ErrorHandlingMode::Strict);
     ~Tokenizer() = default;
 
     std::optional<Token> next_token();
     std::vector<Token>   tokenize_all();
 
-    bool   has_more() const noexcept;
-    size_t position() const noexcept;
-    size_t total_length() const noexcept;
+    [[nodiscard]] bool                           has_more() const noexcept;
+    [[nodiscard]] size_t                         position() const noexcept;
+    [[nodiscard]] size_t                         total_length() const noexcept;
+    [[nodiscard]] const std::vector<ParseError>& get_errors() const noexcept;
+
+    /**
+     * @brief 设置错误处理模式
+     * @param mode 处理模式
+     */
+    void set_error_handling_mode(ErrorHandlingMode mode) noexcept;
 
   private:
     std::optional<Token> consume_data_state();
@@ -117,33 +159,47 @@ class Tokenizer : public NonCopyable {
     std::optional<Token> consume_markup_declaration_open_state();
     std::optional<Token> consume_cdata_section_state();
 
-    char current_char() const noexcept;
-    char peek_char(size_t offset = 1) const noexcept;
-    void advance() noexcept;
-    void skip_whitespace() noexcept;
+    [[nodiscard]] char current_char() const noexcept;
+    [[nodiscard]] char peek_char(size_t offset = 1) const noexcept;
+    void               advance() noexcept;
+    void               skip_whitespace() noexcept;
 
-    bool        starts_with(std::string_view s) const noexcept;
-    static bool is_whitespace(char c) noexcept;
-    static bool is_alpha(char c) noexcept;
-    static bool is_alnum(char c) noexcept;
-    static char to_lower(char c) noexcept;
-    static bool is_void_element_name(std::string_view n) noexcept;
+    [[nodiscard]] bool starts_with(std::string_view s) const noexcept;
+    static bool        is_whitespace(char c) noexcept;
+    static bool        is_alpha(char c) noexcept;
+    static bool        is_alnum(char c) noexcept;
+    static bool        is_digit(char c) noexcept;
+    static bool        is_hex_digit(char c) noexcept;
+    static char        to_lower(char c) noexcept;
+    static bool        is_void_element_name(std::string_view n) noexcept;
 
-    Token create_start_tag_token();
-    Token create_end_tag_token();
-    Token create_text_token();
-    Token create_comment_token();
-    Token create_doctype_token();
-    Token create_close_self_token();
-    Token create_done_token();
+    Token        create_start_tag_token();
+    Token        create_end_tag_token();
+    static Token create_text_token(std::string_view data = "");
+    static Token create_comment_token(std::string_view comment);
+    Token        create_doctype_token();
+    Token        create_close_self_token();
+    static Token create_done_token();
+
+    void handle_parse_error(ParseException::ErrorCode code, const std::string& message);
+    void record_error(ParseException::ErrorCode code, const std::string& message);
+    void transition_to_data_state();
+
+    std::optional<char> parse_named_character_reference();
+    std::optional<char> parse_numeric_character_reference();
 
   private:
-    std::string_view m_source;  // 输入 HTML 字符串
-    size_t           m_pos;     // 当前解析位置
-    TokenizerState   m_state;   // 当前状态
+    std::string_view  m_source;      // 输入 HTML 字符串
+    size_t            m_pos;         // 当前解析位置
+    TokenizerState    m_state;       // 当前状态
+    ErrorHandlingMode m_error_mode;  // 错误处理模式
 
-    TokenBuilder m_token_builder;  // Token 构造器
-    std::string  m_end_tag;        // 当前结束标签
+    TokenBuilder            m_token_builder;  // Token 构造器
+    std::string             m_end_tag;        // 当前结束标签
+    std::vector<ParseError> m_errors;         // 错误列表
+
+    std::string    m_char_ref_buffer;  // 字符引用缓冲区
+    TokenizerState m_return_state;     // 字符引用解析完成后的返回状态
 };
 
 }  // namespace hps

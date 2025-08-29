@@ -1,6 +1,6 @@
 #pragma once
 
-#include "utils/noncopyable.hpp"
+#include "hps/utils/noncopyable.hpp"
 
 #include <string_view>
 #include <vector>
@@ -33,18 +33,31 @@ class Token : public NonCopyable {
     Token(TokenType type, std::string_view name, std::string_view value) noexcept;
     ~Token() = default;
 
+    Token(Token&&) noexcept            = default;
+    Token& operator=(Token&&) noexcept = default;
+
     TokenType        type() const noexcept;
     std::string_view name() const noexcept;
     std::string_view value() const noexcept;
 
-    /// @brief 添加属性
-    /// @param attr 完整属性
+    /**
+     * @brief 修改类型
+     * @param type 类型
+     */
+    void set_type(TokenType type) noexcept;
+
+    /**
+     * @brief 添加属性
+     * @param attr 完整属性
+     */
     void add_attr(const TokenAttribute& attr);
 
-    /// @brief 添加属性
-    /// @param name 属性名
-    /// @param value 属性值
-    /// @param has_value 是否有值
+    /**
+     * @brief 添加属性
+     * @param name 属性名
+     * @param value 属性值
+     * @param has_value 是否有值
+     */
     void add_attr(std::string_view name, std::string_view value, bool has_value = true);
 
     /// @brief 获取属性列表

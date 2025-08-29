@@ -1,4 +1,4 @@
-#include "core/node.hpp"
+#include "hps/core/node.hpp"
 
 namespace hps {
 
