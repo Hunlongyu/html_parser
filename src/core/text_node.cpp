@@ -9,7 +9,7 @@ NodeType TextNode::node_type() const {
 }
 
 std::string_view TextNode::node_name() const {
-    return {};
+    return "#text";
 }
 
 std::string_view TextNode::node_value() const {
@@ -22,6 +22,24 @@ std::string_view TextNode::text_content() const {
 
 std::string_view TextNode::text() const {
     return m_text;
+}
+
+std::string_view TextNode::normalized_text() const {
+    if (m_text.empty()) {
+        return m_text;
+    }
+    size_t start = 0;
+    while (start < m_text.size() && std::isspace(static_cast<unsigned char>(m_text[start]))) {
+        ++start;
+    }
+    if (start == m_text.size()) {
+        return {};
+    }
+    size_t end = m_text.size() - 1;
+    while (end > start && std::isspace(static_cast<unsigned char>(m_text[end]))) {
+        --end;
+    }
+    return {m_text.data() + start, end - start + 1};
 }
 
 bool TextNode::empty() const noexcept {

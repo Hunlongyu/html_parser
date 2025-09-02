@@ -8,11 +8,11 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(EXAMPLES
     basic
+    tokenizer
 )
 
 foreach(example ${EXAMPLES})
     add_executable(${example} ${example}.cpp)
-    target_link_libraries(${example} PRIVATE hps)
     target_link_libraries(${example} PRIVATE hps_static)
     target_include_directories(${example} PRIVATE
         ${CMAKE_SOURCE_DIR}/include

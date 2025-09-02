@@ -1,6 +1,7 @@
-#include "hps/hps.hpp"
+#include "hps/core/element.hpp"
+
+#include <iostream>
 
 int main() {
-    std::cout << "Hello World!" << std::endl;
-    return 0;
+    auto ele = hps::Element("div");
 }

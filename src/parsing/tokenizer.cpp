@@ -226,8 +226,6 @@ std::optional<Token> Tokenizer::consume_tag_open_state() {
         m_state = TokenizerState::EndTagOpen;
     } else if (is_alpha(current_char())) {
         m_token_builder.reset();
-        m_token_builder.tag_name += to_lower(current_char());
-        advance();
         m_state = TokenizerState::TagName;
     } else if (current_char() == '?') {
         // 处理 XML 声明或处理指令
@@ -248,6 +246,10 @@ std::optional<Token> Tokenizer::consume_tag_open_state() {
 }
 
 std::optional<Token> Tokenizer::consume_tag_name_state() {
+    while (has_more() && is_alnum(current_char())) {
+        m_token_builder.tag_name += to_lower(current_char());
+        advance();
+    }
     if (is_whitespace(current_char())) {
         skip_whitespace();
         m_state = TokenizerState::BeforeAttributeName;
@@ -261,9 +263,6 @@ std::optional<Token> Tokenizer::consume_tag_name_state() {
     } else if (current_char() == '\0') {
         handle_parse_error(ParseException::ErrorCode::UnexpectedEOF, "Unexpected EOF in tag name");
         return {};
-    } else {
-        m_token_builder.tag_name += to_lower(current_char());
-        advance();
     }
     return {};
 }
@@ -271,8 +270,6 @@ std::optional<Token> Tokenizer::consume_tag_name_state() {
 std::optional<Token> Tokenizer::consume_end_tag_open_state() {
     if (is_alpha(current_char())) {
         m_end_tag.clear();
-        m_end_tag += to_lower(current_char());
-        advance();
         m_state = TokenizerState::EndTagName;
     } else if (current_char() == '>') {
         handle_parse_error(ParseException::ErrorCode::InvalidToken, "Empty end tag");
@@ -286,64 +283,85 @@ std::optional<Token> Tokenizer::consume_end_tag_open_state() {
 }
 
 std::optional<Token> Tokenizer::consume_end_tag_name_state() {
-    if (is_whitespace(current_char())) {
-        skip_whitespace();
-        // 结束标签不应该有属性，但为了容错性，我们跳过空白字符
-        if (current_char() == '>') {
-            advance();
-            m_state = TokenizerState::Data;
-            return create_end_tag_token();
-        } else {
-            handle_parse_error(ParseException::ErrorCode::InvalidToken,
-                               "Unexpected whitespace in end tag");
-        }
-    } else if (current_char() == '>') {
-        advance();
-        m_state = TokenizerState::Data;
-        return create_end_tag_token();
-    } else if (current_char() == '\0') {
-        handle_parse_error(ParseException::ErrorCode::UnexpectedEOF,
-                           "Unexpected EOF in end tag name");
-        return {};
-    } else {
+    while (has_more() && is_alnum(current_char())) {
         m_end_tag += to_lower(current_char());
         advance();
     }
-    return {};
+
+    if (is_whitespace(current_char())) {
+        skip_whitespace();
+    }
+
+    if (current_char() == '>') {
+        advance();
+        m_state = TokenizerState::Data;
+        return create_end_tag_token();
+    }
+    if (current_char() == '\0') {
+        handle_parse_error(ParseException::ErrorCode::UnexpectedEOF,
+                           "Unexpected EOF in end tag name");
+        return {};
+    }
+    handle_parse_error(ParseException::ErrorCode::InvalidToken, "Invalid character in end tag");
+    // 跳过到 >
+    while (has_more() && current_char() != '>') {
+        advance();
+    }
+    if (current_char() == '>') {
+        advance();
+    }
+    m_state = TokenizerState::Data;
+    return create_end_tag_token();
 }
 
 std::optional<Token> Tokenizer::consume_before_attribute_name_state() {
     if (is_whitespace(current_char())) {
         skip_whitespace();
         return {};
-    } else if (current_char() == '>') {
+    }
+
+    if (current_char() == '>') {
         advance();
         m_state = TokenizerState::Data;
         return create_start_tag_token();
-    } else if (current_char() == '/') {
+    }
+
+    if (current_char() == '/') {
         advance();
         m_state = TokenizerState::SelfClosingStartTag;
-    } else if (current_char() == '\0') {
+        return {};
+    }
+
+    if (current_char() == '\0') {
         handle_parse_error(ParseException::ErrorCode::UnexpectedEOF,
                            "Unexpected EOF before attribute name");
         return {};
-    } else if (current_char() == '\'' || current_char() == '"' || current_char() == '=') {
+    }
+
+    if (current_char() == '\'' || current_char() == '"' || current_char() == '=') {
         handle_parse_error(ParseException::ErrorCode::InvalidToken,
                            "Unexpected character before attribute name");
-        // 容错处理：跳过这个字符
         advance();
-    } else {
-        m_token_builder.attr_name.clear();
-        m_token_builder.attr_value.clear();
-        m_token_builder.attr_name += to_lower(current_char());
-        advance();
-        m_state = TokenizerState::AttributeName;
+        return {};
     }
+
+    // 开始新属性
+    m_token_builder.attr_name.clear();
+    m_token_builder.attr_value.clear();
+    m_state = TokenizerState::AttributeName;
     return {};
 }
 
 std::optional<Token> Tokenizer::consume_attribute_name_state() {
+    // 收集完整的属性名
+    while (has_more() && is_alnum(current_char()) || current_char() == '-' ||
+           current_char() == '_') {
+        m_token_builder.attr_name += to_lower(current_char());
+        advance();
+    }
+
     if (is_whitespace(current_char())) {
+        skip_whitespace();
         m_state = TokenizerState::AfterAttributeName;
     } else if (current_char() == '=') {
         advance();
@@ -363,8 +381,9 @@ std::optional<Token> Tokenizer::consume_attribute_name_state() {
                            "Unexpected EOF in attribute name");
         return {};
     } else {
-        m_token_builder.attr_name += to_lower(current_char());
-        advance();
+        // 遇到非法字符，完成当前属性
+        m_token_builder.finish_current_attribute();
+        m_state = TokenizerState::BeforeAttributeName;
     }
     return {};
 }
@@ -392,8 +411,6 @@ std::optional<Token> Tokenizer::consume_after_attribute_name_state() {
         // 新的属性开始，先完成当前属性
         m_token_builder.finish_current_attribute();
         m_token_builder.attr_name.clear();
-        m_token_builder.attr_name += to_lower(current_char());
-        advance();
         m_state = TokenizerState::AttributeName;
     }
     return {};
@@ -527,48 +544,31 @@ std::optional<Token> Tokenizer::consume_comment_start_state() {
 }
 
 std::optional<Token> Tokenizer::consume_comment_state() {
-    while (has_more() && !starts_with("-->")) {
-        if (current_char() == '-') {
-            if (peek_char() == '-') {
-                if (peek_char(2) == '>') {
-                    // 找到注释结束
-                    m_pos += 3;
-                    m_state              = TokenizerState::Data;
-                    auto comment_content = m_char_ref_buffer;
-                    m_char_ref_buffer.clear();
-                    return create_comment_token(comment_content);
-                } else {
-                    // 处理 -- 但不是结束
-                    m_char_ref_buffer += current_char();
-                    advance();
-                }
-            } else {
-                m_char_ref_buffer += current_char();
-                advance();
+    while (has_more()) {
+        if (current_char() == '-' && peek_char() == '-') {
+            if (peek_char(2) == '>') {
+                // 找到注释结束
+                m_pos += 3;
+                m_state              = TokenizerState::Data;
+                auto comment_content = m_char_ref_buffer;
+                m_char_ref_buffer.clear();
+                return create_comment_token(comment_content);
             }
+            // 处理 -- 但不是结束，添加第一个 -
+            m_char_ref_buffer += current_char();
+            advance();
         } else {
             m_char_ref_buffer += current_char();
             advance();
         }
     }
 
-    if (starts_with("-->")) {
-        m_pos += 3;
-        m_state              = TokenizerState::Data;
-        auto comment_content = m_char_ref_buffer;
-        m_char_ref_buffer.clear();
-        return create_comment_token(comment_content);
-    }
-
-    if (!has_more()) {
-        handle_parse_error(ParseException::ErrorCode::UnexpectedEOF, "Unexpected EOF in comment");
-        m_state              = TokenizerState::Data;
-        auto comment_content = m_char_ref_buffer;
-        m_char_ref_buffer.clear();
-        return create_comment_token(comment_content);
-    }
-
-    return {};
+    // 文件结束但注释未闭合
+    handle_parse_error(ParseException::ErrorCode::UnexpectedEOF, "Unexpected EOF in comment");
+    m_state              = TokenizerState::Data;
+    auto comment_content = m_char_ref_buffer;
+    m_char_ref_buffer.clear();
+    return create_comment_token(comment_content);
 }
 
 std::optional<Token> Tokenizer::consume_comment_end_dash_state() {
@@ -601,6 +601,11 @@ std::optional<Token> Tokenizer::consume_doctype_state() {
 }
 
 std::optional<Token> Tokenizer::consume_doctype_name_state() {
+    while (has_more() && !is_whitespace(current_char()) && current_char() != '>') {
+        m_token_builder.tag_name += to_lower(current_char());
+        advance();
+    }
+
     if (is_whitespace(current_char())) {
         skip_whitespace();
         m_state = TokenizerState::AfterDOCTYPEName;
@@ -612,9 +617,6 @@ std::optional<Token> Tokenizer::consume_doctype_name_state() {
         handle_parse_error(ParseException::ErrorCode::UnexpectedEOF,
                            "Unexpected EOF in DOCTYPE name");
         return {};
-    } else {
-        m_token_builder.tag_name += to_lower(current_char());
-        advance();
     }
     return {};
 }
@@ -779,6 +781,12 @@ std::optional<Token> Tokenizer::consume_rcdata_state() {
 }
 
 std::optional<Token> Tokenizer::consume_character_reference_state() {
+    if (current_char() != '&') {
+        // 如果不是 &，说明状态转换有问题
+        m_state = m_return_state;
+        return {};
+    }
+
     advance();  // 跳过 &
 
     if (is_alpha(current_char())) {
@@ -895,9 +903,15 @@ std::optional<Token> Tokenizer::consume_numeric_character_reference_state() {
 
 std::optional<Token> Tokenizer::consume_markup_declaration_open_state() {
     if (starts_with("--")) {
-        m_state = TokenizerState::CommentStart;
-    } else if (starts_with("DOCTYPE")) {
-        m_state = TokenizerState::DOCTYPE;
+        m_pos += 2;
+        m_char_ref_buffer.clear();
+        m_state = TokenizerState::Comment;
+    } else if (starts_with("DOCTYPE") || starts_with("doctype")) {
+        // 不区分大小写处理 DOCTYPE
+        m_pos += 7;
+        m_token_builder.reset();
+        skip_whitespace();
+        m_state = TokenizerState::DOCTYPEName;
     } else {
         handle_parse_error(ParseException::ErrorCode::InvalidToken, "Unknown markup declaration");
         // 跳过到 >

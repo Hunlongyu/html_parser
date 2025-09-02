@@ -10,9 +10,9 @@ if (MSVC)
     add_compile_options(/utf-8)
 endif()
 
-option(HPS_BUILD_SHARED "Build shared library" ON)
+option(HPS_BUILD_SHARED "Build shared library" OFF)
 option(HPS_BUILD_STATIC "Build static library" ON)
-option(HPS_BUILD_EXAMPLES "Build examples" OFF)
+option(HPS_BUILD_EXAMPLES "Build examples" ON)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
@@ -20,11 +20,20 @@ set(SOURCE
     "src/core/node.cpp"
     "src/core/text_node.cpp"
     "src/core/element.cpp"
+    "src/core/document.cpp"
     "src/parsing/token.cpp"
     "src/parsing/tokenizer.cpp"
+    "src/query/query_engine.cpp"
 )
 
-add_library(hps ${SOURCE})
+if (HPS_BUILD_SHARED)
+    add_library(hps SHARED ${SOURCE})
+endif()
+
+if (HPS_BUILD_STATIC)
+    add_library(hps_static STATIC ${SOURCE})
+    set_target_properties(hps_static PROPERTIES OUTPUT_NAME "hps_static")
+endif()
 
 if(HPS_BUILD_EXAMPLES)
     add_subdirectory(examples)
