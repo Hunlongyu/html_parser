@@ -6,7 +6,7 @@
 namespace hps {
 
 enum class ErrorCode {
-    Sucess = 0,
+    Success = 0,
     InvalidHTML,
     InvalidSelector,
     OutOfMemory,
@@ -46,9 +46,9 @@ class ParseException : public HPSException {
 };
 
 // 选择器语法异常
-class SelectorSyntaxException : public HPSException {
+class QueryException : public HPSException {
   public:
-    SelectorSyntaxException(std::string message, size_t position = 0)
+    QueryException(std::string message, size_t position = 0)
         : HPSException(std::move(message)), m_position(position) {}
 
     size_t position() const noexcept {
