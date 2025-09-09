@@ -97,10 +97,6 @@ std::optional<Token> Tokenizer::next_token() {
                 if (auto token = consume_rcdata_state())
                     return token;
                 break;
-            case TokenizerState::CharacterReference:
-                if (auto token = consume_character_reference_state())
-                    return token;
-                break;
             default:
                 return create_done_token();
         }
@@ -146,14 +142,8 @@ std::optional<Token> Tokenizer::consume_data_state() {
         return {};
     }
 
-    if (current_char() == '&') {
-        m_return_state = TokenizerState::Data;
-        m_state        = TokenizerState::CharacterReference;
-        return {};
-    }
-
     size_t start = m_pos;
-    while (has_more() && current_char() != '<' && current_char() != '&') {
+    while (has_more() && current_char() != '<') {
         advance();
     }
     if (start < m_pos) {
@@ -424,9 +414,6 @@ std::optional<Token> Tokenizer::consume_attribute_value_double_quoted_state() {
         m_token_builder.finish_current_attribute();
         advance();
         m_state = TokenizerState::BeforeAttributeName;
-    } else if (current_char() == '&') {
-        m_return_state = TokenizerState::AttributeValueDoubleQuoted;
-        m_state        = TokenizerState::CharacterReference;
     } else if (current_char() == '\0') {
         handle_parse_error(ParseException::ErrorCode::UnexpectedEOF, "Unexpected EOF in attribute value");
         return {};
@@ -442,9 +429,6 @@ std::optional<Token> Tokenizer::consume_attribute_value_single_quoted_state() {
         m_token_builder.finish_current_attribute();
         advance();
         m_state = TokenizerState::BeforeAttributeName;
-    } else if (current_char() == '&') {
-        m_return_state = TokenizerState::AttributeValueSingleQuoted;
-        m_state        = TokenizerState::CharacterReference;
     } else if (current_char() == '\0') {
         handle_parse_error(ParseException::ErrorCode::UnexpectedEOF, "Unexpected EOF in attribute value");
         return {};
@@ -464,9 +448,6 @@ std::optional<Token> Tokenizer::consume_attribute_value_unquoted_state() {
         advance();
         m_state = TokenizerState::Data;
         return create_start_tag_token();
-    } else if (current_char() == '&') {
-        m_return_state = TokenizerState::AttributeValueUnquoted;
-        m_state        = TokenizerState::CharacterReference;
     } else if (current_char() == '\0') {
         handle_parse_error(ParseException::ErrorCode::UnexpectedEOF, "Unexpected EOF in attribute value");
         return {};
@@ -667,15 +648,6 @@ std::optional<Token> Tokenizer::consume_rcdata_state() {
                 m_pos = saved_pos;
                 advance();
             }
-        } else if (current_char() == '&') {
-            // 在 RCDATA 中可以解析字符引用
-            if (start < m_pos) {
-                std::string_view content = m_source.substr(start, m_pos - start);
-                return create_text_token(content);
-            }
-            m_return_state = TokenizerState::RCDATA;
-            m_state        = TokenizerState::CharacterReference;
-            return {};
         } else {
             advance();
         }
@@ -689,26 +661,6 @@ std::optional<Token> Tokenizer::consume_rcdata_state() {
 
     handle_parse_error(ParseException::ErrorCode::UnexpectedEOF, "Unexpected EOF in RCDATA");
     m_state = TokenizerState::Data;
-    return {};
-}
-
-std::optional<Token> Tokenizer::consume_character_reference_state() {
-    if (current_char() != '&') {
-        // 如果不是 &，说明状态转换有问题
-        m_state = m_return_state;
-        return {};
-    }
-
-    advance();  // 跳过 &
-
-    // 不是有效的字符引用，作为普通字符处理
-    m_state = m_return_state;
-    if (m_return_state == TokenizerState::Data) {
-        return create_text_token("&");
-    }
-    // 在属性值中
-    m_token_builder.attr_value += '&';
-
     return {};
 }
 
@@ -825,10 +777,6 @@ Token Tokenizer::create_close_self_token() {
 
 Token Tokenizer::create_done_token() {
     return {TokenType::DONE, "", ""};
-}
-
-Token Tokenizer::create_token(TokenType type, std::string_view name, std::string_view value) {
-    return Token(type, name, value);
 }
 
 void Tokenizer::handle_parse_error(ParseException::ErrorCode code, const std::string& message) {

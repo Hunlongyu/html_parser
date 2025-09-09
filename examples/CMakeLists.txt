@@ -17,4 +17,12 @@ foreach(example ${EXAMPLES})
     target_include_directories(${example} PRIVATE
         ${CMAKE_SOURCE_DIR}/include
     )
+    add_dependencies(${example} copy_html_files)
 endforeach()
+
+add_custom_target(copy_html_files ALL
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/html
+        ${CMAKE_CURRENT_BINARY_DIR}/html
+    COMMENT "Copying HTML files to build directory"
+)

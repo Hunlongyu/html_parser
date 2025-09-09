@@ -32,7 +32,6 @@ enum class TokenizerState {
     TagName,             /// <tag       标签名
     EndTagOpen,          /// </tag      结束标签开始
     EndTagName,          /// </tag      结束标签名称
-    CharacterReference,  /// & 字符，进入字符引用解析
 
     BeforeAttributeName,         /// <tag                   标签属性前的空格
     AttributeName,               /// <tag attr              属性名
@@ -120,9 +119,6 @@ class Tokenizer : public NonCopyable {
     std::optional<Token> consume_attribute_value_unquoted_state();
     std::optional<Token> consume_self_closing_start_tag_state();
 
-    // & 字符引用相关状态
-    std::optional<Token> consume_character_reference_state();
-
     // 注释相关状态
     std::optional<Token> consume_comment_state();
 
@@ -155,7 +151,6 @@ class Tokenizer : public NonCopyable {
     Token        create_doctype_token();
     Token        create_close_self_token();
     static Token create_done_token();
-    Token        create_token(TokenType type, std::string_view name = "", std::string_view value = "");
 
     void handle_parse_error(ParseException::ErrorCode code, const std::string& message);
     void record_error(ParseException::ErrorCode code, const std::string& message);

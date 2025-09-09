@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML Tokenizer 测试页面</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f7f9fc;
+            color: #333;
+        }
+        header {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            margin: 0;
+            font-size: 2.5rem;
+        }
+        .description {
+            font-size: 1.1rem;
+            margin-top: 10px;
+            opacity: 0.9;
+        }
+        .test-section {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 25px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+        }
+        h2 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+        .test-case {
+            margin: 15px 0;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+        }
+        .test-title {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+        .test-content {
+            font-family: 'Consolas', 'Monaco', monospace;
+            background-color: #2d2d2d;
+            color: #f8f8f2;
+            padding: 12px;
+            border-radius: 5px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            margin: 10px 0;
+        }
+        .expected {
+            background-color: #e8f5e9;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            border-left: 4px solid #4caf50;
+        }
+        .expected-title {
+            font-weight: bold;
+            color: #2e7d32;
+            margin-bottom: 5px;
+        }
+        .note {
+            background-color: #fff3e0;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            border-left: 4px solid #ff9800;
+        }
+        .note-title {
+            font-weight: bold;
+            color: #e65100;
+            margin-bottom: 5px;
+        }
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+        .token-count {
+            background-color: #e3f2fd;
+            padding: 8px 12px;
+            border-radius: 20px;
+            display: inline-block;
+            margin: 5px 0;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>HTML Tokenizer 测试页面</h1>
+        <p class="description">此页面包含各种HTML结构，用于测试HTML解析器的Tokenizer功能</p>
+    </header>
+
+    <div class="test-section">
+        <h2>基础标签测试</h2>
+        
+        <div class="test-case">
+            <div class="test-title">1. 简单开始和结束标签</div>
+            <div class="test-content">&lt;div&gt;Hello World&lt;/div&gt;</div>
+            <div class="expected">
+                <div class="expected-title">预期Tokens:</div>
+                StartTag(div), Text(Hello World), EndTag(div)
+            </div>
+        </div>
+        
+        <div class="test-case">
+            <div class="test-title">2. 自闭合标签</div>
+            <div class="test-content">&lt;img src="image.jpg" alt="测试图片" /&gt;</div>
+            <div class="expected">
+                <div class="expected-title">预期Tokens:</div>
+                StartTag(img) [属性: src="image.jpg", alt="测试图片"]
+            </div>
+        </div>
+        
+        <div class="test-case">
+            <div class="test-title">3. 嵌套标签</div>
+            <div class="test-content">&lt;div&gt;&lt;p&gt;段落&lt;span&gt;内容&lt;/span&gt;&lt;/p&gt;&lt;/div&gt;</div>
+            <div class="expected">
+                <div class="expected-title">预期Tokens:</div>
+                StartTag(div), StartTag(p), Text(段落), StartTag(span), Text(内容), EndTag(span), EndTag(p), EndTag(div)
+            </div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>属性测试</h2>
+        
+        <div class="test-case">
+            <div class="test-title">1. 带引号的属性</div>
+            <div class="test-content">&lt;input type="text" name="username" value="test" /&gt;</div>
+            <div class="expected">
+                <div class="expected-title">预期Tokens:</div>
+                StartTag(input) [属性: type="text", name="username", value="test"]
+            </div>
+        </div>
+        
+        <div class="test-case">
+            <div class="test-title">2. 不带引号的属性</div>
+            <div class="test-content">&lt;div class=container id=main&gt;内容&lt;/div&gt;</div>
+            <div class="expected">
+                <div class="expected-title">预期Tokens:</div>
+                StartTag(div) [属性: class=container, id=main], Text(内容), EndTag(div)
+            </div>
+        </div>
+        
+        <div class="test-case">
+            <div class="test-title">3. 布尔属性</div>
+            <div class="test-content">&lt;input disabled checked /&gt;</div>
+            <div class="expected">
+                <div class="expected-title">预期Tokens:</div>
+                StartTag(input) [属性: disabled, checked]
+            </div>
+        </div>
+        
+        <div class="test-case">
+            <div class="test-title">4. 特殊字符属性值</div>
+            <div class="test-content">&lt;div data-value="&lt;script&gt;alert('test')&lt;/script&gt;"&gt;&lt;/div&gt;</div>
+            <div class="expected">
+                <div class="expected-title">预期Tokens:</div>
+                StartTag(div) [属性: data-value="&lt;script&gt;alert('test')&lt;/script&gt;"]
+            </div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>特殊内容测试</h2>
+        
+        <div class="test-case">
+            <div class="test-title">1. 注释</div>
+            <div class="test-content">&lt;!-- 这是注释内容 --&gt;</div>
+            <div class="expected">
+                <div class="expected-title">预期Tokens:</div>
+                Comment(这是注释内容)
+            </div>
+        </div>
+        
+        <div class="test-case">
+            <div class="test-title">2. DOCTYPE声明</div>
+            <div class="test-content">&lt;!DOCTYPE html&gt;</div>
+            <div class="expected">
+                <div class="expected-title">预期Tokens:</div>
+                DOCTYPE(html)
+            </div>
+        </div>
+        
+        <div class="test-case">
+            <div class="test-title">3. 字符实体</div>
+            <div class="test-content">&lt;p&gt;HTML中的特殊字符: &amp;lt;, &amp;gt;, &amp;amp;, &amp;quot;&lt;/p&gt;</div>
+            <div class="expected">
+                <div class="expected-title">预期Tokens:</div>
+                StartTag(p), Text(HTML中的特殊字符: &lt;, &gt;, &amp;, "), EndTag(p)
+            </div>
+        </div>
+        
+        <div class="test-case">
+            <div class="test-title">4. 原始文本元素（script和style）</div>
+            <div class="test-content">&lt;script&gt;if (a &lt; b && b &gt; c) { alert('test'); }&lt;/script&gt;</div>
+            <div class="expected">
+                <div class="expected-title">预期Tokens:</div>
+                StartTag(script), Text(if (a &lt; b && b &gt; c) { alert('test'); }), EndTag(script)
+            </div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>复杂结构测试</h2>
+        
+        <div class="test-case">
+            <div class="test-title">1. 复杂嵌套结构</div>
+            <div class="test-content">&lt;div class="container"&gt;
+    &lt;header&gt;
+        &lt;h1&gt;标题&lt;/h1&gt;
+        &lt;nav&gt;
+            &lt;ul&gt;
+                &lt;li&gt;&lt;a href="#"&gt;链接1&lt;/a&gt;&lt;/li&gt;
+                &lt;li&gt;&lt;a href="#"&gt;链接2&lt;/a&gt;&lt;/li&gt;
+            &lt;/ul&gt;
+        &lt;/nav&gt;
+    &lt;/header&gt;
+    &lt;main&gt;
+        &lt;article&gt;
+            &lt;h2&gt;文章标题&lt;/h2&gt;
+            &lt;p&gt;段落内容&lt;/p&gt;
+        &lt;/article&gt;
+    &lt;/main&gt;
+&lt;/div&gt;</div>
+            <div class="expected">
+                <div class="expected-title">预期Tokens:</div>
+                <span class="token-count">约30个Tokens</span>
+            </div>
+        </div>
+        
+        <div class="test-case">
+            <div class="test-title">2. 表单元素</div>
+            <div class="test-content">&lt;form action="/submit" method="post"&gt;
+    &lt;label for="name"&gt;姓名:&lt;/label&gt;
+    &lt;input type="text" id="name" name="name" required&gt;
+    &lt;br&gt;
+    &lt;label&gt;&lt;input type="checkbox" name="agree"&gt; 我同意条款&lt;/label&gt;
+    &lt;br&gt;
+    &lt;button type="submit"&gt;提交&lt;/button&gt;
+&lt;/form&gt;</div>
+            <div class="expected">
+                <div class="expected-title">预期Tokens:</div>
+                <span class="token-count">约20个Tokens</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="note">
+        <div class="note-title">测试说明</div>
+        <p>此页面设计用于测试HTML解析器的Tokenizer功能。每个测试用例都包含了HTML代码和期望的Token输出。</p>
+        <p>要使用此页面进行测试，可以将每个测试用例的HTML代码输入到您的Tokenizer中，然后检查输出的Token序列是否与预期结果匹配。</p>
+        <p>注意：实际测试时，Tokenizer应该能够处理整个HTML文档，而不仅仅是片段。</p>
+    </div>
+
+    <footer>
+        <p>HTML Tokenizer 测试页面 | 设计用于测试HTML解析器的词法分析功能</p>
+    </footer>
+</body>
+</html>
