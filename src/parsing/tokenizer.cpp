@@ -7,20 +7,7 @@
 
 namespace hps {
 
-static const std::unordered_set<std::string_view> VOID_ELEMENTS = {"area",
-                                                                   "base",
-                                                                   "br",
-                                                                   "col",
-                                                                   "embed",
-                                                                   "hr",
-                                                                   "img",
-                                                                   "input",
-                                                                   "link",
-                                                                   "meta",
-                                                                   "param",
-                                                                   "source",
-                                                                   "track",
-                                                                   "wbr"};
+static const std::unordered_set<std::string_view> VOID_ELEMENTS = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"};
 
 static const std::unordered_map<std::string, char> NAMED_CHARACTER_REFERENCES = {
     {"lt", '<'},
@@ -33,12 +20,7 @@ static const std::unordered_map<std::string, char> NAMED_CHARACTER_REFERENCES = 
     {"reg", '\xAE'},
 };
 
-Tokenizer::Tokenizer(std::string_view source, ErrorHandlingMode mode)
-    : m_source(source),
-      m_pos(0),
-      m_state(TokenizerState::Data),
-      m_error_mode(mode),
-      m_return_state(TokenizerState::Data) {}
+Tokenizer::Tokenizer(std::string_view source, ErrorHandlingMode mode) : m_source(source), m_pos(0), m_state(TokenizerState::Data), m_error_mode(mode), m_return_state(TokenizerState::Data) {}
 
 std::optional<Token> Tokenizer::next_token() {
     while (has_more()) {
@@ -95,32 +77,12 @@ std::optional<Token> Tokenizer::next_token() {
                 if (auto token = consume_self_closing_start_tag_state())
                     return token;
                 break;
-            case TokenizerState::CommentStart:
-                if (auto token = consume_comment_start_state())
-                    return token;
-                break;
             case TokenizerState::Comment:
                 if (auto token = consume_comment_state())
                     return token;
                 break;
-            case TokenizerState::CommentEndDash:
-                if (auto token = consume_comment_end_dash_state())
-                    return token;
-                break;
-            case TokenizerState::CommentEnd:
-                if (auto token = consume_comment_end_state())
-                    return token;
-                break;
             case TokenizerState::DOCTYPE:
                 if (auto token = consume_doctype_state())
-                    return token;
-                break;
-            case TokenizerState::DOCTYPEName:
-                if (auto token = consume_doctype_name_state())
-                    return token;
-                break;
-            case TokenizerState::AfterDOCTYPEName:
-                if (auto token = consume_after_doctype_name_state())
                     return token;
                 break;
             case TokenizerState::ScriptData:
@@ -137,22 +99,6 @@ std::optional<Token> Tokenizer::next_token() {
                 break;
             case TokenizerState::CharacterReference:
                 if (auto token = consume_character_reference_state())
-                    return token;
-                break;
-            case TokenizerState::NamedCharacterReference:
-                if (auto token = consume_named_character_reference_state())
-                    return token;
-                break;
-            case TokenizerState::NumericCharacterReference:
-                if (auto token = consume_numeric_character_reference_state())
-                    return token;
-                break;
-            case TokenizerState::MarkupDeclarationOpen:
-                if (auto token = consume_markup_declaration_open_state())
-                    return token;
-                break;
-            case TokenizerState::CDATASection:
-                if (auto token = consume_cdata_section_state())
                     return token;
                 break;
             default:
@@ -211,8 +157,17 @@ std::optional<Token> Tokenizer::consume_data_state() {
         advance();
     }
     if (start < m_pos) {
-        std::string_view data = m_source.substr(start, m_pos - start);
-        return create_text_token(data);
+        std::string_view data              = m_source.substr(start, m_pos - start);
+        bool             is_all_whitespace = true;
+        for (char c : data) {
+            if (c != ' ' && c != '\t' && c != '\n' && c != '\r' && c != '\f') {
+                is_all_whitespace = false;
+                break;
+            }
+        }
+        if (!is_all_whitespace) {
+            return create_text_token(data);
+        }
     }
     return {};
 }
@@ -220,7 +175,38 @@ std::optional<Token> Tokenizer::consume_data_state() {
 std::optional<Token> Tokenizer::consume_tag_open_state() {
     if (current_char() == '!') {
         advance();
-        m_state = TokenizerState::MarkupDeclarationOpen;
+        if (starts_with("DOCTYPE") || starts_with("doctype")) {
+            m_state = TokenizerState::DOCTYPE;
+        } else if (starts_with("--")) {
+            advance();
+            advance();
+            m_state = TokenizerState::Comment;
+        } else if (starts_with("[CDATA[")) {
+            for (int i = 0; i < 7; i++) {
+                if (has_more()) {
+                    advance();
+                }
+            }
+            std::string cdata_content;
+            while (has_more() && !starts_with("]]")) {
+                if (current_char() == '>') {
+                    break;
+                }
+                cdata_content += current_char();
+                advance();
+            }
+            if (starts_with("]]")) {
+                advance();
+                advance();
+            }
+            if (current_char() == '>') {
+                advance();
+            }
+            m_state = TokenizerState::Data;
+            return create_text_token(cdata_content);
+        } else {
+            m_state = TokenizerState::Comment;
+        }
     } else if (current_char() == '/') {
         advance();
         m_state = TokenizerState::EndTagOpen;
@@ -298,8 +284,7 @@ std::optional<Token> Tokenizer::consume_end_tag_name_state() {
         return create_end_tag_token();
     }
     if (current_char() == '\0') {
-        handle_parse_error(ParseException::ErrorCode::UnexpectedEOF,
-                           "Unexpected EOF in end tag name");
+        handle_parse_error(ParseException::ErrorCode::UnexpectedEOF, "Unexpected EOF in end tag name");
         return {};
     }
     handle_parse_error(ParseException::ErrorCode::InvalidToken, "Invalid character in end tag");
@@ -333,14 +318,12 @@ std::optional<Token> Tokenizer::consume_before_attribute_name_state() {
     }
 
     if (current_char() == '\0') {
-        handle_parse_error(ParseException::ErrorCode::UnexpectedEOF,
-                           "Unexpected EOF before attribute name");
+        handle_parse_error(ParseException::ErrorCode::UnexpectedEOF, "Unexpected EOF before attribute name");
         return {};
     }
 
     if (current_char() == '\'' || current_char() == '"' || current_char() == '=') {
-        handle_parse_error(ParseException::ErrorCode::InvalidToken,
-                           "Unexpected character before attribute name");
+        handle_parse_error(ParseException::ErrorCode::InvalidToken, "Unexpected character before attribute name");
         advance();
         return {};
     }
@@ -354,8 +337,7 @@ std::optional<Token> Tokenizer::consume_before_attribute_name_state() {
 
 std::optional<Token> Tokenizer::consume_attribute_name_state() {
     // 收集完整的属性名
-    while (has_more() && is_alnum(current_char()) || current_char() == '-' ||
-           current_char() == '_') {
+    while (has_more() && is_alnum(current_char()) || current_char() == '-' || current_char() == '_') {
         m_token_builder.attr_name += to_lower(current_char());
         advance();
     }
@@ -377,8 +359,7 @@ std::optional<Token> Tokenizer::consume_attribute_name_state() {
         advance();
         m_state = TokenizerState::SelfClosingStartTag;
     } else if (current_char() == '\0') {
-        handle_parse_error(ParseException::ErrorCode::UnexpectedEOF,
-                           "Unexpected EOF in attribute name");
+        handle_parse_error(ParseException::ErrorCode::UnexpectedEOF, "Unexpected EOF in attribute name");
         return {};
     } else {
         // 遇到非法字符，完成当前属性
@@ -404,8 +385,7 @@ std::optional<Token> Tokenizer::consume_after_attribute_name_state() {
         advance();
         m_state = TokenizerState::SelfClosingStartTag;
     } else if (current_char() == '\0') {
-        handle_parse_error(ParseException::ErrorCode::UnexpectedEOF,
-                           "Unexpected EOF after attribute name");
+        handle_parse_error(ParseException::ErrorCode::UnexpectedEOF, "Unexpected EOF after attribute name");
         return {};
     } else {
         // 新的属性开始，先完成当前属性
@@ -448,8 +428,7 @@ std::optional<Token> Tokenizer::consume_attribute_value_double_quoted_state() {
         m_return_state = TokenizerState::AttributeValueDoubleQuoted;
         m_state        = TokenizerState::CharacterReference;
     } else if (current_char() == '\0') {
-        handle_parse_error(ParseException::ErrorCode::UnexpectedEOF,
-                           "Unexpected EOF in attribute value");
+        handle_parse_error(ParseException::ErrorCode::UnexpectedEOF, "Unexpected EOF in attribute value");
         return {};
     } else {
         m_token_builder.attr_value += current_char();
@@ -467,8 +446,7 @@ std::optional<Token> Tokenizer::consume_attribute_value_single_quoted_state() {
         m_return_state = TokenizerState::AttributeValueSingleQuoted;
         m_state        = TokenizerState::CharacterReference;
     } else if (current_char() == '\0') {
-        handle_parse_error(ParseException::ErrorCode::UnexpectedEOF,
-                           "Unexpected EOF in attribute value");
+        handle_parse_error(ParseException::ErrorCode::UnexpectedEOF, "Unexpected EOF in attribute value");
         return {};
     } else {
         m_token_builder.attr_value += current_char();
@@ -490,12 +468,10 @@ std::optional<Token> Tokenizer::consume_attribute_value_unquoted_state() {
         m_return_state = TokenizerState::AttributeValueUnquoted;
         m_state        = TokenizerState::CharacterReference;
     } else if (current_char() == '\0') {
-        handle_parse_error(ParseException::ErrorCode::UnexpectedEOF,
-                           "Unexpected EOF in attribute value");
+        handle_parse_error(ParseException::ErrorCode::UnexpectedEOF, "Unexpected EOF in attribute value");
         return {};
     } else if (current_char() == '"' || current_char() == '\'' || current_char() == '=') {
-        handle_parse_error(ParseException::ErrorCode::InvalidToken,
-                           "Unexpected quote or equal sign in unquoted attribute value");
+        handle_parse_error(ParseException::ErrorCode::InvalidToken, "Unexpected quote or equal sign in unquoted attribute value");
         // 容错处理：仍然添加这个字符
         m_token_builder.attr_value += current_char();
         advance();
@@ -512,34 +488,13 @@ std::optional<Token> Tokenizer::consume_self_closing_start_tag_state() {
         m_state = TokenizerState::Data;
         return create_close_self_token();
     } else if (current_char() == '\0') {
-        handle_parse_error(ParseException::ErrorCode::UnexpectedEOF,
-                           "Unexpected EOF in self-closing tag");
+        handle_parse_error(ParseException::ErrorCode::UnexpectedEOF, "Unexpected EOF in self-closing tag");
         return {};
     }
 
-    handle_parse_error(ParseException::ErrorCode::InvalidToken,
-                       "Unexpected character after '/' in self-closing start tag");
+    handle_parse_error(ParseException::ErrorCode::InvalidToken, "Unexpected character after '/' in self-closing start tag");
     m_state = TokenizerState::BeforeAttributeName;
 
-    return {};
-}
-
-std::optional<Token> Tokenizer::consume_comment_start_state() {
-    if (starts_with("--")) {
-        m_pos += 2;
-        m_char_ref_buffer.clear();
-        m_state = TokenizerState::Comment;
-    } else {
-        handle_parse_error(ParseException::ErrorCode::InvalidToken, "Invalid comment start");
-        // 跳过到下一个 >
-        while (has_more() && current_char() != '>') {
-            advance();
-        }
-        if (current_char() == '>') {
-            advance();
-        }
-        m_state = TokenizerState::Data;
-    }
     return {};
 }
 
@@ -571,78 +526,35 @@ std::optional<Token> Tokenizer::consume_comment_state() {
     return create_comment_token(comment_content);
 }
 
-std::optional<Token> Tokenizer::consume_comment_end_dash_state() {
-    return consume_comment_state();
-}
-
-std::optional<Token> Tokenizer::consume_comment_end_state() {
-    return consume_comment_state();
-}
-
 std::optional<Token> Tokenizer::consume_doctype_state() {
-    skip_whitespace();
-    if (starts_with("DOCTYPE")) {
+    if (starts_with("DOCTYPE") || starts_with("doctype")) {
         m_pos += 7;
+    } else {
+        handle_parse_error(ParseException::ErrorCode::InvalidToken, "Expected DOCTYPE keyword");
+        while (has_more() && current_char() != '>') {
+            advance();
+        }
+        if (current_char() == '>') {
+            advance();
+        }
+        m_state = TokenizerState::Data;
+        return {};
+    }
+    skip_whitespace();
+    while (has_more() && current_char() != '>') {
+        advance();
+    }
+
+    if (current_char() == '>') {
+        advance();
+        m_state = TokenizerState::Data;
         m_token_builder.reset();
-        skip_whitespace();
-        m_state = TokenizerState::DOCTYPEName;
-    } else {
-        handle_parse_error(ParseException::ErrorCode::InvalidToken, "Invalid DOCTYPE declaration");
-        // 跳过到 >
-        while (has_more() && current_char() != '>') {
-            advance();
-        }
-        if (current_char() == '>') {
-            advance();
-        }
-        m_state = TokenizerState::Data;
-    }
-    return {};
-}
-
-std::optional<Token> Tokenizer::consume_doctype_name_state() {
-    while (has_more() && !is_whitespace(current_char()) && current_char() != '>') {
-        m_token_builder.tag_name += to_lower(current_char());
-        advance();
-    }
-
-    if (is_whitespace(current_char())) {
-        skip_whitespace();
-        m_state = TokenizerState::AfterDOCTYPEName;
-    } else if (current_char() == '>') {
-        advance();
-        m_state = TokenizerState::Data;
-        return create_doctype_token();
-    } else if (current_char() == '\0') {
-        handle_parse_error(ParseException::ErrorCode::UnexpectedEOF,
-                           "Unexpected EOF in DOCTYPE name");
-        return {};
-    }
-    return {};
-}
-
-std::optional<Token> Tokenizer::consume_after_doctype_name_state() {
-    if (is_whitespace(current_char())) {
-        skip_whitespace();
-    } else if (current_char() == '>') {
-        advance();
-        m_state = TokenizerState::Data;
-        return create_doctype_token();
-    } else if (current_char() == '\0') {
-        handle_parse_error(ParseException::ErrorCode::UnexpectedEOF,
-                           "Unexpected EOF after DOCTYPE name");
-        return {};
-    } else {
-        // 跳过其他 DOCTYPE 内容（如 PUBLIC, SYSTEM 等）
-        while (has_more() && current_char() != '>') {
-            advance();
-        }
-        if (current_char() == '>') {
-            advance();
-        }
-        m_state = TokenizerState::Data;
+        m_token_builder.tag_name = "DOCTYPE";
         return create_doctype_token();
     }
+
+    handle_parse_error(ParseException::ErrorCode::UnexpectedEOF, "Unexpected EOF in DOCTYPE");
+    m_state = TokenizerState::Data;
     return {};
 }
 
@@ -789,147 +701,14 @@ std::optional<Token> Tokenizer::consume_character_reference_state() {
 
     advance();  // 跳过 &
 
-    if (is_alpha(current_char())) {
-        m_state = TokenizerState::NamedCharacterReference;
-    } else if (current_char() == '#') {
-        advance();
-        m_state = TokenizerState::NumericCharacterReference;
-    } else {
-        // 不是有效的字符引用，作为普通字符处理
-        m_state = m_return_state;
-        if (m_return_state == TokenizerState::Data) {
-            return create_text_token("&");
-        }
-        // 在属性值中
-        m_token_builder.attr_value += '&';
+    // 不是有效的字符引用，作为普通字符处理
+    m_state = m_return_state;
+    if (m_return_state == TokenizerState::Data) {
+        return create_text_token("&");
     }
-    return {};
-}
+    // 在属性值中
+    m_token_builder.attr_value += '&';
 
-std::optional<Token> Tokenizer::consume_named_character_reference_state() {
-    std::string entity_name;
-    size_t      start_pos = m_pos;
-
-    // 收集实体名称
-    while (has_more() && (is_alnum(current_char()))) {
-        entity_name += current_char();
-        advance();
-    }
-
-    // 检查分号
-    bool has_semicolon = (current_char() == ';');
-    if (has_semicolon) {
-        advance();
-    }
-
-    // 查找字符引用
-    auto it = NAMED_CHARACTER_REFERENCES.find(entity_name);
-    if (it != NAMED_CHARACTER_REFERENCES.end()) {
-        char replacement = it->second;
-        m_state          = m_return_state;
-
-        if (m_return_state == TokenizerState::Data) {
-            return create_text_token(std::string(1, replacement));
-        } else {
-            // 在属性值中
-            m_token_builder.attr_value += replacement;
-        }
-    } else {
-        // 未找到匹配的实体，作为普通文本处理
-        std::string fallback = "&" + entity_name;
-        if (has_semicolon) {
-            fallback += ";";
-        }
-
-        m_state = m_return_state;
-        if (m_return_state == TokenizerState::Data) {
-            return create_text_token(fallback);
-        } else {
-            m_token_builder.attr_value += fallback;
-        }
-    }
-    return {};
-}
-
-std::optional<Token> Tokenizer::consume_numeric_character_reference_state() {
-    bool is_hex = false;
-    if (current_char() == 'x' || current_char() == 'X') {
-        is_hex = true;
-        advance();
-    }
-
-    std::string number;
-    while (has_more() && (is_hex ? is_hex_digit(current_char()) : is_digit(current_char()))) {
-        number += current_char();
-        advance();
-    }
-
-    // 检查分号
-    if (current_char() == ';') {
-        advance();
-    }
-
-    if (number.empty()) {
-        handle_parse_error(ParseException::ErrorCode::InvalidToken,
-                           "Invalid numeric character reference");
-        m_state = m_return_state;
-        return {};
-    }
-
-    try {
-        int code_point = std::stoi(number, nullptr, is_hex ? 16 : 10);
-
-        // 基本的代码点验证
-        if (code_point <= 0 || code_point > 0x10FFFF) {
-            throw std::out_of_range("Invalid code point");
-        }
-
-        char replacement = static_cast<char>(code_point);
-        m_state          = m_return_state;
-
-        if (m_return_state == TokenizerState::Data) {
-            return create_text_token(std::string(1, replacement));
-        } else {
-            m_token_builder.attr_value += replacement;
-        }
-    } catch (...) {
-        handle_parse_error(ParseException::ErrorCode::InvalidToken,
-                           "Invalid numeric character reference value");
-        m_state = m_return_state;
-    }
-
-    return {};
-}
-
-std::optional<Token> Tokenizer::consume_markup_declaration_open_state() {
-    if (starts_with("--")) {
-        m_pos += 2;
-        m_char_ref_buffer.clear();
-        m_state = TokenizerState::Comment;
-    } else if (starts_with("DOCTYPE") || starts_with("doctype")) {
-        // 不区分大小写处理 DOCTYPE
-        m_pos += 7;
-        m_token_builder.reset();
-        skip_whitespace();
-        m_state = TokenizerState::DOCTYPEName;
-    } else {
-        handle_parse_error(ParseException::ErrorCode::InvalidToken, "Unknown markup declaration");
-        // 跳过到 >
-        while (has_more() && current_char() != '>') {
-            advance();
-        }
-        if (current_char() == '>') {
-            advance();
-        }
-        m_state = TokenizerState::Data;
-    }
-    return {};
-}
-
-std::optional<Token> Tokenizer::consume_cdata_section_state() {
-    handle_parse_error(ParseException::ErrorCode::InvalidToken,
-                       "CDATA sections not supported in HTML");
-    m_state = TokenizerState::Data;
     return {};
 }
 
@@ -1007,6 +786,10 @@ Token Tokenizer::create_start_tag_token() {
         token.set_type(TokenType::CLOSE_SELF);
     }
 
+    if (m_token_builder.tag_name == "script") {
+        m_state = TokenizerState::ScriptData;
+    }
+
     m_token_builder.reset();
     return token;
 }
@@ -1042,6 +825,10 @@ Token Tokenizer::create_close_self_token() {
 
 Token Tokenizer::create_done_token() {
     return {TokenType::DONE, "", ""};
+}
+
+Token Tokenizer::create_token(TokenType type, std::string_view name, std::string_view value) {
+    return Token(type, name, value);
 }
 
 void Tokenizer::handle_parse_error(ParseException::ErrorCode code, const std::string& message) {

@@ -1,6 +1,6 @@
 #include "hps/core/element.hpp"
 
-#include "hps/query/query_engine.hpp"
+#include "hps/query/element_query.hpp"
 
 namespace hps {
 Element::Element(std::string_view name) : Node(NodeType::Element), m_name(name) {}
@@ -57,6 +57,14 @@ bool Element::has_class(std::string_view class_name) const noexcept {
     return false;
 }
 
+const Element* Element::querySelector(std::string_view selector) const {
+    return nullptr;
+}
+
+std::vector<const Element*> Element::querySelectorAll(std::string_view selector) const {
+    return {};
+}
+
 const Element* Element::get_element_by_id(std::string_view id) const {
     return nullptr;
 }
@@ -68,39 +76,11 @@ std::vector<const Element*> Element::get_elements_by_class_name(std::string_view
     return {};
 }
 
-const Element* Element::find_element(std::string_view selector) const {
-    return nullptr;
-}
-
-const Element* Element::query_element(std::string_view selector) const {
-    return nullptr;
-}
-
-const Element* Element::select_element(std::string_view selector) const {
-    return nullptr;
-}
-
-std::vector<const Element*> Element::query_elements(std::string_view selector) const {
+ElementQuery Element::css(std::string_view selector) const {
     return {};
 }
 
-std::vector<const Element*> Element::select_elements(std::string_view selector) const {
-    return {};
-}
-
-std::vector<const Element*> Element::query_all_elements(std::string_view selector) const {
-    return {};
-}
-
-QueryEngine Element::find(std::string_view selector) const {
-    return {};
-}
-
-QueryEngine Element::query(std::string_view selector) const {
-    return {};
-}
-
-QueryEngine Element::select(std::string_view selector) const {
+ElementQuery Element::xpath(std::string_view expression) const {
     return {};
 }
 

@@ -96,9 +96,8 @@ class ElementQuery {
     [[nodiscard]] ElementQuery prev_siblings() const;
     [[nodiscard]] ElementQuery siblings() const;
 
-    [[nodiscard]]  // 高级查询方法
-    [[nodiscard]] ElementQuery
-                               filter(std::function<bool(const Element&)> predicate) const;
+    // 高级查询方法
+    [[nodiscard]] ElementQuery filter(std::function<bool(const Element&)> predicate) const;
     [[nodiscard]] ElementQuery not_(std::string_view selector) const;
     [[nodiscard]] ElementQuery even() const;
     [[nodiscard]] ElementQuery odd() const;
@@ -106,7 +105,7 @@ class ElementQuery {
     [[nodiscard]] ElementQuery gt(size_t index) const;
     [[nodiscard]] ElementQuery lt(size_t index) const;
 
-    [[nodiscard]]  // 聚合与转换方法
+    // 聚合与转换方法
     [[nodiscard]] std::vector<std::string>
                                            extract_attributes(std::string_view attr_name) const;
     [[nodiscard]] std::vector<std::string> extract_texts() const;
@@ -114,7 +113,7 @@ class ElementQuery {
     template <typename T>
     std::vector<T> map(std::function<T(const Element&)> mapper) const;
 
-    [[nodiscard]]  // 遍历与副作用方法
+    // 遍历与副作用方法
     [[nodiscard]] ElementQuery
                                each(std::function<void(const Element&)> callback) const;
     [[nodiscard]] ElementQuery each(std::function<void(size_t, const Element&)> callback) const;

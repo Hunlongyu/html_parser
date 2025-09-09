@@ -60,6 +60,20 @@ int main() {
 </body>
 </html>
 )";
+
+    std::string_view html2 = R"(
+<!DOCTYPE html>
+<html lang="zh-CN">
+ <head> 
+ </head>
+<body>
+ <div>
+  <a href="https://example.com">Example</a>
+ </div>
+</body>
+</html>
+)";
+
     hps::Tokenizer   tokenizer(html, hps::ErrorHandlingMode::Lenient);
 
     std::cout << "输入HTML: " << html << std::endl << std::endl;
@@ -82,13 +96,41 @@ int main() {
                     std::cout << "结束标签: " << token->name() << std::endl;
                     break;
 
+                case hps::TokenType::CLOSE_SELF:
+                    std::cout << "自闭合标签: " << token->name();
+                    if (!token->attrs().empty()) {
+                        std::cout << ", 属性: ";
+                        for (const auto& attr : token->attrs()) {
+                            std::cout << attr.m_name << "=\"" << attr.m_value << "\" ";
+                        }
+                    }
+                    std::cout << std::endl;
+                    break;
+
+                case hps::TokenType::DOCTYPE:
+                    std::cout << "DOCTYPE 声明: " << token->name() << std::endl;
+                    break;
+
+                case hps::TokenType::COMMENT:
+                    std::cout << "注释: " << token->value() << std::endl;
+                    break;
+
                 case hps::TokenType::TEXT:
-                    if (!token->value().empty() && token->value() != " ") {
+                    if (!token->value().empty() && token->value() != " " && token->value() != "\n") {
                         std::cout << "文本内容: " << token->value() << std::endl;
                     }
                     break;
 
+                case hps::TokenType::FORCE_QUIRKS:
+                    std::cout << "强制怪异模式标记" << std::endl;
+                    break;
+
+                case hps::TokenType::DONE:
+                    std::cout << "解析完成" << std::endl;
+                    break;
+
                 default:
+                    std::cout << "未知 token 类型" << std::endl;
                     break;
             }
         }

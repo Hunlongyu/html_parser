@@ -2,22 +2,20 @@
 
 #include "hps/utils/noncopyable.hpp"
 
+#include <string>
 #include <string_view>
 #include <vector>
 
 namespace hps {
 
 struct TokenAttribute {
-    std::string_view m_name;
-    std::string_view m_value;
-    bool             m_has_value = true;  // 区分 <div checked> 和 <div checked="true">
+    std::string m_name;
+    std::string m_value;
+    bool        m_has_value = true;  // 区分 <div checked> 和 <div checked="true">
 
     TokenAttribute() = default;
 
-    explicit TokenAttribute(const std::string_view n,
-                            const std::string_view v  = {},
-                            const bool             hv = true)
-        : m_name(n), m_value(v), m_has_value(hv) {}
+    explicit TokenAttribute(const std::string_view n, const std::string_view v = {}, const bool hv = true) : m_name(n), m_value(v), m_has_value(hv) {}
 };
 
 enum class TokenType {
@@ -84,8 +82,8 @@ class Token : public NonCopyable {
 
   private:
     TokenType                   m_type;
-    std::string_view            m_name;
-    std::string_view            m_value;
+    std::string                 m_name;
+    std::string                 m_value;
     std::vector<TokenAttribute> m_attrs;
 };
 

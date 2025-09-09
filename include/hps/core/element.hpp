@@ -7,7 +7,7 @@
 
 namespace hps {
 
-class QueryEngine;
+class ElementQuery;
 
 class Element : public Node {
   public:
@@ -95,6 +95,9 @@ class Element : public Node {
      */
     bool has_class(std::string_view class_name) const noexcept;
 
+    const Element* querySelector(std::string_view selector) const;
+    std::vector<const Element*> querySelectorAll(std::string_view selector) const;
+
     /**
      * @brief 按 ID 获取元素
      * @param id ID 值
@@ -116,17 +119,8 @@ class Element : public Node {
      */
     std::vector<const Element*> get_elements_by_class_name(std::string_view class_name) const;
 
-    const Element* find_element(std::string_view selector) const;
-    const Element* query_element(std::string_view selector) const;
-    const Element* select_element(std::string_view selector) const;
-
-    std::vector<const Element*> query_elements(std::string_view selector) const;
-    std::vector<const Element*> select_elements(std::string_view selector) const;
-    std::vector<const Element*> query_all_elements(std::string_view selector) const;
-
-    QueryEngine find(std::string_view selector) const;
-    QueryEngine query(std::string_view selector) const;
-    QueryEngine select(std::string_view selector) const;
+    ElementQuery css(std::string_view selector) const;
+    ElementQuery xpath(std::string_view expression) const;
 
   private:
     /**
