@@ -2,23 +2,11 @@
 
 #include "hps/utils/exception.hpp"
 
-#include <unordered_map>
 #include <unordered_set>
 
 namespace hps {
 
 static const std::unordered_set<std::string_view> VOID_ELEMENTS = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"};
-
-static const std::unordered_map<std::string, char> NAMED_CHARACTER_REFERENCES = {
-    {"lt", '<'},
-    {"gt", '>'},
-    {"amp", '&'},
-    {"apos", '\''},
-    {"quot", '"'},
-    {"nbsp", '\xA0'},
-    {"copy", '\xA9'},
-    {"reg", '\xAE'},
-};
 
 Tokenizer::Tokenizer(std::string_view source, ErrorHandlingMode mode) : m_source(source), m_pos(0), m_state(TokenizerState::Data), m_error_mode(mode), m_return_state(TokenizerState::Data) {}
 
@@ -97,8 +85,6 @@ std::optional<Token> Tokenizer::next_token() {
                 if (auto token = consume_rcdata_state())
                     return token;
                 break;
-            default:
-                return create_done_token();
         }
     }
     return create_done_token();
@@ -167,29 +153,21 @@ std::optional<Token> Tokenizer::consume_tag_open_state() {
         advance();
         if (starts_with("DOCTYPE") || starts_with("doctype")) {
             m_state = TokenizerState::DOCTYPE;
-        } else if (starts_with("--")) {
-            advance();
-            advance();
-            m_state = TokenizerState::Comment;
         } else if (starts_with("[CDATA[")) {
-            for (int i = 0; i < 7; i++) {
-                if (has_more()) {
-                    advance();
-                }
+            for (int i = 0; i < 7 && has_more(); i++) {
+                advance();
             }
             std::string cdata_content;
-            while (has_more() && !starts_with("]]")) {
-                if (current_char() == '>') {
+            while (has_more()) {
+                if (starts_with("]]")) {
+                    advance();  // 跳过第一个 ]
+                    advance();  // 跳过第二个 ]
+                    if (has_more() && current_char() == '>') {
+                        advance();  // 跳过 >
+                    }
                     break;
                 }
                 cdata_content += current_char();
-                advance();
-            }
-            if (starts_with("]]")) {
-                advance();
-                advance();
-            }
-            if (current_char() == '>') {
                 advance();
             }
             m_state = TokenizerState::Data;
@@ -468,18 +446,22 @@ std::optional<Token> Tokenizer::consume_self_closing_start_tag_state() {
         advance();
         m_state = TokenizerState::Data;
         return create_close_self_token();
-    } else if (current_char() == '\0') {
+    }
+    if (current_char() == '\0') {
         handle_parse_error(ParseException::ErrorCode::UnexpectedEOF, "Unexpected EOF in self-closing tag");
         return {};
     }
-
     handle_parse_error(ParseException::ErrorCode::InvalidToken, "Unexpected character after '/' in self-closing start tag");
     m_state = TokenizerState::BeforeAttributeName;
-
     return {};
 }
 
 std::optional<Token> Tokenizer::consume_comment_state() {
+    if (starts_with("--")) {
+        advance();  // 跳过第一个 -
+        advance();  // 跳过第二个 -
+    }
+    m_char_ref_buffer.clear();
     while (has_more()) {
         if (current_char() == '-' && peek_char() == '-') {
             if (peek_char(2) == '>') {
@@ -555,18 +537,17 @@ std::optional<Token> Tokenizer::consume_script_data_state() {
                     m_pos                           = saved_pos;
                     std::string_view script_content = m_source.substr(start, saved_pos - start);
                     return create_text_token(script_content);
-                } else {
-                    // 创建结束标签
-                    m_pos = saved_pos + 8;
-                    advance();  // 跳过 >
-                    m_state = TokenizerState::Data;
-                    return {};
                 }
-            } else {
-                // 不是真正的结束标签，恢复位置继续
-                m_pos = saved_pos;
-                advance();
+                // 创建结束标签
+                m_pos = saved_pos + 8;
+                advance();  // 跳过 >
+                m_state = TokenizerState::Data;
+                return {};
             }
+            // 不是真正的结束标签，恢复位置继续
+            m_pos = saved_pos;
+            advance();
+
         } else {
             advance();
         }
@@ -599,15 +580,14 @@ std::optional<Token> Tokenizer::consume_rawtext_state() {
                     m_pos                    = saved_pos;
                     std::string_view content = m_source.substr(start, saved_pos - start);
                     return create_text_token(content);
-                } else {
-                    advance();  // 跳过 >
-                    m_state = TokenizerState::Data;
-                    return {};
                 }
-            } else {
-                m_pos = saved_pos;
-                advance();
+                advance();  // 跳过 >
+                m_state = TokenizerState::Data;
+                return {};
             }
+            m_pos = saved_pos;
+            advance();
+
         } else {
             advance();
         }
@@ -639,15 +619,14 @@ std::optional<Token> Tokenizer::consume_rcdata_state() {
                     m_pos                    = saved_pos;
                     std::string_view content = m_source.substr(start, saved_pos - start);
                     return create_text_token(content);
-                } else {
-                    advance();  // 跳过 >
-                    m_state = TokenizerState::Data;
-                    return {};
                 }
-            } else {
-                m_pos = saved_pos;
-                advance();
+                advance();  // 跳过 >
+                m_state = TokenizerState::Data;
+                return {};
             }
+            m_pos = saved_pos;
+            advance();
+
         } else {
             advance();
         }
@@ -698,28 +677,28 @@ bool Tokenizer::starts_with(std::string_view s) const noexcept {
     return m_source.substr(m_pos, s.length()) == s;
 }
 
-bool Tokenizer::is_whitespace(char c) noexcept {
+bool Tokenizer::is_whitespace(const char c) noexcept {
     return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f';
 }
 
-bool Tokenizer::is_alpha(char c) noexcept {
+bool Tokenizer::is_alpha(const char c) noexcept {
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
 }
 
-bool Tokenizer::is_alnum(char c) noexcept {
+bool Tokenizer::is_alnum(const char c) noexcept {
     return is_alpha(c) || (c >= '0' && c <= '9');
 }
 
-bool Tokenizer::is_digit(char c) noexcept {
+bool Tokenizer::is_digit(const char c) noexcept {
     return c >= '0' && c <= '9';
 }
-bool Tokenizer::is_hex_digit(char c) noexcept {
+bool Tokenizer::is_hex_digit(const char c) noexcept {
     return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f');
 }
 
-char Tokenizer::to_lower(char c) noexcept {
+char Tokenizer::to_lower(const char c) noexcept {
     if (c >= 'A' && c <= 'Z') {
-        return c - 'A' + 'a';
+        return static_cast<char>(c - 'A' + 'a');
     }
     return c;
 }
@@ -779,7 +758,7 @@ Token Tokenizer::create_done_token() {
     return {TokenType::DONE, "", ""};
 }
 
-void Tokenizer::handle_parse_error(ParseException::ErrorCode code, const std::string& message) {
+void Tokenizer::handle_parse_error(const ParseException::ErrorCode code, const std::string& message) {
     record_error(code, message);
 
     switch (m_error_mode) {

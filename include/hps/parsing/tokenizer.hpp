@@ -23,15 +23,15 @@ struct ParseError {
     std::string               message;
     size_t                    position;
 
-    ParseError(ParseException::ErrorCode c, std::string msg, size_t pos) : code(c), message(std::move(msg)), position(pos) {}
+    ParseError(const ParseException::ErrorCode c, std::string msg, const size_t pos) : code(c), message(std::move(msg)), position(pos) {}
 };
 
 enum class TokenizerState {
-    Data,                /// 普通文本
-    TagOpen,             /// <          标签开始
-    TagName,             /// <tag       标签名
-    EndTagOpen,          /// </tag      结束标签开始
-    EndTagName,          /// </tag      结束标签名称
+    Data,        /// 普通文本
+    TagOpen,     /// <          标签开始
+    TagName,     /// <tag       标签名
+    EndTagOpen,  /// </tag      结束标签开始
+    EndTagName,  /// </tag      结束标签名称
 
     BeforeAttributeName,         /// <tag                   标签属性前的空格
     AttributeName,               /// <tag attr              属性名
