@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <ranges>
 
 namespace hps {
 
@@ -98,7 +99,7 @@ void TreeBuilder::process_end_tag(const Token& token) {
     }
 
     // 查找匹配的开始标签（从栈顶向下查找）
-    auto it = std::find_if(m_element_stack.rbegin(), m_element_stack.rend(), [tag_name](const Element* elem) { return elem->tag_name() == tag_name; });
+    auto it = std::ranges::find_if(std::ranges::reverse_view(m_element_stack), [tag_name](const Element* elem) { return elem->tag_name() == tag_name; });
 
     if (it != m_element_stack.rend()) {
         // 找到匹配的标签，关闭到这个位置的所有元素
