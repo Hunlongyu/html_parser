@@ -9,6 +9,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(EXAMPLES
     basic
     tokenizer
+    tree_builder
 )
 
 foreach(example ${EXAMPLES})

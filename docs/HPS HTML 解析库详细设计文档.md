@@ -175,7 +175,6 @@ hps/
 │   │   ├── tokenizer.hpp           # 词法分析器
 │   │   ├── tree_builder.hpp        # 语法分析器
 │   │   ├── html_parser.hpp         # 解析协调器
-│   │   └── parser_options.hpp      # 解析选项
 │   ├── query/                      # 查询层
 │   │   ├── query.hpp               # 统一查询入口
 │   │   ├── element_query.hpp       # 查询结果处理

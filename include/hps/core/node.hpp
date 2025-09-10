@@ -138,7 +138,7 @@ class Node : public NonCopyable {
      * @brief 添加子节点
      * @param child 子节点
      */
-    void add_child(std::unique_ptr<Node> child);
+    virtual void add_child(std::unique_ptr<Node> child);
 
   private:
     NodeType                           m_type;     /**< 节点类型 */

@@ -5,6 +5,9 @@
 #include <string>
 
 namespace hps {
+
+class ElementQuery;
+
 class Document : public Node {
   public:
     explicit Document(std::string html_content);
@@ -28,19 +31,21 @@ class Document : public Node {
     const Element* root() const;
     const Element* html() const;
     const Element* document() const;
-    
-    const Element* querySelector(std::string_view selector) const;
+
+    const Element*              querySelector(std::string_view selector) const;
     std::vector<const Element*> querySelectorAll(std::string_view selector) const;
 
     const Element*              get_element_by_id(std::string_view id) const;
     std::vector<const Element*> get_elements_by_tag_name(std::string_view tag_name) const;
     std::vector<const Element*> get_elements_by_class_name(std::string_view class_name) const;
 
-    QueryEngine css(std::string_view selector) const;
-    QueryEngine xpath(std::string_view expression) const;
+    ElementQuery css(std::string_view selector) const;
+    ElementQuery xpath(std::string_view expression) const;
+
+    void add_child(std::unique_ptr<Node> child) override;
 
   private:
     std::string m_html_source;
-};
 
+};
 }  // namespace hps

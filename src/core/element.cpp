@@ -42,7 +42,7 @@ std::string_view Element::id() const noexcept {
 }
 
 std::string_view Element::tag_name() const noexcept {
-    return {};
+    return m_name;
 }
 
 const std::unordered_set<std::string_view>& Element::class_names() const noexcept {
@@ -86,6 +86,7 @@ ElementQuery Element::xpath(std::string_view expression) const {
 
 void Element::add_attribute(std::string_view name, std::string_view value) {}
 
-void add_attribute(std::string_view name, std::string_view value);
-
+void Element::add_child(std::unique_ptr<Node> child) {
+    Node::add_child(std::move(child));
+}
 }  // namespace hps

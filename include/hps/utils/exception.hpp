@@ -45,6 +45,25 @@ class ParseException : public HPSException {
     size_t    m_position;
 };
 
+// 解析异常
+class BuilderException : public HPSException {
+  public:
+    enum class ErrorCode { QUIRKS_MODE, UNKNOWN_TOKEN, INTERNAL_ERROR, UNCLOSED_TAG, VOID_ELEMENT_CLOSE, MISMATCHED_TAG, AUTO_CLOSE };
+
+    BuilderException(ErrorCode code, std::string message, size_t position = 0) : HPSException(std::move(message)), m_code(code), m_position(position) {}
+
+    ErrorCode code() const noexcept {
+        return m_code;
+    }
+    size_t position() const noexcept {
+        return m_position;
+    }
+
+  private:
+    ErrorCode m_code;
+    size_t    m_position;
+};
+
 // 选择器语法异常
 class QueryException : public HPSException {
   public:

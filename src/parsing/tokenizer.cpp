@@ -539,10 +539,10 @@ std::optional<Token> Tokenizer::consume_script_data_state() {
                     return create_text_token(script_content);
                 }
                 // 创建结束标签
-                m_pos = saved_pos + 8;
                 advance();  // 跳过 >
-                m_state = TokenizerState::Data;
-                return {};
+                m_state   = TokenizerState::Data;
+                m_end_tag = "script";
+                return create_end_tag_token();
             }
             // 不是真正的结束标签，恢复位置继续
             m_pos = saved_pos;

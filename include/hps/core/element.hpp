@@ -122,13 +122,15 @@ class Element : public Node {
     ElementQuery css(std::string_view selector) const;
     ElementQuery xpath(std::string_view expression) const;
 
-  private:
+    void add_child(std::unique_ptr<Node> child) override;
+
     /**
      * @brief 添加属性【仅解析器使用】
      * @param name 属性名
      * @param value 属性值
      */
     void add_attribute(std::string_view name, std::string_view value);
+
 
   private:
     std::string            m_name;       /**< 标签名 */

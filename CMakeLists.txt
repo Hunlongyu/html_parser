@@ -23,6 +23,7 @@ set(SOURCE
     "src/core/document.cpp"
     "src/parsing/token.cpp"
     "src/parsing/tokenizer.cpp"
+    "src/parsing/tree_builder.cpp"
 )
 
 if (HPS_BUILD_SHARED)

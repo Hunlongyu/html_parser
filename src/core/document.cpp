@@ -1,0 +1,94 @@
+#include "hps/core/document.hpp"
+#include "hps/query/element_query.hpp"
+
+namespace hps {
+Document::Document(std::string html_content) : Node(NodeType::Document), m_html_source(std::move(html_content)) {}
+
+NodeType Document::node_type() const {
+    return {};
+}
+
+std::string_view Document::node_name() const {
+    return {};
+}
+
+std::string_view Document::node_value() const {
+    return {};
+}
+
+std::string_view Document::text_content() const {
+    return {};
+}
+
+std::string_view Document::title() const {
+    return {};
+}
+
+std::string_view Document::charset() const {
+    return {};
+}
+
+std::string_view Document::source_html() const {
+    return {};
+}
+
+std::string_view Document::get_meta_content(std::string_view name) const {
+    return {};
+}
+
+std::string_view Document::get_meta_property(std::string_view property) const {
+    return {};
+}
+
+std::vector<std::string_view> Document::get_all_links() const {
+    return {};
+}
+
+std::vector<std::string_view> Document::get_all_images() const {
+    return {};
+}
+
+const Element* Document::root() const {
+    return nullptr;
+}
+
+const Element* Document::html() const {
+    return nullptr;
+}
+
+const Element* Document::document() const {
+    return nullptr;
+}
+
+const Element* Document::querySelector(std::string_view selector) const {
+    return nullptr;
+}
+
+std::vector<const Element*> Document::querySelectorAll(std::string_view selector) const {
+    return {};
+}
+
+const Element* Document::get_element_by_id(std::string_view id) const {
+    return nullptr;
+}
+
+std::vector<const Element*> Document::get_elements_by_tag_name(std::string_view tag_name) const {
+    return {};
+}
+
+std::vector<const Element*> Document::get_elements_by_class_name(std::string_view class_name) const {
+    return {};
+}
+
+ElementQuery Document::css(std::string_view selector) const {
+    return {};
+}
+
+ElementQuery Document::xpath(std::string_view expression) const {
+    return {};
+}
+
+void Document::add_child(std::unique_ptr<Node> child) {
+    Node::add_child(std::move(child));
+}
+}  // namespace hps
