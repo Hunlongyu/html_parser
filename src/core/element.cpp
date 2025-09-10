@@ -2,30 +2,40 @@
 
 #include "hps/query/element_query.hpp"
 
+#include <algorithm>
+
 namespace hps {
-Element::Element(std::string_view name) : Node(NodeType::Element), m_name(name) {}
+Element::Element(std::string_view name) : Node(NodeType::Element), m_name(name) {
+    m_attributes.reserve(8);
+}
 
 NodeType Element::node_type() const {
     return NodeType::Element;
 }
 
-std::string_view Element::node_name() const {
+std::string Element::node_name() const {
     return m_name;
 }
 
-std::string_view Element::node_value() const {
+std::string Element::node_value() const {
     return {};
 }
 
-std::string_view Element::text_content() const {
+std::string Element::text_content() const {
     return {};
 }
 
 bool Element::has_attribute(std::string_view name) const noexcept {
-    return false;
+    return std::ranges::any_of(m_attributes, [name](const Attribute& attr) { return attr.name() == name; });
 }
 
-std::string_view Element::get_attribute(std::string_view name) const noexcept {
+std::string Element::get_attribute(std::string_view name) const noexcept {
+    auto it = std::ranges::find_if(m_attributes, [name](const Attribute& attr) { return attr.name() == name; });
+
+    if (it != m_attributes.end()) {
+        return it->value();
+    }
+
     return {};
 }
 
@@ -37,11 +47,11 @@ size_t Element::attribute_count() const noexcept {
     return m_attributes.size();
 }
 
-std::string_view Element::id() const noexcept {
+std::string Element::id() const noexcept {
     return get_attribute("id");
 }
 
-std::string_view Element::tag_name() const noexcept {
+std::string Element::tag_name() const noexcept {
     return m_name;
 }
 
@@ -49,7 +59,7 @@ const std::unordered_set<std::string_view>& Element::class_names() const noexcep
     return {};
 }
 
-std::string_view Element::class_name() const noexcept {
+std::string Element::class_name() const noexcept {
     return get_attribute("class");
 }
 
@@ -84,7 +94,15 @@ ElementQuery Element::xpath(std::string_view expression) const {
     return {};
 }
 
-void Element::add_attribute(std::string_view name, std::string_view value) {}
+void Element::add_attribute(std::string_view name, std::string_view value) {
+    auto it = std::ranges::find_if(m_attributes, [name](const Attribute& attr) { return attr.name() == name; });
+
+    if (it != m_attributes.end()) {
+        *it = Attribute(name, value);
+    } else {
+        m_attributes.emplace_back(name, value);
+    }
+}
 
 void Element::add_child(std::unique_ptr<Node> child) {
     Node::add_child(std::move(child));

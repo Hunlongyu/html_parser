@@ -8,23 +8,23 @@ NodeType TextNode::node_type() const {
     return NodeType::Text;
 }
 
-std::string_view TextNode::node_name() const {
+std::string TextNode::node_name() const {
     return "#text";
 }
 
-std::string_view TextNode::node_value() const {
+std::string TextNode::node_value() const {
     return m_text;
 }
 
-std::string_view TextNode::text_content() const {
+std::string TextNode::text_content() const {
     return m_text;
 }
 
-std::string_view TextNode::text() const {
+std::string TextNode::text() const {
     return m_text;
 }
 
-std::string_view TextNode::normalized_text() const {
+std::string TextNode::normalized_text() const {
     if (m_text.empty()) {
         return m_text;
     }

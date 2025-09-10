@@ -24,19 +24,19 @@ class Element : public Node {
      * @brief 元素名
      * @return 元素名
      */
-    std::string_view node_name() const override;
+    std::string node_name() const override;
 
     /**
      * @brief 元素值
      * @return 元素值
      */
-    std::string_view node_value() const override;
+    std::string node_value() const override;
 
     /**
      * @brief 递归获取元素的所有文本内容
      * @return 文本内容
      */
-    std::string_view text_content() const override;
+    std::string text_content() const override;
 
     /**
      * @brief 检查是否存在指定属性
@@ -50,7 +50,7 @@ class Element : public Node {
      * @param name 属性名【忽略大小写】
      * @return 属性值，不存在返回空 string_view
      */
-    std::string_view get_attribute(std::string_view name) const noexcept;
+    std::string get_attribute(std::string_view name) const noexcept;
 
     /**
      * @brief 获取所有属性
@@ -66,15 +66,15 @@ class Element : public Node {
 
     /**
      * @brief 获取 ID 属性值
-     * @return ID 值，无 ID 属性返回空 string_view
+     * @return ID 值，无 ID 属性返回空 string
      */
-    std::string_view id() const noexcept;
+    std::string id() const noexcept;
 
     /**
      * @brief 获取元素标签名
      * @return 标签名
      */
-    std::string_view tag_name() const noexcept;
+    std::string tag_name() const noexcept;
 
     /**
      * @brief 获取所有 CSS 类名
@@ -86,7 +86,7 @@ class Element : public Node {
      * @brief 获取 class 属性的原始值
      * @return class 属性值，无 class 属性返回空 string_view
      */
-    std::string_view class_name() const noexcept;
+    std::string class_name() const noexcept;
 
     /**
      * @brief 检查元素是否包含指定 class 类
@@ -95,7 +95,7 @@ class Element : public Node {
      */
     bool has_class(std::string_view class_name) const noexcept;
 
-    const Element* querySelector(std::string_view selector) const;
+    const Element*              querySelector(std::string_view selector) const;
     std::vector<const Element*> querySelectorAll(std::string_view selector) const;
 
     /**
@@ -130,7 +130,6 @@ class Element : public Node {
      * @param value 属性值
      */
     void add_attribute(std::string_view name, std::string_view value);
-
 
   private:
     std::string            m_name;       /**< 标签名 */

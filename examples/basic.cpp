@@ -1,7 +1,9 @@
-#include "hps/core/element.hpp"
+#include "hps/hps.hpp"
 
 #include <iostream>
 
 int main() {
-    auto ele = hps::Element("div");
+    auto version = hps::version();
+    std::cout << "HPS version: " << version << std::endl;
+    system("pause");
 }

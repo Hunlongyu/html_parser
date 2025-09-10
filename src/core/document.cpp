@@ -8,43 +8,43 @@ NodeType Document::node_type() const {
     return {};
 }
 
-std::string_view Document::node_name() const {
+std::string Document::node_name() const {
     return {};
 }
 
-std::string_view Document::node_value() const {
+std::string Document::node_value() const {
     return {};
 }
 
-std::string_view Document::text_content() const {
+std::string Document::text_content() const {
     return {};
 }
 
-std::string_view Document::title() const {
+std::string Document::title() const {
     return {};
 }
 
-std::string_view Document::charset() const {
+std::string Document::charset() const {
     return {};
 }
 
-std::string_view Document::source_html() const {
+std::string Document::source_html() const {
     return {};
 }
 
-std::string_view Document::get_meta_content(std::string_view name) const {
+std::string Document::get_meta_content(std::string_view name) const {
     return {};
 }
 
-std::string_view Document::get_meta_property(std::string_view property) const {
+std::string Document::get_meta_property(std::string_view property) const {
     return {};
 }
 
-std::vector<std::string_view> Document::get_all_links() const {
+std::vector<std::string> Document::get_all_links() const {
     return {};
 }
 
-std::vector<std::string_view> Document::get_all_images() const {
+std::vector<std::string> Document::get_all_images() const {
     return {};
 }
 

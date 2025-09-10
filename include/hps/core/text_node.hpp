@@ -21,31 +21,31 @@ class TextNode : public Node {
      * @brief 节点名称
      * @return 节点名称
      */
-    [[nodiscard]] std::string_view node_name() const override;
+    [[nodiscard]] std::string node_name() const override;
 
     /**
      * @brief 文本内容
      * @return 文本内容
      */
-    [[nodiscard]] std::string_view node_value() const override;
+    [[nodiscard]] std::string node_value() const override;
 
     /**
      * @brief 文本内容
      * @return 文本内容
      */
-    [[nodiscard]] std::string_view text_content() const override;
+    [[nodiscard]] std::string text_content() const override;
 
     /**
      * @brief 获取文本内容
      * @return 文本内容
      */
-    [[nodiscard]] std::string_view text() const;
+    [[nodiscard]] std::string text() const;
 
     /**
      * @brief 获取文本内容 移除多余空白字符
      * @return 文本内容
      */
-    [[nodiscard]] std::string_view normalized_text() const;
+    [[nodiscard]] std::string normalized_text() const;
 
     /**
      * @brief 判断是否为空

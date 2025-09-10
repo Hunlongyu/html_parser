@@ -2,7 +2,7 @@
 #include "hps/utils/noncopyable.hpp"
 
 #include <memory>
-#include <string_view>
+#include <string>
 #include <vector>
 
 namespace hps {
@@ -31,19 +31,19 @@ class Node : public NonCopyable {
      * @brief 获取节点名称
      * @return 节点名称
      */
-    [[nodiscard]] virtual std::string_view node_name() const = 0;
+    [[nodiscard]] virtual std::string node_name() const = 0;
 
     /**
      * @brief 获取节点内容
      * @return 节点内容
      */
-    [[nodiscard]] virtual std::string_view node_value() const = 0;
+    [[nodiscard]] virtual std::string node_value() const = 0;
 
     /**
      * @brief 递归获取节点所有文本内容
      * @return 节点文本内容
      */
-    [[nodiscard]] virtual std::string_view text_content() const = 0;
+    [[nodiscard]] virtual std::string text_content() const = 0;
 
     /**
      * @brief 获取父节点
