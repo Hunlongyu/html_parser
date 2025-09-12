@@ -2,18 +2,13 @@
 
 #include "hps/core/document.hpp"
 #include "hps/core/text_node.hpp"
+#include "hps/utils/string_utils.hpp"
 
 #include <algorithm>
 #include <cassert>
 #include <ranges>
 
 namespace hps {
-
-// 预定义的自闭合元素集合
-const std::unordered_set<std::string_view> TreeBuilder::s_void_elements = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"};
-
-// 预定义的原始文本元素集合
-const std::unordered_set<std::string_view> TreeBuilder::s_raw_text_elements = {"script", "style", "textarea", "title"};
 
 TreeBuilder::TreeBuilder(Document* document) : m_document(document) {
     assert(m_document != nullptr);
@@ -35,7 +30,6 @@ bool TreeBuilder::process_token(const Token& token) {
                 process_text(token);
                 break;
             case TokenType::DONE:
-                process_done(token);
                 break;
             case TokenType::FORCE_QUIRKS:
                 parse_error(ErrorCode::InvalidNesting, "Force quirks mode detected");
@@ -118,10 +112,6 @@ void TreeBuilder::process_text(const Token& token) const {
     insert_text(text);
 }
 
-void TreeBuilder::process_done(const Token& token) {
-    // finish() 会在调用方显式调用，这里不需要重复调用
-}
-
 std::unique_ptr<Element> TreeBuilder::create_element(const Token& token) {
     auto element = std::make_unique<Element>(token.name());
     for (const auto& attr : token.attrs()) {
@@ -200,14 +190,6 @@ void TreeBuilder::close_elements_until(std::string_view tag_name) {
 void TreeBuilder::parse_error(const ErrorCode code, const std::string& message) {
     ParseError error(code, message, 0);
     m_errors.push_back(std::move(error));
-}
-
-bool TreeBuilder::is_void_element(const std::string_view tag_name) {
-    return s_void_elements.contains(tag_name);
-}
-
-bool TreeBuilder::is_raw_text_element(const std::string_view tag_name) {
-    return s_raw_text_elements.contains(tag_name);
 }
 
 }  // namespace hps

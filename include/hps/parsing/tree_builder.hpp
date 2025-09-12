@@ -43,14 +43,13 @@ class TreeBuilder : public NonCopyable {
      * @brief 获取错误列表
      * @return 解析错误列表
      */
-    const std::vector<ParseError>& errors() const noexcept;
+    [[nodiscard]] const std::vector<ParseError>& errors() const noexcept;
 
   private:
     // Token处理方法
     void process_start_tag(const Token& token);
     void process_end_tag(const Token& token);
     void process_text(const Token& token) const;
-    void process_done(const Token& token);
 
     // 元素操作方法
     static std::unique_ptr<Element> create_element(const Token& token);
@@ -58,9 +57,9 @@ class TreeBuilder : public NonCopyable {
     void                            insert_text(std::string_view text) const;
 
     // 栈操作方法
-    void     push_element(Element* element);
-    Element* pop_element();
-    Element* current_element() const;
+    void                   push_element(Element* element);
+    Element*               pop_element();
+    [[nodiscard]] Element* current_element() const;
 
     // 简单的作用域检查
     bool should_close_element(std::string_view tag_name) const;
@@ -68,10 +67,6 @@ class TreeBuilder : public NonCopyable {
 
     // 错误处理
     void parse_error(ErrorCode code, const std::string& message);
-
-    // 工具方法
-    static bool is_void_element(std::string_view tag_name);
-    static bool is_raw_text_element(std::string_view tag_name);
 
   private:
     Document*               m_document;       // 目标文档

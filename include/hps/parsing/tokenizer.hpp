@@ -118,13 +118,6 @@ class Tokenizer : public NonCopyable {
     void               skip_whitespace() noexcept;
 
     [[nodiscard]] bool starts_with(std::string_view s) const noexcept;
-    static bool        is_whitespace(char c) noexcept;
-    static bool        is_alpha(char c) noexcept;
-    static bool        is_alnum(char c) noexcept;
-    static bool        is_digit(char c) noexcept;
-    static bool        is_hex_digit(char c) noexcept;
-    static char        to_lower(char c) noexcept;
-    static bool        is_void_element_name(std::string_view n) noexcept;
 
     Token        create_start_tag_token();
     Token        create_end_tag_token();

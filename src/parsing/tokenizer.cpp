@@ -1,6 +1,7 @@
 #include "hps/parsing/tokenizer.hpp"
 
 #include "hps/utils/exception.hpp"
+#include "hps/utils/string_utils.hpp"
 
 #include <unordered_set>
 
@@ -677,43 +678,13 @@ bool Tokenizer::starts_with(std::string_view s) const noexcept {
     return m_source.substr(m_pos, s.length()) == s;
 }
 
-bool Tokenizer::is_whitespace(const char c) noexcept {
-    return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f';
-}
-
-bool Tokenizer::is_alpha(const char c) noexcept {
-    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
-}
-
-bool Tokenizer::is_alnum(const char c) noexcept {
-    return is_alpha(c) || (c >= '0' && c <= '9');
-}
-
-bool Tokenizer::is_digit(const char c) noexcept {
-    return c >= '0' && c <= '9';
-}
-bool Tokenizer::is_hex_digit(const char c) noexcept {
-    return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f');
-}
-
-char Tokenizer::to_lower(const char c) noexcept {
-    if (c >= 'A' && c <= 'Z') {
-        return static_cast<char>(c - 'A' + 'a');
-    }
-    return c;
-}
-
-bool Tokenizer::is_void_element_name(std::string_view n) noexcept {
-    return VOID_ELEMENTS.contains(n);
-}
-
 Token Tokenizer::create_start_tag_token() {
     Token token(TokenType::OPEN, m_token_builder.tag_name, "");
     for (const auto& attr : m_token_builder.attrs) {
         token.add_attr(attr);
     }
 
-    if (is_void_element_name(m_token_builder.tag_name)) {
+    if (is_void_element(m_token_builder.tag_name)) {
         token.set_type(TokenType::CLOSE_SELF);
     }
 
