@@ -8,7 +8,7 @@ namespace hps {
 
 static const std::unordered_set<std::string_view> VOID_ELEMENTS = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"};
 
-Tokenizer::Tokenizer(std::string_view source, ErrorHandlingMode mode) : m_source(source), m_pos(0), m_state(TokenizerState::Data), m_error_mode(mode), m_return_state(TokenizerState::Data) {}
+Tokenizer::Tokenizer(std::string_view source, ErrorHandlingMode mode) : m_source(source), m_pos(0), m_state(TokenizerState::Data), m_error_mode(mode) {}
 
 std::optional<Token> Tokenizer::next_token() {
     while (has_more()) {
@@ -215,7 +215,7 @@ std::optional<Token> Tokenizer::consume_tag_name_state() {
         advance();
         m_state = TokenizerState::SelfClosingStartTag;
     } else if (current_char() == '\0') {
-        handle_parse_error(ParseException::ErrorCode::UnexpectedEOF, "Unexpected EOF in tag name");
+        handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in tag name");
         return {};
     }
     return {};
@@ -226,11 +226,11 @@ std::optional<Token> Tokenizer::consume_end_tag_open_state() {
         m_end_tag.clear();
         m_state = TokenizerState::EndTagName;
     } else if (current_char() == '>') {
-        handle_parse_error(ParseException::ErrorCode::InvalidToken, "Empty end tag");
+        handle_parse_error(ErrorCode::InvalidToken, "Empty end tag");
         advance();
         m_state = TokenizerState::Data;
     } else {
-        handle_parse_error(ParseException::ErrorCode::InvalidToken, "Invalid character after </");
+        handle_parse_error(ErrorCode::InvalidToken, "Invalid character after </");
         m_state = TokenizerState::Data;
     }
     return {};
@@ -252,10 +252,10 @@ std::optional<Token> Tokenizer::consume_end_tag_name_state() {
         return create_end_tag_token();
     }
     if (current_char() == '\0') {
-        handle_parse_error(ParseException::ErrorCode::UnexpectedEOF, "Unexpected EOF in end tag name");
+        handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in end tag name");
         return {};
     }
-    handle_parse_error(ParseException::ErrorCode::InvalidToken, "Invalid character in end tag");
+    handle_parse_error(ErrorCode::InvalidToken, "Invalid character in end tag");
     // 跳过到 >
     while (has_more() && current_char() != '>') {
         advance();
@@ -286,12 +286,12 @@ std::optional<Token> Tokenizer::consume_before_attribute_name_state() {
     }
 
     if (current_char() == '\0') {
-        handle_parse_error(ParseException::ErrorCode::UnexpectedEOF, "Unexpected EOF before attribute name");
+        handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF before attribute name");
         return {};
     }
 
     if (current_char() == '\'' || current_char() == '"' || current_char() == '=') {
-        handle_parse_error(ParseException::ErrorCode::InvalidToken, "Unexpected character before attribute name");
+        handle_parse_error(ErrorCode::InvalidToken, "Unexpected character before attribute name");
         advance();
         return {};
     }
@@ -327,7 +327,7 @@ std::optional<Token> Tokenizer::consume_attribute_name_state() {
         advance();
         m_state = TokenizerState::SelfClosingStartTag;
     } else if (current_char() == '\0') {
-        handle_parse_error(ParseException::ErrorCode::UnexpectedEOF, "Unexpected EOF in attribute name");
+        handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in attribute name");
         return {};
     } else {
         // 遇到非法字符，完成当前属性
@@ -353,7 +353,7 @@ std::optional<Token> Tokenizer::consume_after_attribute_name_state() {
         advance();
         m_state = TokenizerState::SelfClosingStartTag;
     } else if (current_char() == '\0') {
-        handle_parse_error(ParseException::ErrorCode::UnexpectedEOF, "Unexpected EOF after attribute name");
+        handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF after attribute name");
         return {};
     } else {
         // 新的属性开始，先完成当前属性
@@ -374,7 +374,7 @@ std::optional<Token> Tokenizer::consume_before_attribute_value_state() {
         advance();
         m_state = TokenizerState::AttributeValueSingleQuoted;
     } else if (current_char() == '>') {
-        handle_parse_error(ParseException::ErrorCode::InvalidToken, "Missing attribute value");
+        handle_parse_error(ErrorCode::InvalidToken, "Missing attribute value");
         m_token_builder.finish_current_attribute();
         advance();
         m_state = TokenizerState::Data;
@@ -393,7 +393,7 @@ std::optional<Token> Tokenizer::consume_attribute_value_double_quoted_state() {
         advance();
         m_state = TokenizerState::BeforeAttributeName;
     } else if (current_char() == '\0') {
-        handle_parse_error(ParseException::ErrorCode::UnexpectedEOF, "Unexpected EOF in attribute value");
+        handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in attribute value");
         return {};
     } else {
         m_token_builder.attr_value += current_char();
@@ -408,7 +408,7 @@ std::optional<Token> Tokenizer::consume_attribute_value_single_quoted_state() {
         advance();
         m_state = TokenizerState::BeforeAttributeName;
     } else if (current_char() == '\0') {
-        handle_parse_error(ParseException::ErrorCode::UnexpectedEOF, "Unexpected EOF in attribute value");
+        handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in attribute value");
         return {};
     } else {
         m_token_builder.attr_value += current_char();
@@ -427,10 +427,10 @@ std::optional<Token> Tokenizer::consume_attribute_value_unquoted_state() {
         m_state = TokenizerState::Data;
         return create_start_tag_token();
     } else if (current_char() == '\0') {
-        handle_parse_error(ParseException::ErrorCode::UnexpectedEOF, "Unexpected EOF in attribute value");
+        handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in attribute value");
         return {};
     } else if (current_char() == '"' || current_char() == '\'' || current_char() == '=') {
-        handle_parse_error(ParseException::ErrorCode::InvalidToken, "Unexpected quote or equal sign in unquoted attribute value");
+        handle_parse_error(ErrorCode::InvalidToken, "Unexpected quote or equal sign in unquoted attribute value");
         // 容错处理：仍然添加这个字符
         m_token_builder.attr_value += current_char();
         advance();
@@ -448,10 +448,10 @@ std::optional<Token> Tokenizer::consume_self_closing_start_tag_state() {
         return create_close_self_token();
     }
     if (current_char() == '\0') {
-        handle_parse_error(ParseException::ErrorCode::UnexpectedEOF, "Unexpected EOF in self-closing tag");
+        handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in self-closing tag");
         return {};
     }
-    handle_parse_error(ParseException::ErrorCode::InvalidToken, "Unexpected character after '/' in self-closing start tag");
+    handle_parse_error(ErrorCode::InvalidToken, "Unexpected character after '/' in self-closing start tag");
     m_state = TokenizerState::BeforeAttributeName;
     return {};
 }
@@ -482,7 +482,7 @@ std::optional<Token> Tokenizer::consume_comment_state() {
     }
 
     // 文件结束但注释未闭合
-    handle_parse_error(ParseException::ErrorCode::UnexpectedEOF, "Unexpected EOF in comment");
+    handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in comment");
     m_state              = TokenizerState::Data;
     auto comment_content = m_char_ref_buffer;
     m_char_ref_buffer.clear();
@@ -493,7 +493,7 @@ std::optional<Token> Tokenizer::consume_doctype_state() {
     if (starts_with("DOCTYPE") || starts_with("doctype")) {
         m_pos += 7;
     } else {
-        handle_parse_error(ParseException::ErrorCode::InvalidToken, "Expected DOCTYPE keyword");
+        handle_parse_error(ErrorCode::InvalidToken, "Expected DOCTYPE keyword");
         while (has_more() && current_char() != '>') {
             advance();
         }
@@ -516,7 +516,7 @@ std::optional<Token> Tokenizer::consume_doctype_state() {
         return create_doctype_token();
     }
 
-    handle_parse_error(ParseException::ErrorCode::UnexpectedEOF, "Unexpected EOF in DOCTYPE");
+    handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in DOCTYPE");
     m_state = TokenizerState::Data;
     return {};
 }
@@ -560,7 +560,7 @@ std::optional<Token> Tokenizer::consume_script_data_state() {
         return create_text_token(script_content);
     }
 
-    handle_parse_error(ParseException::ErrorCode::UnexpectedEOF, "Unexpected EOF in script data");
+    handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in script data");
     m_state = TokenizerState::Data;
     return {};
 }
@@ -599,7 +599,7 @@ std::optional<Token> Tokenizer::consume_rawtext_state() {
         return create_text_token(content);
     }
 
-    handle_parse_error(ParseException::ErrorCode::UnexpectedEOF, "Unexpected EOF in RAWTEXT");
+    handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in RAWTEXT");
     m_state = TokenizerState::Data;
     return {};
 }
@@ -638,7 +638,7 @@ std::optional<Token> Tokenizer::consume_rcdata_state() {
         return create_text_token(content);
     }
 
-    handle_parse_error(ParseException::ErrorCode::UnexpectedEOF, "Unexpected EOF in RCDATA");
+    handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in RCDATA");
     m_state = TokenizerState::Data;
     return {};
 }
@@ -758,12 +758,12 @@ Token Tokenizer::create_done_token() {
     return {TokenType::DONE, "", ""};
 }
 
-void Tokenizer::handle_parse_error(const ParseException::ErrorCode code, const std::string& message) {
+void Tokenizer::handle_parse_error(const ErrorCode code, const std::string& message) {
     record_error(code, message);
 
     switch (m_error_mode) {
         case ErrorHandlingMode::Strict:
-            throw ParseException(code, message, m_pos);
+            throw HPSException(code, message, m_pos);
         case ErrorHandlingMode::Lenient:
             transition_to_data_state();
             break;
@@ -772,7 +772,7 @@ void Tokenizer::handle_parse_error(const ParseException::ErrorCode code, const s
     }
 }
 
-void Tokenizer::record_error(ParseException::ErrorCode code, const std::string& message) {
+void Tokenizer::record_error(ErrorCode code, const std::string& message) {
     m_errors.emplace_back(code, message, m_pos);
 }
 

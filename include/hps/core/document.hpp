@@ -1,8 +1,5 @@
 #pragma once
-#include "element.hpp"
-#include "node.hpp"
-
-#include <string>
+#include "hps/core/node.hpp"
 
 namespace hps {
 

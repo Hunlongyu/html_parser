@@ -1,25 +1,29 @@
 #include "hps/hps.hpp"
 
+#include "hps/core/document.hpp"
+#include "hps/parsing/html_parser.hpp"
+#include "hps/parsing/options.hpp"
+
 namespace hps {
-std::unique_ptr<Document> parse(std::string_view html) {
-    return parse(html, ErrorHandlingMode::Lenient);
+std::unique_ptr<Document> parse(const std::string_view html) {
+    return parse(html, ParserOptions::lenient());
 }
 
-std::unique_ptr<Document> parse(std::string_view html, ErrorHandlingMode mode) {
+std::unique_ptr<Document> parse(const std::string_view html, const ParserOptions& options) {
     HTMLParser parser;
-    return parser.parse(html, mode);
+    return parser.parse(html, options);
 }
 
-std::unique_ptr<Document> parse_file(std::string_view path) {
-    return parse_file(path, ErrorHandlingMode::Lenient);
+std::unique_ptr<Document> parse_file(const std::string_view path) {
+    return parse_file(path, ParserOptions::lenient());
 }
 
-std::unique_ptr<Document> parse_file(std::string_view path, ErrorHandlingMode mode) {
+std::unique_ptr<Document> parse_file(const std::string_view path, const ParserOptions& options) {
     HTMLParser parser;
-    return parser.parse_file(path, mode);
+    return parser.parse_file(path, options);
 }
 
 std::string version() {
     return version_string;
 }
-}
+}  // namespace hps

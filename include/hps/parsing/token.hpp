@@ -1,10 +1,7 @@
 #pragma once
 
+#include "hps/hps_fwd.hpp"
 #include "hps/utils/noncopyable.hpp"
-
-#include <string>
-#include <string_view>
-#include <vector>
 
 namespace hps {
 
@@ -16,17 +13,6 @@ struct TokenAttribute {
     TokenAttribute() = default;
 
     explicit TokenAttribute(const std::string_view n, const std::string_view v = {}, const bool hv = true) : m_name(n), m_value(v), m_has_value(hv) {}
-};
-
-enum class TokenType {
-    OPEN,          /// <tag ...>
-    CLOSE,         /// </tag>
-    CLOSE_SELF,    /// <tag ... />
-    FORCE_QUIRKS,  /// 浏览器怪异模式触发
-    TEXT,          /// Text
-    COMMENT,       /// <!-- ... -->
-    DOCTYPE,       /// <!DOCTYPE ...>
-    DONE,          /// 输入结束 EOF
 };
 
 class Token : public NonCopyable {

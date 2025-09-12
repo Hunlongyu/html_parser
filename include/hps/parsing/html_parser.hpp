@@ -12,17 +12,15 @@ class HTMLParser : public NonCopyable {
 
     std::unique_ptr<Document> parse(std::string_view html);
 
-    std::unique_ptr<Document> parse(std::string_view html, ErrorHandlingMode mode);
+    std::unique_ptr<Document> parse(std::string_view html, const ParserOptions& options);
 
     std::unique_ptr<Document> parse_file(std::string_view filePath);
 
-    std::unique_ptr<Document> parse_file(std::string_view filePath, ErrorHandlingMode mode);
+    std::unique_ptr<Document> parse_file(std::string_view filePath, const ParserOptions& options);
 
-    const std::vector<ParseError>&   get_parse_errors() const noexcept;
-    const std::vector<BuilderError>& get_builder_errors() const noexcept;
+    const std::vector<ParseError>& get_errors() const noexcept;
 
   private:
-    std::vector<ParseError>   m_parse_errors;
-    std::vector<BuilderError> m_builder_errors;
+    std::vector<ParseError> m_errors;
 };
 }  // namespace hps

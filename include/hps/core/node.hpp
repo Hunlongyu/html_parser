@@ -1,22 +1,8 @@
 #pragma once
+#include "hps/hps_fwd.hpp"
 #include "hps/utils/noncopyable.hpp"
 
-#include <memory>
-#include <string>
-#include <vector>
-
 namespace hps {
-
-enum class NodeType {
-    Undefined,        /**< 未定义节点 */
-    Element,          /**< 元素节点 <div> */
-    Text,             /**< 文本节点 <p>Hello</p> 包括 <![CDATA[hello world]]> */
-    Comment,          /**< <!-- 注释 --> */
-    Document,         /**< 文档节点 整个文档的根节点 */
-    DocumentType,     /**< 文档类型节点 <!DOCTYPE html> */
-    DocumentFragment, /**< 文档片段节点 */
-};
-
 class Node : public NonCopyable {
   public:
     virtual ~Node() = default;

@@ -2,8 +2,6 @@
 
 #include "hps/core/node.hpp"
 
-#include <string>
-
 namespace hps {
 
 class TextNode : public Node {
@@ -30,7 +28,7 @@ class TextNode : public Node {
     [[nodiscard]] std::string node_value() const override;
 
     /**
-     * @brief 文本内容
+     * @brief 递归所有的文本内容
      * @return 文本内容
      */
     [[nodiscard]] std::string text_content() const override;

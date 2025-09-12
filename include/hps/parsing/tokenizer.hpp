@@ -1,30 +1,12 @@
 #pragma once
+#include "hps/parsing/options.hpp"
 #include "hps/parsing/token.hpp"
 #include "hps/utils/exception.hpp"
-#include "hps/utils/noncopyable.hpp"
 
 #include <iostream>
 #include <optional>
-#include <string>
-#include <string_view>
 
 namespace hps {
-
-// 错误处理策略
-enum class ErrorHandlingMode {
-    Strict,   // 严格模式，遇到错误立即抛出异常
-    Lenient,  // 宽松模式，尝试恢复并继续解析
-    Ignore    // 忽略模式，记录错误但继续解析
-};
-
-// 解析错误信息
-struct ParseError {
-    ParseException::ErrorCode code;
-    std::string               message;
-    size_t                    position;
-
-    ParseError(const ParseException::ErrorCode c, std::string msg, const size_t pos) : code(c), message(std::move(msg)), position(pos) {}
-};
 
 enum class TokenizerState {
     Data,        /// 普通文本
@@ -152,8 +134,8 @@ class Tokenizer : public NonCopyable {
     Token        create_close_self_token();
     static Token create_done_token();
 
-    void handle_parse_error(ParseException::ErrorCode code, const std::string& message);
-    void record_error(ParseException::ErrorCode code, const std::string& message);
+    void handle_parse_error(ErrorCode code, const std::string& message);
+    void record_error(ErrorCode code, const std::string& message);
     void transition_to_data_state();
 
   private:
@@ -166,8 +148,7 @@ class Tokenizer : public NonCopyable {
     std::string             m_end_tag;        // 当前结束标签
     std::vector<ParseError> m_errors;         // 错误列表
 
-    std::string    m_char_ref_buffer;  // 字符引用缓冲区
-    TokenizerState m_return_state;     // 字符引用解析完成后的返回状态
+    std::string m_char_ref_buffer;  // 字符引用缓冲区
 };
 
 }  // namespace hps

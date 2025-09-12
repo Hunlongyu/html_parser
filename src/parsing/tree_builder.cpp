@@ -1,5 +1,6 @@
 #include "hps/parsing/tree_builder.hpp"
 
+#include "hps/core/document.hpp"
 #include "hps/core/text_node.hpp"
 
 #include <algorithm>
@@ -37,14 +38,14 @@ bool TreeBuilder::process_token(const Token& token) {
                 process_done(token);
                 break;
             case TokenType::FORCE_QUIRKS:
-                parse_error(BuilderException::ErrorCode::QUIRKS_MODE, "Force quirks mode detected");
+                parse_error(ErrorCode::InvalidNesting, "Force quirks mode detected");
                 break;
             case TokenType::DOCTYPE:
                 break;
         }
         return true;
     } catch (const std::exception& e) {
-        parse_error(BuilderException::ErrorCode::INTERNAL_ERROR, e.what());
+        parse_error(ErrorCode::UnknownError, e.what());
         return false;
     }
 }
@@ -56,7 +57,7 @@ bool TreeBuilder::finish() {
         m_element_stack.pop_back();
 
         // 记录未闭合标签的警告
-        parse_error(BuilderException::ErrorCode::UNCLOSED_TAG, "Unclosed tag: " + std::string(element->tag_name()));
+        parse_error(ErrorCode::UnclosedTag, "Unclosed tag: " + std::string(element->tag_name()));
     }
 
     return true;
@@ -66,7 +67,7 @@ Document* TreeBuilder::document() const noexcept {
     return m_document;
 }
 
-const std::vector<BuilderError>& TreeBuilder::errors() const noexcept {
+const std::vector<ParseError>& TreeBuilder::errors() const noexcept {
     return m_errors;
 }
 
@@ -88,13 +89,13 @@ void TreeBuilder::process_end_tag(const Token& token) {
 
     // 检查是否为void元素的错误闭合标签
     if (is_void_element(tag_name)) {
-        parse_error(BuilderException::ErrorCode::VOID_ELEMENT_CLOSE, "Void element should not have closing tag: " + std::string(tag_name));
+        parse_error(ErrorCode::VoidElementClose, "Void element should not have closing tag: " + std::string(tag_name));
         return;
     }
 
     // 如果栈为空，说明没有对应的开始标签
     if (m_element_stack.empty()) {
-        parse_error(BuilderException::ErrorCode::MISMATCHED_TAG, "No matching opening tag for: " + std::string(tag_name));
+        parse_error(ErrorCode::MismatchedTag, "No matching opening tag for: " + std::string(tag_name));
         return;
     }
 
@@ -105,7 +106,7 @@ void TreeBuilder::process_end_tag(const Token& token) {
         // 找到匹配的标签，关闭到这个位置的所有元素
         close_elements_until(tag_name);
     } else {
-        parse_error(BuilderException::ErrorCode::MISMATCHED_TAG, "No matching opening tag for: " + std::string(tag_name));
+        parse_error(ErrorCode::MismatchedTag, "No matching opening tag for: " + std::string(tag_name));
     }
 }
 
@@ -192,12 +193,12 @@ void TreeBuilder::close_elements_until(std::string_view tag_name) {
         }
 
         // 如果不匹配，记录自动关闭的警告
-        parse_error(BuilderException::ErrorCode::AUTO_CLOSE, "Auto-closing unclosed tag: " + std::string(element->tag_name()));
+        parse_error(ErrorCode::MismatchedTag, "Auto-closing unclosed tag: " + std::string(element->tag_name()));
     }
 }
 
-void TreeBuilder::parse_error(const BuilderException::ErrorCode code, const std::string& message) {
-    BuilderError error(code, message, 0, 0);
+void TreeBuilder::parse_error(const ErrorCode code, const std::string& message) {
+    ParseError error(code, message, 0);
     m_errors.push_back(std::move(error));
 }
 
