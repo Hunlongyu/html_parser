@@ -13,19 +13,19 @@ class TextNode : public Node {
      * @brief 节点类型
      * @return 节点类型
      */
-    [[nodiscard]] NodeType node_type() const override;
+    [[nodiscard]] NodeType node_type() const;
 
     /**
      * @brief 节点名称
      * @return 节点名称
      */
-    [[nodiscard]] std::string node_name() const override;
+    [[nodiscard]] std::string node_name() const;
 
     /**
      * @brief 文本内容
      * @return 文本内容
      */
-    [[nodiscard]] std::string node_value() const override;
+    [[nodiscard]] std::string node_value() const;
 
     /**
      * @brief 递归所有的文本内容

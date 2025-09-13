@@ -12,7 +12,8 @@ class Element;
 class ElementQuery {
   public:
     ElementQuery() = default;
-    explicit ElementQuery(std::vector<std::shared_ptr<Element>>&& elements);
+    explicit ElementQuery(std::vector<std::shared_ptr<const Element>>&& elements);
+    explicit ElementQuery(const std::vector<std::shared_ptr<const Element>>& elements);
 
     /**
      * @brief 容量查询
@@ -30,37 +31,37 @@ class ElementQuery {
      * @brief 元素访问
      * @return 所有元素
      */
-    [[nodiscard]] const std::vector<std::shared_ptr<Element>>& elements() const;
+    [[nodiscard]] const std::vector<std::shared_ptr<const Element>>& elements() const;
 
     /**
      * @brief 元素访问
      * @return 第一个元素
      */
-    [[nodiscard]] std::shared_ptr<Element> first_element() const;
+    [[nodiscard]] std::shared_ptr<const Element> first_element() const;
 
     /**
      * @brief 元素访问
      * @return 最后一个元素
      */
-    [[nodiscard]] std::shared_ptr<Element> last_element() const;
+    [[nodiscard]] std::shared_ptr<const Element> last_element() const;
 
     /**
      * @brief 元素访问
      * @param index 索引
      * @return 指定索引的元素
      */
-    [[nodiscard]] std::shared_ptr<Element> operator[](size_t index) const;
+    [[nodiscard]] std::shared_ptr<const Element> operator[](size_t index) const;
 
     /**
      * @brief 元素访问
      * @param index 索引
      * @return 指定索引的元素
      */
-    [[nodiscard]] std::shared_ptr<Element> at(size_t index) const;
+    [[nodiscard]] std::shared_ptr<const Element> at(size_t index) const;
 
     // 迭代器支持
-    using iterator       = std::vector<std::shared_ptr<Element>>::iterator;
-    using const_iterator = std::vector<std::shared_ptr<Element>>::const_iterator;
+    using iterator       = std::vector<std::shared_ptr<const Element>>::iterator;
+    using const_iterator = std::vector<std::shared_ptr<const Element>>::const_iterator;
     iterator       begin();
     iterator       end();
     const_iterator begin() const;
@@ -105,17 +106,15 @@ class ElementQuery {
     [[nodiscard]] ElementQuery gt(size_t index) const;
     [[nodiscard]] ElementQuery lt(size_t index) const;
 
-    // 聚合与转换方法
-    [[nodiscard]] std::vector<std::string>
-                                           extract_attributes(std::string_view attr_name) const;
+    // 聚合方法
+    [[nodiscard]] std::vector<std::string> extract_attributes(std::string_view attr_name) const;
     [[nodiscard]] std::vector<std::string> extract_texts() const;
     [[nodiscard]] std::vector<std::string> extract_own_texts() const;
     template <typename T>
     std::vector<T> map(std::function<T(const Element&)> mapper) const;
 
-    // 遍历与副作用方法
-    [[nodiscard]] ElementQuery
-                               each(std::function<void(const Element&)> callback) const;
+    // 遍历方法
+    [[nodiscard]] ElementQuery each(std::function<void(const Element&)> callback) const;
     [[nodiscard]] ElementQuery each(std::function<void(size_t, const Element&)> callback) const;
 
     // 布尔检查方法
@@ -124,6 +123,22 @@ class ElementQuery {
     [[nodiscard]] bool contains(std::string_view text) const;
 
   private:
-    std::vector<std::shared_ptr<Element>> m_elements;
+    std::vector<std::shared_ptr<const Element>> m_elements;
 };
+
+// 模板方法实现
+template <typename T>
+std::vector<T> ElementQuery::map(std::function<T(const Element&)> mapper) const {
+    std::vector<T> results;
+    results.reserve(m_elements.size());
+
+    for (const auto& element : m_elements) {
+        if (element) {
+            results.push_back(mapper(*element));
+        }
+    }
+
+    return results;
+}
+
 }  // namespace hps

@@ -1,4 +1,5 @@
 #include "hps/core/document.hpp"
+
 #include "hps/query/element_query.hpp"
 
 namespace hps {
@@ -48,35 +49,35 @@ std::vector<std::string> Document::get_all_images() const {
     return {};
 }
 
-const Element* Document::root() const {
+std::shared_ptr<const Element> Document::root() const {
     return nullptr;
 }
 
-const Element* Document::html() const {
+std::shared_ptr<const Element> Document::html() const {
     return nullptr;
 }
 
-const Element* Document::document() const {
+std::shared_ptr<const Element> Document::document() const {
     return nullptr;
 }
 
-const Element* Document::querySelector(std::string_view selector) const {
+std::shared_ptr<const Element> Document::querySelector(std::string_view selector) const {
     return nullptr;
 }
 
-std::vector<const Element*> Document::querySelectorAll(std::string_view selector) const {
+std::vector<std::shared_ptr<const Element>> Document::querySelectorAll(std::string_view selector) const {
     return {};
 }
 
-const Element* Document::get_element_by_id(std::string_view id) const {
+std::shared_ptr<const Element> Document::get_element_by_id(std::string_view id) const {
     return nullptr;
 }
 
-std::vector<const Element*> Document::get_elements_by_tag_name(std::string_view tag_name) const {
+std::vector<std::shared_ptr<const Element>> Document::get_elements_by_tag_name(std::string_view tag_name) const {
     return {};
 }
 
-std::vector<const Element*> Document::get_elements_by_class_name(std::string_view class_name) const {
+std::vector<std::shared_ptr<const Element>> Document::get_elements_by_class_name(std::string_view class_name) const {
     return {};
 }
 

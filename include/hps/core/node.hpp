@@ -1,135 +1,246 @@
 #pragma once
 #include "hps/hps_fwd.hpp"
-#include "hps/utils/noncopyable.hpp"
+
+#include <memory>
 
 namespace hps {
-class Node : public NonCopyable {
+class Node : public std::enable_shared_from_this<Node> {
   public:
+    /**
+     * @brief 构造函数
+     * @param type 节点类型
+     */
+    explicit Node(NodeType type) noexcept;
+
+    /**
+     * @brief 虚析构函数
+     */
     virtual ~Node() = default;
 
     /**
      * @brief 获取节点类型
      * @return 节点类型
      */
-    [[nodiscard]] virtual NodeType node_type() const = 0;
+    [[nodiscard]] NodeType type() const noexcept {
+        return m_type;
+    }
 
     /**
-     * @brief 获取节点名称
-     * @return 节点名称
+     * @brief 判断是否为 Document 节点
+     * @return 如果是 Document 节点则返回 true
      */
-    [[nodiscard]] virtual std::string node_name() const = 0;
+    [[nodiscard]] bool is_document() const noexcept {
+        return m_type == NodeType::Document;
+    }
 
     /**
-     * @brief 获取节点内容
-     * @return 节点内容
+     * @brief 判断是否为 Element 节点
+     * @return 如果是 Element 节点则返回 true
      */
-    [[nodiscard]] virtual std::string node_value() const = 0;
+    [[nodiscard]] bool is_element() const noexcept {
+        return m_type == NodeType::Element;
+    }
 
     /**
-     * @brief 递归获取节点所有文本内容
-     * @return 节点文本内容
+     * @brief 判断是否为 Text 节点
+     * @return 如果是 Text 节点则返回 true
      */
-    [[nodiscard]] virtual std::string text_content() const = 0;
+    [[nodiscard]] bool is_text() const noexcept {
+        return m_type == NodeType::Text;
+    }
 
     /**
-     * @brief 获取父节点
-     * @return 父节点
+     * @brief 判断是否为 Comment 节点
+     * @return 如果是 Comment 节点则返回 true
      */
-    [[nodiscard]] const Node* parent() const noexcept;
+    [[nodiscard]] bool is_comment() const noexcept {
+        return m_type == NodeType::Comment;
+    }
+
+    // Tree traversal
+    /**
+     * @brief 获取父节点 (const 版本)
+     * @return 父节点的共享指针，如果不存在则为 nullptr
+     */
+    [[nodiscard]] std::shared_ptr<const Node> parent() const noexcept;
 
     /**
-     * @brief 获取第一个子节点
-     * @return 第一个子节点
+     * @brief 获取父节点 (非 const 版本)
+     * @return 父节点的共享指针，如果不存在则为 nullptr
      */
-    [[nodiscard]] const Node* first_child() const noexcept;
+    [[nodiscard]] std::shared_ptr<Node> parent() noexcept;
 
     /**
-     * @brief 获取最后一个子节点
-     * @return 最后一个子节点
+     * @brief 判断是否有父节点
+     * @return 如果有父节点则返回 true
      */
-    [[nodiscard]] const Node* last_child() const noexcept;
+    [[nodiscard]] bool has_parent() const noexcept {
+        return !m_parent.expired();
+    }
 
     /**
-     * @brief 获取下一个兄弟节点
-     * @return 下一个兄弟节点
+     * @brief 获取所有子节点 (const 版本)
+     * @return 包含所有子节点共享指针的 vector
      */
-    [[nodiscard]] const Node* next_sibling() const noexcept;
+    [[nodiscard]] std::vector<std::shared_ptr<const Node>> children() const noexcept;
 
     /**
-     * @brief 获取前一个兄弟节点
-     * @return 前一个兄弟节点
+     * @brief 获取所有子节点 (非 const 版本)
+     * @return 包含所有子节点共享指针的 vector
      */
-    [[nodiscard]] const Node* previous_sibling() const noexcept;
-
-    /**
-     * @brief 获取所有子节点
-     * @return 所有子节点
-     */
-    [[nodiscard]] const std::vector<std::unique_ptr<Node>>& children() const noexcept;
+    [[nodiscard]] std::vector<std::shared_ptr<Node>> children() noexcept;
 
     /**
      * @brief 判断是否有子节点
-     * @return true:有子节点, false:无子节点
+     * @return 如果有子节点则返回 true
      */
-    [[nodiscard]] bool has_children() const noexcept;
+    [[nodiscard]] bool has_children() const noexcept {
+        return !m_children.empty();
+    }
 
     /**
-     * @brief 获取子节点数量
-     * @return 子节点数量
+     * @brief 获取第一个子节点 (const 版本)
+     * @return 第一个子节点的共享指针，如果不存在则为 nullptr
      */
-    [[nodiscard]] size_t child_count() const noexcept;
+    [[nodiscard]] std::shared_ptr<const Node> first_child() const noexcept;
 
     /**
-     * @brief 获取指定索引的子节点
-     * @param index  索引
-     * @return 子节点
+     * @brief 获取第一个子节点 (非 const 版本)
+     * @return 第一个子节点的共享指针，如果不存在则为 nullptr
      */
-    [[nodiscard]] const Node* child_at(size_t index) const noexcept;
+    [[nodiscard]] std::shared_ptr<Node> first_child() noexcept;
 
     /**
-     * @brief 检查节点是否是 Element 类型
-     * @return true: 是, false: 否
+     * @brief 获取最后一个子节点 (const 版本)
+     * @return 最后一个子节点的共享指针，如果不存在则为 nullptr
      */
-    [[nodiscard]] bool is_element() const noexcept;
+    [[nodiscard]] std::shared_ptr<const Node> last_child() const noexcept;
 
     /**
-     * @brief 检查节点是否是 Text 类型
-     * @return true: 是, false: 否
+     * @brief 获取最后一个子节点 (非 const 版本)
+     * @return 最后一个子节点的共享指针，如果不存在则为 nullptr
      */
-    [[nodiscard]] bool is_text() const noexcept;
+    [[nodiscard]] std::shared_ptr<Node> last_child() noexcept;
 
     /**
-     * @brief 检查节点是否是 Comment 类型
-     * @return true: 是, false: 否
+     * @brief 获取前一个兄弟节点 (const 版本)
+     * @return 前一个兄弟节点的共享指针，如果不存在则为 nullptr
      */
-    [[nodiscard]] bool is_comment() const noexcept;
+    [[nodiscard]] std::shared_ptr<const Node> previous_sibling() const noexcept;
 
     /**
-     * @brief 检查节点是否是 Document 类型
-     * @return true: 是, false: 否
+     * @brief 获取前一个兄弟节点 (非 const 版本)
+     * @return 前一个兄弟节点的共享指针，如果不存在则为 nullptr
      */
-    [[nodiscard]] bool is_document() const noexcept;
+    [[nodiscard]] std::shared_ptr<Node> previous_sibling() noexcept;
+
+    /**
+     * @brief 获取后一个兄弟节点 (const 版本)
+     * @return 后一个兄弟节点的共享指针，如果不存在则为 nullptr
+     */
+    [[nodiscard]] std::shared_ptr<const Node> next_sibling() const noexcept;
+
+    /**
+     * @brief 获取后一个兄弟节点 (非 const 版本)
+     * @return 后一个兄弟节点的共享指针，如果不存在则为 nullptr
+     */
+    [[nodiscard]] std::shared_ptr<Node> next_sibling() noexcept;
+
+    // Content
+    /**
+     * @brief 获取节点的文本内容 (虚函数)
+     * @return 节点的文本内容
+     */
+    [[nodiscard]] virtual std::string text_content() const {
+        return "";
+    }
+
+    /**
+     * @brief 获取节点的外部 HTML (纯虚函数)
+     * @return 节点的外部 HTML 字符串
+     */
+    [[nodiscard]] virtual std::string outer_html() const = 0;
+
+    /**
+     * @brief 获取节点的内部 HTML (虚函数)
+     * @return 节点的内部 HTML 字符串
+     */
+    [[nodiscard]] virtual std::string inner_html() const {
+        return "";
+    }
+
+    // Casts
+    /**
+     * @brief 尝试将节点转换为 Document 类型 (非 const 版本)
+     * @return Document 节点的共享指针，如果转换失败则为 nullptr
+     */
+    [[nodiscard]] std::shared_ptr<Document> as_document() noexcept;
+
+    /**
+     * @brief 尝试将节点转换为 Document 类型 (const 版本)
+     * @return Document 节点的共享指针，如果转换失败则为 nullptr
+     */
+    [[nodiscard]] std::shared_ptr<const Document> as_document() const noexcept;
+
+    /**
+     * @brief 尝试将节点转换为 Element 类型 (非 const 版本)
+     * @return Element 节点的共享指针，如果转换失败则为 nullptr
+     */
+    [[nodiscard]] std::shared_ptr<Element> as_element() noexcept;
+
+    /**
+     * @brief 尝试将节点转换为 Element 类型 (const 版本)
+     * @return Element 节点的共享指针，如果转换失败则为 nullptr
+     */
+    [[nodiscard]] std::shared_ptr<const Element> as_element() const noexcept;
+
+    /**
+     * @brief 尝试将节点转换为 TextNode 类型 (非 const 版本)
+     * @return TextNode 节点的共享指针，如果转换失败则为 nullptr
+     */
+    [[nodiscard]] std::shared_ptr<TextNode> as_text() noexcept;
+
+    /**
+     * @brief 尝试将节点转换为 TextNode 类型 (const 版本)
+     * @return TextNode 节点的共享指针，如果转换失败则为 nullptr
+     */
+    [[nodiscard]] std::shared_ptr<const TextNode> as_text() const noexcept;
 
   protected:
-    explicit Node(NodeType type);               /**< 构造函数 */
-    explicit Node(NodeType type, Node* parent); /**< 构造函数 */
+    /**
+     * @brief 添加子节点
+     * @param child 子节点的共享指针
+     */
+    void append_child(const std::shared_ptr<Node>& child);
+
+    /**
+     * @brief 在指定引用子节点之前插入新子节点
+     * @param new_child 新子节点的共享指针
+     * @param ref_child 引用子节点的原始指针
+     */
+    void insert_before(const std::shared_ptr<Node>& new_child, const Node* ref_child);
+
+    /**
+     * @brief 移除指定子节点
+     * @param child 要移除的子节点的原始指针
+     */
+    void remove_child(const Node* child);
 
     /**
      * @brief 设置父节点
-     * @param parent 父节点
+     * @param parent_node 父节点的共享指针
      */
-    void set_parent(Node* parent);
+    void set_parent(const std::shared_ptr<Node>& parent_node) noexcept;
 
     /**
-     * @brief 添加子节点
-     * @param child 子节点
+     * @brief 从父节点中移除自身
      */
-    virtual void add_child(std::unique_ptr<Node> child);
+    void remove_from_parent() const noexcept;
 
   private:
-    NodeType                           m_type;     /**< 节点类型 */
-    Node*                              m_parent;   /**< 父节点 */
-    std::vector<std::unique_ptr<Node>> m_children; /**< 子节点 */
+    NodeType                           m_type;
+    std::weak_ptr<Node>                m_parent;
+    std::vector<std::shared_ptr<Node>> m_children;
 };
 
 }  // namespace hps

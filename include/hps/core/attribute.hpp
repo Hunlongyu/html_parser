@@ -10,13 +10,9 @@ class Attribute {
   public:
     constexpr Attribute() noexcept = default;
 
-    explicit Attribute(const std::string_view name,
-                       const std::string_view value = {},
-                       const bool             hv    = true) noexcept
-        : m_name(name), m_value(value), m_has_value(hv) {}
+    explicit Attribute(const std::string_view name, const std::string_view value = {}, const bool hv = true) noexcept : m_name(name), m_value(value), m_has_value(hv) {}
 
-    explicit Attribute(const TokenAttribute& attr)
-        : m_name(attr.m_name), m_value(attr.m_value), m_has_value(attr.m_has_value) {}
+    explicit Attribute(const TokenAttribute& attr) : m_name(attr.m_name), m_value(attr.m_value), m_has_value(attr.m_has_value) {}
 
     [[nodiscard]] const std::string& name() const noexcept {
         return m_name;
@@ -41,7 +37,16 @@ class Attribute {
         m_name = name;
     }
 
+    void set_name(const std::string_view name) noexcept {
+        m_name = name;
+    }
+
     void set_value(const std::string& value, const bool has_value = true) noexcept {
+        m_value     = value;
+        m_has_value = has_value;
+    }
+
+    void set_value(const std::string_view value, const bool has_value = true) noexcept {
         m_value     = value;
         m_has_value = has_value;
     }

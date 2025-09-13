@@ -11,121 +11,159 @@ class ElementQuery;
 
 class Element : public Node {
   public:
+    /**
+     * @brief 构造函数
+     * @param name 元素的标签名
+     */
     explicit Element(std::string_view name);
+
+    /**
+     * @brief 虚析构函数
+     */
     ~Element() override = default;
 
+    // Node Interface Overrides
     /**
-     * @brief 元素类型
-     * @return 元素类型
+     * @brief 获取节点类型
+     * @return 节点类型，对于 Element 始终返回 NodeType::Element
      */
-    NodeType node_type() const override;
+    [[nodiscard]] static NodeType type();
+    /**
+     * @brief 获取节点的外部 HTML 字符串
+     * @return 包含元素自身及其所有内容的 HTML 字符串
+     */
+    [[nodiscard]] std::string outer_html() const override;
 
     /**
-     * @brief 元素名
-     * @return 元素名
+     * @brief 获取节点的内部 HTML 字符串
+     * @return 包含元素所有子节点内容的 HTML 字符串
      */
-    std::string node_name() const override;
-
-    /**
-     * @brief 元素值
-     * @return 元素值
-     */
-    std::string node_value() const override;
+    [[nodiscard]] std::string inner_html() const override;
 
     /**
      * @brief 递归获取元素的所有文本内容
-     * @return 文本内容
+     * @return 元素及其所有子元素的文本内容拼接而成的字符串
      */
-    std::string text_content() const override;
+    [[nodiscard]] std::string text_content() const override;
 
+    // Element Specific Properties
     /**
-     * @brief 检查是否存在指定属性
-     * @param name 属性名
-     * @return 存在返回 true，否则返回 false
+     * @brief 获取元素标签名
+     * @return 元素的标签名（例如 "div", "p", "a"）。
      */
-    bool has_attribute(std::string_view name) const noexcept;
+    [[nodiscard]] const std::string& tag_name() const noexcept;
+
+    // Attribute Management
+    /**
+     * @brief 检查元素是否存在指定属性
+     * @param name 属性名
+     * @return 如果存在指定属性则返回 true，否则返回 false
+     */
+    [[nodiscard]] bool has_attribute(std::string_view name) const noexcept;
 
     /**
      * @brief 获取指定属性的值
-     * @param name 属性名【忽略大小写】
-     * @return 属性值，不存在返回空 string_view
+     * @param name 属性名（忽略大小写）
+     * @return 属性值，如果属性不存在则返回空字符串
      */
-    std::string get_attribute(std::string_view name) const noexcept;
+    [[nodiscard]] std::string get_attribute(std::string_view name) const noexcept;
 
     /**
      * @brief 获取所有属性
      * @return 属性列表的常量引用
      */
-    const std::vector<Attribute>& attributes() const noexcept;
+    [[nodiscard]] const std::vector<Attribute>& attributes() const noexcept;
 
     /**
      * @brief 获取属性数量
-     * @return 属性数量
+     * @return 元素的属性数量
      */
-    size_t attribute_count() const noexcept;
+    [[nodiscard]] size_t attribute_count() const noexcept;
 
     /**
      * @brief 获取 ID 属性值
-     * @return ID 值，无 ID 属性返回空 string
+     * @return ID 值，如果元素没有 ID 属性则返回空字符串
      */
-    std::string id() const noexcept;
-
-    /**
-     * @brief 获取元素标签名
-     * @return 标签名
-     */
-    std::string tag_name() const noexcept;
-
-    /**
-     * @brief 获取所有 CSS 类名
-     * @return 类名集合
-     */
-    const std::unordered_set<std::string_view>& class_names() const noexcept;
+    [[nodiscard]] std::string id() const noexcept;
 
     /**
      * @brief 获取 class 属性的原始值
-     * @return class 属性值，无 class 属性返回空 string_view
+     * @return class 属性值，如果元素没有 class 属性则返回空字符串
      */
-    std::string class_name() const noexcept;
+    [[nodiscard]] std::string class_name() const noexcept;
+
+    /**
+     * @brief 获取所有 CSS 类名
+     * @return 包含所有 CSS 类名的集合的常量引用
+     */
+    [[nodiscard]] const std::unordered_set<std::string>& class_names() const noexcept;
 
     /**
      * @brief 检查元素是否包含指定 class 类
-     * @param class_name 类名
-     * @return 包含：true，不包含：false
+     * @param class_name 要检查的类名
+     * @return 如果包含指定类则返回 true，否则返回 false
      */
-    bool has_class(std::string_view class_name) const noexcept;
+    [[nodiscard]] bool has_class(std::string_view class_name) const noexcept;
 
-    const Element*              querySelector(std::string_view selector) const;
-    std::vector<const Element*> querySelectorAll(std::string_view selector) const;
+    // Query Methods
+    /**
+     * @brief 使用 CSS 选择器查询第一个匹配的子元素
+     * @param selector CSS 选择器字符串
+     * @return 第一个匹配的子元素的共享指针，如果没有匹配则返回 nullptr
+     */
+    [[nodiscard]] std::shared_ptr<const Element> querySelector(std::string_view selector) const;
 
     /**
-     * @brief 按 ID 获取元素
-     * @param id ID 值
-     * @return 匹配的元素，无匹配返回 nullptr
+     * @brief 使用 CSS 选择器查询所有匹配的子元素
+     * @param selector CSS 选择器字符串
+     * @return 所有匹配的子元素的共享指针列表
      */
-    const Element* get_element_by_id(std::string_view id) const;
+    [[nodiscard]] std::vector<std::shared_ptr<const Element>> querySelectorAll(std::string_view selector) const;
+
+    /**
+     * @brief 按 ID 获取子元素
+     * @param id 要查找的 ID 值
+     * @return 匹配的子元素的共享指针，如果没有匹配则返回 nullptr
+     */
+    [[nodiscard]] std::shared_ptr<const Element> get_element_by_id(std::string_view id) const;
 
     /**
      * @brief 按标签名获取直接子元素
-     * @param tag_name 标签名
-     * @return 匹配的子元素列表
+     * @param tag_name 要查找的标签名
+     * @return 匹配的直接子元素列表
      */
-    std::vector<const Element*> get_elements_by_tag_name(std::string_view tag_name) const;
+    [[nodiscard]] std::vector<std::shared_ptr<const Element>> get_elements_by_tag_name(std::string_view tag_name) const;
 
     /**
      * @brief 按类名获取直接子元素
-     * @param class_name 类名
-     * @return 匹配的子元素列表
+     * @param class_name 要查找的类名
+     * @return 匹配的直接子元素列表
      */
-    std::vector<const Element*> get_elements_by_class_name(std::string_view class_name) const;
-
-    ElementQuery css(std::string_view selector) const;
-    ElementQuery xpath(std::string_view expression) const;
-
-    void add_child(std::unique_ptr<Node> child) override;
+    [[nodiscard]] std::vector<std::shared_ptr<const Element>> get_elements_by_class_name(std::string_view class_name) const;
 
     /**
-     * @brief 添加属性【仅解析器使用】
+     * @brief 创建一个 ElementQuery 对象，用于链式 CSS 选择器查询
+     * @param selector 初始的 CSS 选择器字符串
+     * @return ElementQuery 对象
+     */
+    [[nodiscard]] ElementQuery css(std::string_view selector) const;
+
+    /**
+     * @brief 创建一个 ElementQuery 对象，用于链式 XPath 查询
+     * @param expression XPath 表达式字符串
+     * @return ElementQuery 对象
+     */
+    [[nodiscard]] ElementQuery xpath(std::string_view expression) const;
+
+    // Tree Modification
+    /**
+     * @brief 添加子节点
+     * @param child 要添加的子节点的唯一指针
+     */
+    void add_child(std::unique_ptr<Node> child);
+
+    /**
+     * @brief 添加或更新属性
      * @param name 属性名
      * @param value 属性值
      */

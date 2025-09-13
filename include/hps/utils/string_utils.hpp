@@ -78,4 +78,31 @@ inline bool is_raw_text_element(const std::string_view tag_name) noexcept {
     return get_raw_text_elements().contains(tag_name);
 }
 
+/**
+ * @brief 解析 class 属性值，提取所有类名
+ * @param class_attr class 属性的值
+ * @return 包含所有类名的无序集合
+ */
+inline std::unordered_set<std::string> split_class_names(const std::string_view class_attr) {
+    std::unordered_set<std::string> class_names;
+    size_t                          start = 0;
+    while (start < class_attr.length()) {
+        while (start < class_attr.length() && is_whitespace(class_attr[start])) {
+            ++start;
+        }
+        if (start >= class_attr.length()) {
+            break;
+        }
+        size_t end = start;
+        while (end < class_attr.length() && !is_whitespace(class_attr[end])) {
+            ++end;
+        }
+        if (end > start) {
+            class_names.emplace(class_attr.substr(start, end - start));
+        }
+        start = end;
+    }
+    return class_names;
+}
+
 }  // namespace hps
