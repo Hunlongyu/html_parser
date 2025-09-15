@@ -7,8 +7,6 @@
 
 namespace hps {
 
-static const std::unordered_set<std::string_view> VOID_ELEMENTS = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"};
-
 Tokenizer::Tokenizer(std::string_view source, ErrorHandlingMode mode) : m_source(source), m_pos(0), m_state(TokenizerState::Data), m_error_mode(mode) {}
 
 std::optional<Token> Tokenizer::next_token() {

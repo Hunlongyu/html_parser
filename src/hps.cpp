@@ -5,20 +5,20 @@
 #include "hps/parsing/options.hpp"
 
 namespace hps {
-std::unique_ptr<Document> parse(const std::string_view html) {
+std::shared_ptr<Document> parse(const std::string_view html) {
     return parse(html, ParserOptions::lenient());
 }
 
-std::unique_ptr<Document> parse(const std::string_view html, const ParserOptions& options) {
+std::shared_ptr<Document> parse(const std::string_view html, const ParserOptions& options) {
     HTMLParser parser;
     return parser.parse(html, options);
 }
 
-std::unique_ptr<Document> parse_file(const std::string_view path) {
+std::shared_ptr<Document> parse_file(const std::string_view path) {
     return parse_file(path, ParserOptions::lenient());
 }
 
-std::unique_ptr<Document> parse_file(const std::string_view path, const ParserOptions& options) {
+std::shared_ptr<Document> parse_file(const std::string_view path, const ParserOptions& options) {
     HTMLParser parser;
     return parser.parse_file(path, options);
 }

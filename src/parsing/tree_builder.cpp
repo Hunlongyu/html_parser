@@ -11,9 +11,9 @@
 
 namespace hps {
 
-TreeBuilder::TreeBuilder(Document* document) : m_document(document) {
+TreeBuilder::TreeBuilder(const std::shared_ptr<Document>& document) : m_document(document) {
     assert(m_document != nullptr);
-    m_element_stack.reserve(32);  // 预分配空间提高性能
+    m_element_stack.reserve(32);
 }
 
 bool TreeBuilder::process_token(const Token& token) {
@@ -48,7 +48,7 @@ bool TreeBuilder::process_token(const Token& token) {
 bool TreeBuilder::finish() {
     // 关闭所有未闭合的元素
     while (!m_element_stack.empty()) {
-        Element* element = m_element_stack.back();
+        auto element = m_element_stack.back();
         m_element_stack.pop_back();
 
         // 记录未闭合标签的警告
@@ -58,7 +58,7 @@ bool TreeBuilder::finish() {
     return true;
 }
 
-Document* TreeBuilder::document() const noexcept {
+std::shared_ptr<Document> TreeBuilder::document() const noexcept {
     return m_document;
 }
 
@@ -67,15 +67,12 @@ const std::vector<ParseError>& TreeBuilder::errors() const noexcept {
 }
 
 void TreeBuilder::process_start_tag(const Token& token) {
-    auto     element = create_element(token);
-    Element* raw_ptr = element.get();  // 保存原始指针用于栈管理
-
-    // 插入到DOM树中
-    insert_element(std::move(element));
+    const auto element = create_element(token);
+    insert_element(element);
 
     // 如果不是自闭合元素且不是void元素，推入栈中
     if (token.type() != TokenType::CLOSE_SELF && !is_void_element(token.name())) {
-        push_element(raw_ptr);
+        push_element(element);
     }
 }
 
@@ -95,7 +92,7 @@ void TreeBuilder::process_end_tag(const Token& token) {
     }
 
     // 查找匹配的开始标签（从栈顶向下查找）
-    auto it = std::ranges::find_if(std::ranges::reverse_view(m_element_stack), [tag_name](const Element* elem) { return elem->tag_name() == tag_name; });
+    auto it = std::ranges::find_if(std::ranges::reverse_view(m_element_stack), [tag_name](const std::shared_ptr<Element> elem) { return elem->tag_name() == tag_name; });
 
     if (it != m_element_stack.rend()) {
         // 找到匹配的标签，关闭到这个位置的所有元素
@@ -121,14 +118,13 @@ std::shared_ptr<Element> TreeBuilder::create_element(const Token& token) {
     return element;
 }
 
-void TreeBuilder::insert_element(std::shared_ptr<Element> element) const {
+void TreeBuilder::insert_element(const std::shared_ptr<Element>& element) const {
     if (m_element_stack.empty()) {
-        // 如果栈为空，直接添加到document
-        m_document->add_child(std::move(element));
+        m_document->add_child(element);
     } else {
         // 添加到当前元素
-        Element* current = current_element();
-        current->add_child(std::move(element));
+        const auto current = current_element();
+        current->add_child(element);
     }
 }
 
@@ -137,43 +133,43 @@ void TreeBuilder::insert_text(std::string_view text) const {
     if (m_element_stack.empty()) {
         m_document->add_child(std::move(text_node));
     } else {
-        Element* parent = current_element();
+        auto parent = current_element();
         parent->add_child(std::move(text_node));
     }
 }
 
-void TreeBuilder::push_element(Element* element) {
+void TreeBuilder::push_element(const std::shared_ptr<Element>& element) {
     m_element_stack.push_back(element);
 }
 
-Element* TreeBuilder::pop_element() {
+std::shared_ptr<Element> TreeBuilder::pop_element() {
     if (m_element_stack.empty()) {
         return nullptr;
     }
 
-    Element* element = m_element_stack.back();
+    auto element = m_element_stack.back();
     m_element_stack.pop_back();
     return element;
 }
 
-Element* TreeBuilder::current_element() const {
+std::shared_ptr<Element> TreeBuilder::current_element() const {
     if (m_element_stack.empty()) {
         return nullptr;
     }
     return m_element_stack.back();
 }
 
-bool TreeBuilder::should_close_element(std::string_view tag_name) const {
-    if (Element* current = current_element()) {
+bool TreeBuilder::should_close_element(const std::string_view tag_name) const {
+    if (auto current = current_element()) {
         return current->tag_name() == tag_name;
     }
     return false;
 }
 
-void TreeBuilder::close_elements_until(std::string_view tag_name) {
+void TreeBuilder::close_elements_until(const std::string_view tag_name) {
     // 从栈顶开始，关闭元素直到找到匹配的标签
     while (!m_element_stack.empty()) {
-        Element* element = m_element_stack.back();
+        auto element = m_element_stack.back();
 
         // 先弹出元素
         m_element_stack.pop_back();

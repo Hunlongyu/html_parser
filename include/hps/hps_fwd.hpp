@@ -25,6 +25,34 @@ enum class TokenType {
     DONE,          /// 输入结束 EOF
 };
 
+/**
+ * @brief Tokenizer状态枚举
+ *
+ * 定义HTML词法分析器在解析过程中的各种状态，用于状态机驱动的解析流程。
+ */
+enum class TokenizerState {
+    Data,        /// 普通文本
+    TagOpen,     /// <          标签开始
+    TagName,     /// <tag       标签名
+    EndTagOpen,  /// </tag      结束标签开始
+    EndTagName,  /// </tag      结束标签名称
+
+    BeforeAttributeName,         /// <tag                   标签属性前的空格
+    AttributeName,               /// <tag attr              属性名
+    AfterAttributeName,          /// <tag attr              属性名后的空格
+    BeforeAttributeValue,        /// <tag attr=             属性值前的空格
+    AttributeValueDoubleQuoted,  /// <tag attr="value"      双引号属性值
+    AttributeValueSingleQuoted,  /// <tag attr='value'      单引号属性值
+    AttributeValueUnquoted,      /// <tag attr=value        无引号属性值
+    SelfClosingStartTag,         /// <tag attr="value" />   自闭合标签
+
+    DOCTYPE,     /// <!DOCTYPE html>    DOCTYPE
+    Comment,     /// <!--comment-->     注释
+    ScriptData,  /// 进入 <script> 标签后的原始文本状态
+    RAWTEXT,     /// 进入 <style>、<noscript> 等标签后的原始文本状态
+    RCDATA,      /// 进入 <textarea>、<title> 标签后的状态（可解析字符实体但不解析标签）
+};
+
 // 核心模块
 class Attribute;
 class Document;

@@ -5,22 +5,65 @@
 
 namespace hps {
 
+/**
+ * @brief HTML解析器类
+ * 
+ * HTMLParser是HTML解析的协调器，负责整合词法分析器(Tokenizer)和语法分析器(TreeBuilder)，
+ * 将HTML字符串解析为DOM文档树。支持完整HTML文档和文件解析，提供灵活的错误处理选项。
+ */
 class HTMLParser : public NonCopyable {
   public:
-    HTMLParser()  = default;
+    /**
+     * @brief 默认构造函数
+     */
+    HTMLParser() = default;
+    
+    /**
+     * @brief 析构函数
+     */
     ~HTMLParser() = default;
 
-    std::unique_ptr<Document> parse(std::string_view html);
+    // 核心解析功能（最重要的基础功能）
+    /**
+     * @brief 解析HTML字符串（使用默认宽松模式）
+     * @param html HTML字符串视图
+     * @return 解析后的文档对象智能指针
+     */
+    [[nodiscard]] std::shared_ptr<Document> parse(std::string_view html);
 
-    std::unique_ptr<Document> parse(std::string_view html, const ParserOptions& options);
+    /**
+     * @brief 解析HTML字符串（指定解析选项）
+     * @param html HTML字符串视图
+     * @param options 解析选项配置
+     * @return 解析后的文档对象智能指针
+     */
+    [[nodiscard]] std::shared_ptr<Document> parse(std::string_view html, const ParserOptions& options);
 
-    std::unique_ptr<Document> parse_file(std::string_view filePath);
+    // 文件解析功能（扩展功能）
+    /**
+     * @brief 解析HTML文件（使用默认宽松模式）
+     * @param filePath HTML文件路径
+     * @return 解析后的文档对象智能指针
+     */
+    [[nodiscard]] std::shared_ptr<Document> parse_file(std::string_view filePath);
 
-    std::unique_ptr<Document> parse_file(std::string_view filePath, const ParserOptions& options);
+    /**
+     * @brief 解析HTML文件（指定解析选项）
+     * @param filePath HTML文件路径
+     * @param options 解析选项配置
+     * @return 解析后的文档对象智能指针
+     */
+    [[nodiscard]] std::shared_ptr<Document> parse_file(std::string_view filePath, const ParserOptions& options);
 
-    const std::vector<ParseError>& get_errors() const noexcept;
+    // 错误信息访问（诊断功能）
+    /**
+     * @brief 获取解析过程中的错误列表
+     * @return 错误列表的常量引用
+     */
+    [[nodiscard]] const std::vector<ParseError>& get_errors() const noexcept;
 
   private:
-    std::vector<ParseError> m_errors;
+    std::vector<ParseError> m_errors;  ///< 解析错误列表
 };
+
 }  // namespace hps

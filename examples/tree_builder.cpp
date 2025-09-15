@@ -78,14 +78,14 @@ int main() {
     system("chcp 65001 > nul");
 #endif
 
-    std::string html = read_file("./html/base.html");
+    std::string html = read_file("./html/complex.html");
 
     try {
         // 创建文档对象
-        auto document = std::make_unique<hps::Document>(html);
+        auto document = std::make_shared<hps::Document>(html);
 
         // 创建TreeBuilder
-        hps::TreeBuilder builder(document.get());
+        hps::TreeBuilder builder(document);
 
         // 创建Tokenizer
         hps::Tokenizer tokenizer(html);
@@ -137,7 +137,9 @@ int main() {
         }
 
         // 完成构建
-        builder.finish();
+        if (!builder.finish()) {
+            std::cerr << "构建文档失败!" << std::endl;
+        }
 
         std::cout << "\n解析完成!" << std::endl;
 
