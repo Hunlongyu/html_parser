@@ -3,8 +3,6 @@
 #include "hps/utils/exception.hpp"
 #include "hps/utils/string_utils.hpp"
 
-#include <unordered_set>
-
 namespace hps {
 
 Tokenizer::Tokenizer(const std::string_view source, const Options& options) : m_source(source), m_pos(0), m_state(TokenizerState::Data), m_options(options) {}
@@ -123,14 +121,14 @@ std::optional<Token> Tokenizer::consume_data_state() {
         return {};
     }
 
-    size_t start = m_pos;
+    const size_t start = m_pos;
     while (has_more() && current_char() != '<') {
         advance();
     }
     if (start < m_pos) {
-        std::string_view data              = m_source.substr(start, m_pos - start);
-        bool             is_all_whitespace = true;
-        for (char c : data) {
+        const std::string_view data              = m_source.substr(start, m_pos - start);
+        bool                   is_all_whitespace = true;
+        for (const char c : data) {
             if (c != ' ' && c != '\t' && c != '\n' && c != '\r' && c != '\f') {
                 is_all_whitespace = false;
                 break;
@@ -251,7 +249,6 @@ std::optional<Token> Tokenizer::consume_end_tag_name_state() {
         return {};
     }
     handle_parse_error(ErrorCode::InvalidToken, "Invalid character in end tag");
-    // 跳过到 >
     while (has_more() && current_char() != '>') {
         advance();
     }
@@ -426,7 +423,6 @@ std::optional<Token> Tokenizer::consume_attribute_value_unquoted_state() {
         return {};
     } else if (current_char() == '"' || current_char() == '\'' || current_char() == '=') {
         handle_parse_error(ErrorCode::InvalidToken, "Unexpected quote or equal sign in unquoted attribute value");
-        // 容错处理：仍然添加这个字符
         m_token_builder.attr_value += current_char();
         advance();
     } else {
@@ -460,14 +456,12 @@ std::optional<Token> Tokenizer::consume_comment_state() {
     while (has_more()) {
         if (current_char() == '-' && peek_char() == '-') {
             if (peek_char(2) == '>') {
-                // 找到注释结束
                 m_pos += 3;
                 m_state              = TokenizerState::Data;
                 auto comment_content = m_char_ref_buffer;
                 m_char_ref_buffer.clear();
                 return create_comment_token(comment_content);
             }
-            // 处理 -- 但不是结束，添加第一个 -
             m_char_ref_buffer += current_char();
             advance();
         } else {
@@ -475,11 +469,9 @@ std::optional<Token> Tokenizer::consume_comment_state() {
             advance();
         }
     }
-
-    // 文件结束但注释未闭合
     handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in comment");
-    m_state              = TokenizerState::Data;
-    auto comment_content = m_char_ref_buffer;
+    m_state                    = TokenizerState::Data;
+    const auto comment_content = m_char_ref_buffer;
     m_char_ref_buffer.clear();
     return create_comment_token(comment_content);
 }
@@ -517,12 +509,12 @@ std::optional<Token> Tokenizer::consume_doctype_state() {
 }
 
 std::optional<Token> Tokenizer::consume_script_data_state() {
-    size_t start = m_pos;
+    const size_t start = m_pos;
 
     while (has_more()) {
         if (current_char() == '<' && starts_with("</script")) {
             // 检查是否真的是结束标签
-            size_t saved_pos = m_pos;
+            const size_t saved_pos = m_pos;
             m_pos += 8;  // 跳过 "</script"
 
             skip_whitespace();
@@ -561,19 +553,19 @@ std::optional<Token> Tokenizer::consume_script_data_state() {
 }
 
 std::optional<Token> Tokenizer::consume_rawtext_state() {
-    size_t start = m_pos;
+    const size_t start = m_pos;
 
     while (has_more()) {
         if (current_char() == '<' && (starts_with("</style") || starts_with("</noscript"))) {
-            size_t saved_pos = m_pos;
-            bool   is_style  = starts_with("</style");
+            const size_t saved_pos = m_pos;
+            const bool   is_style  = starts_with("</style");
             m_pos += (is_style ? 7 : 10);
 
             skip_whitespace();
             if (current_char() == '>') {
                 if (start < saved_pos) {
-                    m_pos                    = saved_pos;
-                    std::string_view content = m_source.substr(start, saved_pos - start);
+                    m_pos                          = saved_pos;
+                    const std::string_view content = m_source.substr(start, saved_pos - start);
                     return create_text_token(content);
                 }
                 advance();  // 跳过 >
@@ -589,8 +581,8 @@ std::optional<Token> Tokenizer::consume_rawtext_state() {
     }
 
     if (start < m_pos) {
-        std::string_view content = m_source.substr(start, m_pos - start);
-        m_state                  = TokenizerState::Data;
+        const std::string_view content = m_source.substr(start, m_pos - start);
+        m_state                        = TokenizerState::Data;
         return create_text_token(content);
     }
 
@@ -600,12 +592,12 @@ std::optional<Token> Tokenizer::consume_rawtext_state() {
 }
 
 std::optional<Token> Tokenizer::consume_rcdata_state() {
-    size_t start = m_pos;
+    const size_t start = m_pos;
 
     while (has_more()) {
         if (current_char() == '<' && (starts_with("</textarea") || starts_with("</title"))) {
-            size_t saved_pos   = m_pos;
-            bool   is_textarea = starts_with("</textarea");
+            const size_t saved_pos   = m_pos;
+            const bool   is_textarea = starts_with("</textarea");
             m_pos += (is_textarea ? 10 : 7);
 
             skip_whitespace();
@@ -628,8 +620,8 @@ std::optional<Token> Tokenizer::consume_rcdata_state() {
     }
 
     if (start < m_pos) {
-        std::string_view content = m_source.substr(start, m_pos - start);
-        m_state                  = TokenizerState::Data;
+        const std::string_view content = m_source.substr(start, m_pos - start);
+        m_state                        = TokenizerState::Data;
         return create_text_token(content);
     }
 
@@ -645,8 +637,8 @@ char Tokenizer::current_char() const noexcept {
     return m_source[m_pos];
 }
 
-char Tokenizer::peek_char(size_t offset) const noexcept {
-    size_t peek_pos = m_pos + offset;
+char Tokenizer::peek_char(const size_t offset) const noexcept {
+    const size_t peek_pos = m_pos + offset;
     if (peek_pos >= m_source.length()) {
         return '\0';
     }

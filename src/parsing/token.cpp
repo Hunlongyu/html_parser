@@ -2,7 +2,7 @@
 
 namespace hps {
 
-Token::Token(TokenType type, std::string_view name, std::string_view value) noexcept : m_type(type), m_name(name), m_value(value) {}
+Token::Token(const TokenType type, const std::string_view name, const std::string_view value) noexcept : m_type(type), m_name(name), m_value(value) {}
 
 TokenType Token::type() const noexcept {
     return m_type;
@@ -16,7 +16,7 @@ std::string_view Token::value() const noexcept {
     return m_value;
 }
 
-void Token::set_type(TokenType type) noexcept {
+void Token::set_type(const TokenType type) noexcept {
     m_type = type;
 }
 
@@ -64,7 +64,7 @@ bool Token::is_doctype() const noexcept {
     return m_type == TokenType::DOCTYPE;
 }
 
-bool Token::is_tag(std::string_view name) const noexcept {
+bool Token::is_tag(const std::string_view name) const noexcept {
     return (m_type == TokenType::OPEN || m_type == TokenType::CLOSE || m_type == TokenType::CLOSE_SELF) && m_name == name;
 }
 

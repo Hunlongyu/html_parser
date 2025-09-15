@@ -21,7 +21,7 @@ class CSSQuery {
      * @param root 查询的根节点
      * @return 匹配的元素，无匹配返回nullptr
      */
-    static const Element* querySelector(std::string_view selector, const Node* root);
+    static std::shared_ptr<const Element> querySelector(std::string_view selector, const Node* root);
 
     /**
      * @brief 在指定根节点下查询所有匹配的元素
@@ -29,7 +29,7 @@ class CSSQuery {
      * @param root 查询的根节点
      * @return 匹配的元素列表
      */
-    static std::vector<const Element*> querySelectorAll(std::string_view selector, const Node* root);
+    static std::vector<std::shared_ptr<const Element>> querySelectorAll(std::string_view selector, const Node* root);
 
     /**
      * @brief 创建ElementQuery对象进行链式查询

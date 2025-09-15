@@ -1,5 +1,6 @@
 #include "hps/parsing/tree_builder.hpp"
 
+#include "hps/hps.hpp"
 #include "hps/core/comment_node.hpp"
 #include "hps/core/document.hpp"
 #include "hps/core/text_node.hpp"
@@ -92,6 +93,8 @@ int main() {
     std::string html = read_file("./html/complex.html");
 
     try {
+
+        std::cout << "hps version: " << version() << std::endl;
         // 创建文档对象
         auto       document        = std::make_shared<hps::Document>(html);
         const auto default_options = Options();

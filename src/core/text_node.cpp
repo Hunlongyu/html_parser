@@ -1,14 +1,21 @@
 #include "hps/core/text_node.hpp"
 
+#include "hps/core/element.hpp"
+
 namespace hps {
 
-TextNode::TextNode(std::string_view text) noexcept : Node(NodeType::Text), m_text(text) {}
+TextNode::TextNode(const std::string_view text) noexcept : Node(NodeType::Text), m_text(text) {}
 
 NodeType TextNode::type() {
     return NodeType::Text;
 }
 
 std::string TextNode::name() const {
+    auto parent_node = parent();
+    if (parent_node && parent_node->is_element()) {
+        const auto parent_element = std::static_pointer_cast<const Element>(parent_node);
+        return parent_element->tag_name();
+    }
     return {};
 }
 

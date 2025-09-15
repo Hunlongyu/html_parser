@@ -66,7 +66,7 @@ const std::vector<ParseError>& TreeBuilder::errors() const noexcept {
 }
 
 void TreeBuilder::process_start_tag(const Token& token) {
-    const auto element = create_element(token);
+    auto element = create_element(token);
     insert_element(element);
 
     if (!m_options.is_void_element(std::string(token.name())) && token.type() != TokenType::CLOSE_SELF) {
@@ -126,7 +126,7 @@ void TreeBuilder::insert_element(const std::shared_ptr<Element>& element) const 
 }
 
 void TreeBuilder::insert_text(std::string_view text) const {
-    auto text_node = std::make_unique<TextNode>(text);
+    auto text_node = std::make_shared<TextNode>(text);
     if (m_element_stack.empty()) {
         m_document->add_child(std::move(text_node));
     } else {
@@ -136,12 +136,12 @@ void TreeBuilder::insert_text(std::string_view text) const {
 }
 
 void TreeBuilder::insert_comment(std::string_view comment) const {
-    auto text_node = std::make_unique<CommentNode>(comment);
+    auto comment_node = std::make_shared<CommentNode>(comment);
     if (m_element_stack.empty()) {
-        m_document->add_child(std::move(text_node));
+        m_document->add_child(std::move(comment_node));
     } else {
         const auto parent = current_element();
-        parent->add_child(std::move(text_node));
+        parent->add_child(std::move(comment_node));
     }
 }
 
@@ -154,7 +154,7 @@ std::shared_ptr<Element> TreeBuilder::pop_element() {
         return nullptr;
     }
 
-    auto element = m_element_stack.back();
+    auto element = std::move(m_element_stack.back());
     m_element_stack.pop_back();
     return element;
 }

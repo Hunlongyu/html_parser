@@ -8,10 +8,6 @@ NodeType CommentNode::type() {
     return NodeType::Comment;
 }
 
-std::string CommentNode::name() const {
-    return {};
-}
-
 std::string CommentNode::value() const {
     return m_comment;
 }

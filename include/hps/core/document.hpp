@@ -98,12 +98,6 @@ class Document : public Node {
      */
     [[nodiscard]] std::shared_ptr<const Element> html() const;
 
-    /**
-     * @brief 获取文档元素（自身）
-     * @return 文档节点本身转换为 Element 指针，通常返回 nullptr（因为 Document 不是 Element）
-     */
-    [[nodiscard]] std::shared_ptr<const Element> document() const;
-
     // Element Query Methods
     /**
      * @brief 使用 CSS 选择器查找第一个匹配的元素

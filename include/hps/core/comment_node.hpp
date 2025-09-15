@@ -16,12 +16,6 @@ class CommentNode : public Node {
     [[nodiscard]] static NodeType type();
 
     /**
-     * @brief 节点名称
-     * @return 节点名称
-     */
-    [[nodiscard]] std::string name() const;
-
-    /**
      * @brief 注释内容
      * @return 注释内容
      */
