@@ -1,6 +1,7 @@
 #pragma once
 
 #include "hps/core/element.hpp"
+#include "hps/parsing/options.hpp"
 #include "hps/utils/exception.hpp"
 #include "hps/utils/noncopyable.hpp"
 
@@ -20,7 +21,7 @@ class TreeBuilder : public NonCopyable {
   public:
     /**
      * @brief 构造函数
-     * @param document 目标文档对象的智能指针，用于存储构建的DOM树
+     * @param document 目标文档对象的智能指针，用于存储构建的 DOM 树
      */
     explicit TreeBuilder(const std::shared_ptr<Document>& document);
 
@@ -99,6 +100,14 @@ class TreeBuilder : public NonCopyable {
      */
     void process_text(const Token& token) const;
 
+    /**
+     * @brief 处理注释内容 Token
+     * @param token 注释 Token
+     *
+     * 将注释内容添加到当前元素中，处理空白字符的规范化。
+     */
+    void process_comment(const Token& token) const;
+
     // === 元素操作方法 ===
 
     /**
@@ -125,6 +134,14 @@ class TreeBuilder : public NonCopyable {
      * 在当前元素下创建并插入文本节点。
      */
     void insert_text(std::string_view text) const;
+
+    /**
+     * @brief 插入注释节点
+     * @param comment 要插入的注释内容
+     *
+     * 在当前元素下创建并插入注释节点。
+     */
+    void insert_comment(std::string_view comment) const;
 
     // === 栈操作方法 ===
 

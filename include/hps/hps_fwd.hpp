@@ -59,10 +59,11 @@ class Document;
 class Element;
 class Node;
 class TextNode;
+class CommentNode;
 
 // 解析模块
 class HTMLParser;
-class ParserOptions;
+class Options;
 class Token;
 class Tokenizer;
 class TreeBuilder;

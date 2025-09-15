@@ -7,7 +7,7 @@
 
 namespace hps {
 
-Tokenizer::Tokenizer(std::string_view source, ErrorHandlingMode mode) : m_source(source), m_pos(0), m_state(TokenizerState::Data), m_error_mode(mode) {}
+Tokenizer::Tokenizer(const std::string_view source) : m_source(source), m_pos(0), m_state(TokenizerState::Data) {}
 
 std::optional<Token> Tokenizer::next_token() {
     while (has_more()) {
@@ -114,10 +114,6 @@ size_t Tokenizer::total_length() const noexcept {
 
 const std::vector<ParseError>& Tokenizer::get_errors() const noexcept {
     return m_errors;
-}
-
-void Tokenizer::set_error_handling_mode(ErrorHandlingMode mode) noexcept {
-    m_error_mode = mode;
 }
 
 std::optional<Token> Tokenizer::consume_data_state() {
@@ -682,7 +678,7 @@ Token Tokenizer::create_start_tag_token() {
         token.add_attr(attr);
     }
 
-    if (is_void_element(m_token_builder.tag_name)) {
+    if (Options::instance().is_void_element(m_token_builder.tag_name)) {
         token.set_type(TokenType::CLOSE_SELF);
     }
 
@@ -730,7 +726,7 @@ Token Tokenizer::create_done_token() {
 void Tokenizer::handle_parse_error(const ErrorCode code, const std::string& message) {
     record_error(code, message);
 
-    switch (m_error_mode) {
+    switch (const auto error_handling = Options::instance().error_handling) {
         case ErrorHandlingMode::Strict:
             throw HPSException(code, message, m_pos);
         case ErrorHandlingMode::Lenient:

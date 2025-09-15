@@ -60,18 +60,9 @@ inline bool starts_with_ignore_case(std::string_view str, std::string_view prefi
     return true;
 }
 
-inline const std::unordered_set<std::string_view>& get_void_elements() {
-    static const std::unordered_set<std::string_view> void_elements = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"};
-    return void_elements;
-}
-
 inline const std::unordered_set<std::string_view>& get_raw_text_elements() {
     static const std::unordered_set<std::string_view> raw_text_elements = {"script", "style", "textarea", "title"};
     return raw_text_elements;
-}
-
-inline bool is_void_element(const std::string_view tag_name) noexcept {
-    return get_void_elements().contains(tag_name);
 }
 
 inline bool is_raw_text_element(const std::string_view tag_name) noexcept {

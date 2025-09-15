@@ -7,16 +7,12 @@
 
 namespace hps {
 std::shared_ptr<Document> HTMLParser::parse(const std::string_view html) {
-    return parse(html, ParserOptions::lenient());
-}
-
-std::shared_ptr<Document> HTMLParser::parse(const std::string_view html, const ParserOptions& options) {
     m_errors.clear();
-    const auto mode = options.error_handling;
+    const auto error_handling_mode = Options::instance().error_handling;
     try {
         auto        document = std::make_shared<Document>(std::string(html));
         TreeBuilder builder(document);
-        Tokenizer   tokenizer(html, mode);
+        Tokenizer   tokenizer(html);
 
         while (true) {
             auto token = tokenizer.next_token();
@@ -24,7 +20,7 @@ std::shared_ptr<Document> HTMLParser::parse(const std::string_view html, const P
                 break;
             }
             if (!builder.process_token(token.value())) {
-                if (mode == ErrorHandlingMode::Strict) {
+                if (error_handling_mode == ErrorHandlingMode::Strict) {
                     throw HPSException(ErrorCode::InvalidHTML, "Invalid HTML");
                 }
             }
@@ -35,7 +31,7 @@ std::shared_ptr<Document> HTMLParser::parse(const std::string_view html, const P
         }
 
         if (!builder.finish()) {
-            if (mode == ErrorHandlingMode::Strict) {
+            if (error_handling_mode == ErrorHandlingMode::Strict) {
                 throw HPSException(ErrorCode::InvalidHTML, "Invalid HTML");
             }
         }
@@ -50,14 +46,14 @@ std::shared_ptr<Document> HTMLParser::parse(const std::string_view html, const P
 
     } catch (const HPSException& e) {
         m_errors.emplace_back(e.code(), e.what(), 0);
-        if (mode == ErrorHandlingMode::Strict) {
+        if (error_handling_mode == ErrorHandlingMode::Strict) {
             throw;
         }
         return std::make_shared<Document>(std::string(html));
 
     } catch (const std::exception& e) {
         m_errors.emplace_back(ErrorCode::UnknownError, e.what(), 0);
-        if (mode == ErrorHandlingMode::Strict) {
+        if (error_handling_mode == ErrorHandlingMode::Strict) {
             throw HPSException(ErrorCode::UnknownError, e.what());
         }
         return std::make_shared<Document>(std::string(html));
@@ -65,11 +61,7 @@ std::shared_ptr<Document> HTMLParser::parse(const std::string_view html, const P
 }
 
 std::shared_ptr<Document> HTMLParser::parse_file(const std::string_view filePath) {
-    return parse_file(filePath, ParserOptions::lenient());
-}
-
-std::shared_ptr<Document> HTMLParser::parse_file(const std::string_view filePath, const ParserOptions& options) {
-    const auto mode = options.error_handling;
+    const auto error_handling_mode = Options::instance().error_handling;
     try {
         const std::ifstream file{std::string(filePath)};
         if (!file.is_open()) {
@@ -78,11 +70,11 @@ std::shared_ptr<Document> HTMLParser::parse_file(const std::string_view filePath
         std::stringstream buffer;
         buffer << file.rdbuf();
         const std::string html_content = buffer.str();
-        return parse(html_content, options);
+        return parse(html_content);
 
     } catch (const std::exception& e) {
         m_errors.emplace_back(ErrorCode::FileReadError, "File read error: " + std::string(e.what()), 0);
-        if (mode == ErrorHandlingMode::Strict) {
+        if (error_handling_mode == ErrorHandlingMode::Strict) {
             throw HPSException(ErrorCode::FileReadError, "Cannot read file: " + std::string(filePath));
         }
         // 在宽松模式下返回空文档

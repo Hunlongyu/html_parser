@@ -206,6 +206,18 @@ class Node : public std::enable_shared_from_this<Node> {
      */
     [[nodiscard]] std::shared_ptr<const TextNode> as_text() const noexcept;
 
+    /**
+     * @brief 尝试将节点转换为 CommentNode 类型 (非 const 版本)
+     * @return CommentNode 节点的共享指针，如果转换失败则为 nullptr
+     */
+    [[nodiscard]] std::shared_ptr<CommentNode> as_comment() noexcept;
+
+    /**
+     * @brief 尝试将节点转换为 CommentNode 类型 (const 版本)
+     * @return CommentNode 节点的共享指针，如果转换失败则为 nullptr
+     */
+    [[nodiscard]] std::shared_ptr<const CommentNode> as_comment() const noexcept;
+
   protected:
     /**
      * @brief 添加子节点

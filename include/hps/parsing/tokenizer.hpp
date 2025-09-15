@@ -38,9 +38,8 @@ class Tokenizer : public NonCopyable {
     /**
      * @brief 构造HTML词法分析器
      * @param source HTML 源代码字符串视图
-     * @param mode 错误处理模式，默认为严格模式
      */
-    explicit Tokenizer(std::string_view source, ErrorHandlingMode mode = ErrorHandlingMode::Lenient);
+    explicit Tokenizer(std::string_view source);
 
     /**
      * @brief 析构函数
@@ -95,18 +94,6 @@ class Tokenizer : public NonCopyable {
      * @return 包含所有ParseError对象的向量引用
      */
     [[nodiscard]] const std::vector<ParseError>& get_errors() const noexcept;
-
-    // ==================== 配置方法 ====================
-
-    /**
-     * @brief 设置错误处理模式
-     *
-     * 允许在解析过程中动态调整错误处理策略。严格模式下遇到错误会抛出异常，
-     * 宽松模式下会尝试恢复并继续解析。
-     *
-     * @param mode 新的错误处理模式
-     */
-    void set_error_handling_mode(ErrorHandlingMode mode) noexcept;
 
   private:
     // ==================== 状态处理方法 ====================
@@ -327,10 +314,9 @@ class Tokenizer : public NonCopyable {
   private:
     // ==================== 核心状态成员变量 ====================
 
-    std::string_view  m_source;      ///< 输入HTML字符串视图，保存待解析的源代码
-    size_t            m_pos;         ///< 当前解析位置索引，指向下一个要处理的字符
-    TokenizerState    m_state;       ///< 当前词法分析器状态，控制解析行为
-    ErrorHandlingMode m_error_mode;  ///< 错误处理模式，决定遇到错误时的行为策略
+    std::string_view     m_source;   ///< 输入HTML字符串视图，保存待解析的源代码
+    size_t               m_pos;      ///< 当前解析位置索引，指向下一个要处理的字符
+    TokenizerState       m_state;    ///< 当前词法分析器状态，控制解析行为
 
     // ==================== 解析辅助成员变量 ====================
 

@@ -3,6 +3,7 @@
 #include "hps/core/document.hpp"
 #include "hps/core/element.hpp"
 #include "hps/core/text_node.hpp"
+#include "hps/core/comment_node.hpp"
 
 #include <algorithm>
 
@@ -202,6 +203,14 @@ std::shared_ptr<TextNode> Node::as_text() noexcept {
 
 std::shared_ptr<const TextNode> Node::as_text() const noexcept {
     return std::dynamic_pointer_cast<const TextNode>(shared_from_this());
+}
+
+std::shared_ptr<CommentNode> Node::as_comment() noexcept {
+    return std::dynamic_pointer_cast<CommentNode>(shared_from_this());
+}
+
+std::shared_ptr<const CommentNode> Node::as_comment() const noexcept {
+    return std::dynamic_pointer_cast<const CommentNode>(shared_from_this());
 }
 
 }  // namespace hps

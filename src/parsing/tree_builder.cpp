@@ -1,9 +1,9 @@
 #include "hps/parsing/tree_builder.hpp"
 
+#include "hps/core/comment_node.hpp"
 #include "hps/core/document.hpp"
 #include "hps/core/text_node.hpp"
 #include "hps/parsing/token.hpp"
-#include "hps/utils/string_utils.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -27,8 +27,10 @@ bool TreeBuilder::process_token(const Token& token) {
                 process_end_tag(token);
                 break;
             case TokenType::TEXT:
-            case TokenType::COMMENT:
                 process_text(token);
+                break;
+            case TokenType::COMMENT:
+                process_comment(token);
                 break;
             case TokenType::DONE:
                 break;
@@ -46,12 +48,9 @@ bool TreeBuilder::process_token(const Token& token) {
 }
 
 bool TreeBuilder::finish() {
-    // 关闭所有未闭合的元素
     while (!m_element_stack.empty()) {
-        auto element = m_element_stack.back();
+        const auto element = m_element_stack.back();
         m_element_stack.pop_back();
-
-        // 记录未闭合标签的警告
         parse_error(ErrorCode::UnclosedTag, "Unclosed tag: " + std::string(element->tag_name()));
     }
 
@@ -70,32 +69,23 @@ void TreeBuilder::process_start_tag(const Token& token) {
     const auto element = create_element(token);
     insert_element(element);
 
-    // 如果不是自闭合元素且不是void元素，推入栈中
-    if (token.type() != TokenType::CLOSE_SELF && !is_void_element(token.name())) {
+    if (!Options::instance().is_void_element(token.name()) && token.type() != TokenType::CLOSE_SELF) {
         push_element(element);
     }
 }
 
 void TreeBuilder::process_end_tag(const Token& token) {
     std::string_view tag_name = token.name();
-
-    // 检查是否为void元素的错误闭合标签
-    if (is_void_element(tag_name)) {
+    if (Options::instance().is_void_element(token.name())) {
         parse_error(ErrorCode::VoidElementClose, "Void element should not have closing tag: " + std::string(tag_name));
         return;
     }
-
-    // 如果栈为空，说明没有对应的开始标签
     if (m_element_stack.empty()) {
         parse_error(ErrorCode::MismatchedTag, "No matching opening tag for: " + std::string(tag_name));
         return;
     }
-
-    // 查找匹配的开始标签（从栈顶向下查找）
-    auto it = std::ranges::find_if(std::ranges::reverse_view(m_element_stack), [tag_name](const std::shared_ptr<Element> elem) { return elem->tag_name() == tag_name; });
-
+    const auto it = std::ranges::find_if(std::ranges::reverse_view(m_element_stack), [tag_name](const std::shared_ptr<Element>& elem) { return elem->tag_name() == tag_name; });
     if (it != m_element_stack.rend()) {
-        // 找到匹配的标签，关闭到这个位置的所有元素
         close_elements_until(tag_name);
     } else {
         parse_error(ErrorCode::MismatchedTag, "No matching opening tag for: " + std::string(tag_name));
@@ -110,6 +100,14 @@ void TreeBuilder::process_text(const Token& token) const {
     insert_text(text);
 }
 
+void TreeBuilder::process_comment(const Token& token) const {
+    const std::string_view comment = token.value();
+    if (comment.empty()) {
+        return;
+    }
+    insert_comment(comment);
+}
+
 std::shared_ptr<Element> TreeBuilder::create_element(const Token& token) {
     auto element = std::make_shared<Element>(token.name());
     for (const auto& attr : token.attrs()) {
@@ -122,7 +120,6 @@ void TreeBuilder::insert_element(const std::shared_ptr<Element>& element) const 
     if (m_element_stack.empty()) {
         m_document->add_child(element);
     } else {
-        // 添加到当前元素
         const auto current = current_element();
         current->add_child(element);
     }
@@ -133,7 +130,17 @@ void TreeBuilder::insert_text(std::string_view text) const {
     if (m_element_stack.empty()) {
         m_document->add_child(std::move(text_node));
     } else {
-        auto parent = current_element();
+        const auto parent = current_element();
+        parent->add_child(std::move(text_node));
+    }
+}
+
+void TreeBuilder::insert_comment(std::string_view comment) const {
+    auto text_node = std::make_unique<CommentNode>(comment);
+    if (m_element_stack.empty()) {
+        m_document->add_child(std::move(text_node));
+    } else {
+        const auto parent = current_element();
         parent->add_child(std::move(text_node));
     }
 }
@@ -160,26 +167,19 @@ std::shared_ptr<Element> TreeBuilder::current_element() const {
 }
 
 bool TreeBuilder::should_close_element(const std::string_view tag_name) const {
-    if (auto current = current_element()) {
+    if (const auto current = current_element()) {
         return current->tag_name() == tag_name;
     }
     return false;
 }
 
 void TreeBuilder::close_elements_until(const std::string_view tag_name) {
-    // 从栈顶开始，关闭元素直到找到匹配的标签
     while (!m_element_stack.empty()) {
-        auto element = m_element_stack.back();
-
-        // 先弹出元素
+        const auto element = m_element_stack.back();
         m_element_stack.pop_back();
-
         if (element->tag_name() == tag_name) {
-            // 找到匹配的标签，停止关闭
             break;
         }
-
-        // 如果不匹配，记录自动关闭的警告
         parse_error(ErrorCode::MismatchedTag, "Auto-closing unclosed tag: " + std::string(element->tag_name()));
     }
 }

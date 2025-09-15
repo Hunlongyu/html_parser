@@ -21,7 +21,7 @@ std::string Element::outer_html() const {
     for (const auto& attr : m_attributes) {
         ss << std::format(" {}=\"{}\"", attr.name(), attr.value());
     }
-    if (is_void_element(m_name)) {
+    if (Options::instance().is_void_element(m_name)) {
         ss << " />";
     } else {
         ss << ">";

@@ -22,9 +22,10 @@ int main() {
 
     std::string html = read_file("./html/base.html");
 
-    hps::Tokenizer tokenizer(html, hps::ErrorHandlingMode::Lenient);
+    hps::Options::instance().error_handling = hps::ErrorHandlingMode::Strict;
+    hps::Tokenizer tokenizer(html);
 
-    std::cout << "输入HTML: \n" << html << std::endl << std::endl;
+    std::cout << "输入HTML: \n" << html << std::endl;
 
     while (tokenizer.has_more()) {
         if (auto token = tokenizer.next_token()) {

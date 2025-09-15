@@ -1,5 +1,6 @@
 #include "hps/parsing/tree_builder.hpp"
 
+#include "hps/core/comment_node.hpp"
 #include "hps/core/document.hpp"
 #include "hps/core/text_node.hpp"
 #include "hps/parsing/tokenizer.hpp"
@@ -8,6 +9,8 @@
 #include <functional>
 #include <iostream>
 #include <sstream>
+
+using namespace hps;
 
 static std::string read_file(const std::string& filename) {
     std::ifstream file(filename);
@@ -61,6 +64,14 @@ void print_node(const hps::Node* node, int depth = 0) {
             }
             break;
         }
+        case hps::NodeType::Comment: {
+            const auto  comment_node = node->as_comment();
+            std::string comment      = comment_node->normalized_comment();
+            if (!comment.empty()) {
+                std::cout << "COMMENT: \"" << comment << "\"" << std::endl;
+            }
+            break;
+        }
         case hps::NodeType::Document:
             std::cout << "DOCUMENT" << std::endl;
             for (const auto& child : node->children()) {
@@ -83,10 +94,10 @@ int main() {
     try {
         // 创建文档对象
         auto document = std::make_shared<hps::Document>(html);
+        hps::Options::instance().configure_lenient();
 
         // 创建TreeBuilder
         hps::TreeBuilder builder(document);
-
         // 创建Tokenizer
         hps::Tokenizer tokenizer(html);
 
@@ -193,7 +204,7 @@ int main() {
         std::function<void(const hps::Node*)> extract_text;
         extract_text = [&](const hps::Node* node) {
             if (node->type() == hps::NodeType::Text) {
-                const auto text_node = node->as_text();
+                const auto  text_node = node->as_text();
                 std::string text      = std::string(text_node->text());
                 text.erase(0, text.find_first_not_of(" \t\n\r"));
                 text.erase(text.find_last_not_of(" \t\n\r") + 1);

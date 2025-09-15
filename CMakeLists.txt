@@ -25,10 +25,11 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR}/include)
 
 set(SOURCE 
     "src/hps.cpp"
+    "src/core/comment_node.cpp"
+    "src/core/document.cpp"
+    "src/core/element.cpp"
     "src/core/node.cpp"
     "src/core/text_node.cpp"
-    "src/core/element.cpp"
-    "src/core/document.cpp"
     "src/parsing/token.cpp"
     "src/parsing/tokenizer.cpp"
     "src/parsing/tree_builder.cpp"
