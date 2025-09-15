@@ -9,10 +9,6 @@ NodeType Document::type() {
     return NodeType::Document;
 }
 
-std::string Document::outer_html() const {
-    return {};
-}
-
 std::string Document::text_content() const {
     return {};
 }

@@ -11,7 +11,7 @@
 
 namespace hps {
 
-TreeBuilder::TreeBuilder(const std::shared_ptr<Document>& document) : m_document(document) {
+TreeBuilder::TreeBuilder(const std::shared_ptr<Document>& document, const Options& options) : m_document(document), m_options(options) {
     assert(m_document != nullptr);
     m_element_stack.reserve(32);
 }
@@ -69,14 +69,14 @@ void TreeBuilder::process_start_tag(const Token& token) {
     const auto element = create_element(token);
     insert_element(element);
 
-    if (!Options::instance().is_void_element(token.name()) && token.type() != TokenType::CLOSE_SELF) {
+    if (!m_options.is_void_element(std::string(token.name())) && token.type() != TokenType::CLOSE_SELF) {
         push_element(element);
     }
 }
 
 void TreeBuilder::process_end_tag(const Token& token) {
     std::string_view tag_name = token.name();
-    if (Options::instance().is_void_element(token.name())) {
+    if (m_options.is_void_element(std::string(token.name()))) {
         parse_error(ErrorCode::VoidElementClose, "Void element should not have closing tag: " + std::string(tag_name));
         return;
     }

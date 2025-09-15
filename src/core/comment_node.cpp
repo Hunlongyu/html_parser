@@ -20,10 +20,6 @@ std::string CommentNode::text_content() const {
     return m_comment;
 }
 
-std::string CommentNode::outer_html() const {
-    return {};
-}
-
 std::string CommentNode::comment() const {
     return m_comment;
 }

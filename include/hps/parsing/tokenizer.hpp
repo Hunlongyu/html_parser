@@ -38,8 +38,9 @@ class Tokenizer : public NonCopyable {
     /**
      * @brief 构造HTML词法分析器
      * @param source HTML 源代码字符串视图
+     * @param options 解析选项
      */
-    explicit Tokenizer(std::string_view source);
+    explicit Tokenizer(std::string_view source, const Options& options);
 
     /**
      * @brief 析构函数
@@ -314,9 +315,10 @@ class Tokenizer : public NonCopyable {
   private:
     // ==================== 核心状态成员变量 ====================
 
-    std::string_view     m_source;   ///< 输入HTML字符串视图，保存待解析的源代码
-    size_t               m_pos;      ///< 当前解析位置索引，指向下一个要处理的字符
-    TokenizerState       m_state;    ///< 当前词法分析器状态，控制解析行为
+    std::string_view m_source;   ///< 输入HTML字符串视图，保存待解析的源代码
+    size_t           m_pos;      ///< 当前解析位置索引，指向下一个要处理的字符
+    TokenizerState   m_state;    ///< 当前词法分析器状态，控制解析行为
+    const Options&   m_options;  ///< 解析配置
 
     // ==================== 解析辅助成员变量 ====================
 

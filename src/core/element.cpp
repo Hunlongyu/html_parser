@@ -15,32 +15,6 @@ NodeType Element::type() {
     return NodeType::Element;
 }
 
-std::string Element::outer_html() const {
-    std::stringstream ss;
-    ss << "<" << m_name;
-    for (const auto& attr : m_attributes) {
-        ss << std::format(" {}=\"{}\"", attr.name(), attr.value());
-    }
-    if (Options::instance().is_void_element(m_name)) {
-        ss << " />";
-    } else {
-        ss << ">";
-        for (const auto& child : children()) {
-            ss << child->outer_html();
-        }
-        ss << "</" << m_name << ">";
-    }
-    return ss.str();
-}
-
-std::string Element::inner_html() const {
-    std::stringstream ss;
-    for (const auto& child : children()) {
-        ss << child->outer_html();
-    }
-    return ss.str();
-}
-
 std::string Element::text_content() const {
     std::stringstream ss;
     for (const auto& child : children()) {

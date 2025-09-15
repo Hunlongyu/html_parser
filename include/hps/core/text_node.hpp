@@ -34,12 +34,6 @@ class TextNode : public Node {
     [[nodiscard]] std::string text_content() const override;
 
     /**
-     * @brief 获取节点的外部 HTML (纯虚函数)
-     * @return 节点的外部 HTML 字符串
-     */
-    [[nodiscard]] std::string outer_html() const override;
-
-    /**
      * @brief 获取文本内容
      * @return 文本内容
      */

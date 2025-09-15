@@ -22,8 +22,9 @@ class TreeBuilder : public NonCopyable {
     /**
      * @brief 构造函数
      * @param document 目标文档对象的智能指针，用于存储构建的 DOM 树
+     * @param options 解析选项
      */
-    explicit TreeBuilder(const std::shared_ptr<Document>& document);
+    explicit TreeBuilder(const std::shared_ptr<Document>& document, const Options& options);
 
     /**
      * @brief 析构函数
@@ -204,6 +205,7 @@ class TreeBuilder : public NonCopyable {
     std::shared_ptr<Document>             m_document;       ///< 目标文档对象，存储构建的DOM树
     std::vector<std::shared_ptr<Element>> m_element_stack;  ///< 元素栈，跟踪当前的嵌套结构
     std::vector<ParseError>               m_errors;         ///< 解析错误列表，收集处理过程中的错误
+    const Options&                        m_options;        ///< 解析选项
 };
 
 }  // namespace hps

@@ -93,13 +93,13 @@ int main() {
 
     try {
         // 创建文档对象
-        auto document = std::make_shared<hps::Document>(html);
-        hps::Options::instance().configure_lenient();
+        auto       document        = std::make_shared<hps::Document>(html);
+        const auto default_options = Options();
 
         // 创建TreeBuilder
-        hps::TreeBuilder builder(document);
+        hps::TreeBuilder builder(document, default_options);
         // 创建Tokenizer
-        hps::Tokenizer tokenizer(html);
+        hps::Tokenizer tokenizer(html, default_options);
 
         std::cout << "开始解析..." << std::endl;
 

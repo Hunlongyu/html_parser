@@ -28,17 +28,6 @@ class Element : public Node {
      * @return 节点类型，对于 Element 始终返回 NodeType::Element
      */
     [[nodiscard]] static NodeType type();
-    /**
-     * @brief 获取节点的外部 HTML 字符串
-     * @return 包含元素自身及其所有内容的 HTML 字符串
-     */
-    [[nodiscard]] std::string outer_html() const override;
-
-    /**
-     * @brief 获取节点的内部 HTML 字符串
-     * @return 包含元素所有子节点内容的 HTML 字符串
-     */
-    [[nodiscard]] std::string inner_html() const override;
 
     /**
      * @brief 递归获取元素的所有文本内容

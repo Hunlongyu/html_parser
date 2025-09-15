@@ -20,10 +20,6 @@ std::string TextNode::text_content() const {
     return m_text;
 }
 
-std::string TextNode::outer_html() const {
-    return {};
-}
-
 std::string TextNode::text() const {
     return m_text;
 }

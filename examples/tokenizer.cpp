@@ -22,8 +22,8 @@ int main() {
 
     std::string html = read_file("./html/base.html");
 
-    hps::Options::instance().error_handling = hps::ErrorHandlingMode::Strict;
-    hps::Tokenizer tokenizer(html);
+    const auto     default_options = hps::Options();
+    hps::Tokenizer tokenizer(html, default_options);
 
     std::cout << "输入HTML: \n" << html << std::endl;
 

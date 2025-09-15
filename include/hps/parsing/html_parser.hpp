@@ -31,6 +31,14 @@ class HTMLParser : public NonCopyable {
      */
     [[nodiscard]] std::shared_ptr<Document> parse(std::string_view html);
 
+    /**
+     * @brief 解析HTML字符串（自定义解析选项）
+     * @param html HTML字符串视图
+     * @param options 解析选项
+     * @return 解析后的文档对象智能指针
+     */
+    [[nodiscard]] std::shared_ptr<Document> parse(std::string_view html, const Options& options);
+
     // 文件解析功能（扩展功能）
     /**
      * @brief 解析HTML文件（使用默认宽松模式）
@@ -38,6 +46,15 @@ class HTMLParser : public NonCopyable {
      * @return 解析后的文档对象智能指针
      */
     [[nodiscard]] std::shared_ptr<Document> parse_file(std::string_view filePath);
+
+    // 文件解析功能（自定义解析选项）
+    /**
+     * @brief 解析HTML文件（使用默认宽松模式）
+     * @param filePath HTML文件路径
+     * @param options 解析选项
+     * @return 解析后的文档对象智能指针
+     */
+    [[nodiscard]] std::shared_ptr<Document> parse_file(std::string_view filePath, const Options& options);
 
     // 错误信息访问（诊断功能）
     /**

@@ -155,20 +155,6 @@ class Node : public std::enable_shared_from_this<Node> {
         return "";
     }
 
-    /**
-     * @brief 获取节点的外部 HTML (纯虚函数)
-     * @return 节点的外部 HTML 字符串
-     */
-    [[nodiscard]] virtual std::string outer_html() const = 0;
-
-    /**
-     * @brief 获取节点的内部 HTML (虚函数)
-     * @return 节点的内部 HTML 字符串
-     */
-    [[nodiscard]] virtual std::string inner_html() const {
-        return "";
-    }
-
     // Casts
     /**
      * @brief 尝试将节点转换为 Document 类型 (非 const 版本)

@@ -38,12 +38,6 @@ class Document : public Node {
      */
     [[nodiscard]] std::string text_content() const override;
 
-    /**
-     * @brief 获取文档的外部 HTML 字符串
-     * @return 完整的 HTML 文档字符串
-     */
-    [[nodiscard]] std::string outer_html() const override;
-
     // Document Metadata Access
     /**
      * @brief 获取文档标题
