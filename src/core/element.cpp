@@ -82,7 +82,7 @@ std::string Element::class_name() const noexcept {
     return get_attribute("class");
 }
 
-const std::unordered_set<std::string>& Element::class_names() const noexcept {
+std::unordered_set<std::string> Element::class_names() const noexcept {
     const std::string class_attr = get_attribute("class");
     if (class_attr.empty()) {
         return {};
@@ -155,12 +155,11 @@ ElementQuery Element::xpath(std::string_view expression) const {
     return {};
 }
 
-void Element::add_child(std::unique_ptr<Node> child) {
-     if (!child) {
+void Element::add_child(const std::shared_ptr<Node>& child) {
+    if (!child) {
         return;
     }
-    const std::shared_ptr<Node> shared_child(child.release());
-    append_child(shared_child);
+    append_child(child);
 }
 
 void Element::add_attribute(std::string_view name, std::string_view value) {

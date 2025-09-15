@@ -2,6 +2,7 @@
 
 #include "hps/core/document.hpp"
 #include "hps/core/text_node.hpp"
+#include "hps/parsing/token.hpp"
 #include "hps/utils/string_utils.hpp"
 
 #include <algorithm>
@@ -112,15 +113,15 @@ void TreeBuilder::process_text(const Token& token) const {
     insert_text(text);
 }
 
-std::unique_ptr<Element> TreeBuilder::create_element(const Token& token) {
-    auto element = std::make_unique<Element>(token.name());
+std::shared_ptr<Element> TreeBuilder::create_element(const Token& token) {
+    auto element = std::make_shared<Element>(token.name());
     for (const auto& attr : token.attrs()) {
         element->add_attribute(attr.m_name, attr.m_value);
     }
     return element;
 }
 
-void TreeBuilder::insert_element(std::unique_ptr<Element> element) const {
+void TreeBuilder::insert_element(std::shared_ptr<Element> element) const {
     if (m_element_stack.empty()) {
         // 如果栈为空，直接添加到document
         m_document->add_child(std::move(element));

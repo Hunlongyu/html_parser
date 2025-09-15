@@ -13,25 +13,31 @@ class TextNode : public Node {
      * @brief 节点类型
      * @return 节点类型
      */
-    [[nodiscard]] NodeType node_type() const;
+    [[nodiscard]] static NodeType type();
 
     /**
      * @brief 节点名称
      * @return 节点名称
      */
-    [[nodiscard]] std::string node_name() const;
+    [[nodiscard]] std::string name() const;
 
     /**
      * @brief 文本内容
      * @return 文本内容
      */
-    [[nodiscard]] std::string node_value() const;
+    [[nodiscard]] std::string value() const;
 
     /**
      * @brief 递归所有的文本内容
      * @return 文本内容
      */
     [[nodiscard]] std::string text_content() const override;
+
+    /**
+     * @brief 获取节点的外部 HTML (纯虚函数)
+     * @return 节点的外部 HTML 字符串
+     */
+    [[nodiscard]] std::string outer_html() const override;
 
     /**
      * @brief 获取文本内容

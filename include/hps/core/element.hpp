@@ -96,7 +96,7 @@ class Element : public Node {
      * @brief 获取所有 CSS 类名
      * @return 包含所有 CSS 类名的集合的常量引用
      */
-    [[nodiscard]] const std::unordered_set<std::string>& class_names() const noexcept;
+    [[nodiscard]] std::unordered_set<std::string> class_names() const noexcept;
 
     /**
      * @brief 检查元素是否包含指定 class 类
@@ -160,7 +160,7 @@ class Element : public Node {
      * @brief 添加子节点
      * @param child 要添加的子节点的唯一指针
      */
-    void add_child(std::unique_ptr<Node> child);
+    void add_child(const std::shared_ptr<Node>& child);
 
     /**
      * @brief 添加或更新属性

@@ -30,9 +30,9 @@ void print_node(const hps::Node* node, int depth = 0) {
     }
 
     // 根据节点类型打印信息
-    switch (node->node_type()) {
+    switch (node->type()) {
         case hps::NodeType::Element: {
-            const auto* element = static_cast<const hps::Element*>(node);
+            const auto element = node->as_element();
             std::cout << "<" << element->tag_name();
 
             // 打印属性
@@ -54,11 +54,8 @@ void print_node(const hps::Node* node, int depth = 0) {
             break;
         }
         case hps::NodeType::Text: {
-            const auto* text_node = static_cast<const hps::TextNode*>(node);
-            std::string text      = std::string(text_node->text());
-            // 去除前后空白并检查是否为空
-            text.erase(0, text.find_first_not_of(" \t\n\r"));
-            text.erase(text.find_last_not_of(" \t\n\r") + 1);
+            const auto  text_node = node->as_text();
+            std::string text      = text_node->normalized_text();
             if (!text.empty()) {
                 std::cout << "TEXT: \"" << text << "\"" << std::endl;
             }
@@ -81,7 +78,7 @@ int main() {
     system("chcp 65001 > nul");
 #endif
 
-    std::string html = read_file("./html/complex.html");
+    std::string html = read_file("./html/base.html");
 
     try {
         // 创建文档对象
@@ -161,8 +158,8 @@ int main() {
         // 遍历所有子节点寻找元素
         std::function<void(const hps::Node*, const std::string&)> find_elements;
         find_elements = [&](const hps::Node* node, const std::string& tag_name) {
-            if (node->node_type() == hps::NodeType::Element) {
-                const auto* element = static_cast<const hps::Element*>(node);
+            if (node->type() == hps::NodeType::Element) {
+                const auto element = node->as_element();
                 if (element->tag_name() == tag_name) {
                     std::cout << "找到 <" << tag_name << "> 元素";
                     if (element->has_attribute("class")) {
@@ -193,8 +190,8 @@ int main() {
         // 提取所有文本内容
         std::function<void(const hps::Node*)> extract_text;
         extract_text = [&](const hps::Node* node) {
-            if (node->node_type() == hps::NodeType::Text) {
-                const auto* text_node = static_cast<const hps::TextNode*>(node);
+            if (node->type() == hps::NodeType::Text) {
+                const auto text_node = node->as_text();
                 std::string text      = std::string(text_node->text());
                 text.erase(0, text.find_first_not_of(" \t\n\r"));
                 text.erase(text.find_last_not_of(" \t\n\r") + 1);

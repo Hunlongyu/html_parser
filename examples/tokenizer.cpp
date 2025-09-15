@@ -88,7 +88,7 @@ int main() {
     if (!errors.empty()) {
         std::cout << "\n解析过程中发现 " << errors.size() << " 个错误:\n";
         for (const auto& error : errors) {
-            std::cout << "位置 " << error.position << ": " << error.message << std::endl;
+            std::cout << "位置 " << error.location.position << ": " << error.message << std::endl;
         }
     }
 

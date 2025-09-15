@@ -2,6 +2,7 @@
 
 #include "hps/core/element.hpp"
 #include "hps/utils/exception.hpp"
+#include "hps/utils/noncopyable.hpp"
 
 #include <unordered_set>
 
@@ -52,8 +53,8 @@ class TreeBuilder : public NonCopyable {
     void process_text(const Token& token) const;
 
     // 元素操作方法
-    static std::unique_ptr<Element> create_element(const Token& token);
-    void                            insert_element(std::unique_ptr<Element> element) const;
+    static std::shared_ptr<Element> create_element(const Token& token);
+    void                            insert_element(std::shared_ptr<Element> element) const;
     void                            insert_text(std::string_view text) const;
 
     // 栈操作方法

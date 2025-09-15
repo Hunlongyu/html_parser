@@ -1,6 +1,7 @@
 #pragma once
 #include "hps/parsing/options.hpp"
 #include "hps/parsing/token.hpp"
+#include "hps/parsing/token_builder.hpp"
 #include "hps/utils/exception.hpp"
 
 #include <iostream>
@@ -29,40 +30,6 @@ enum class TokenizerState {
     ScriptData,  /// 进入 <script> 标签后的原始文本状态
     RAWTEXT,     /// 进入 <style>、<noscript> 等标签后的原始文本状态
     RCDATA,      /// 进入 <textarea>、<title> 标签后的状态（可解析字符实体但不解析标签）
-};
-
-struct TokenBuilder {
-    std::string                 tag_name;
-    std::string                 attr_name;
-    std::string                 attr_value;
-    bool                        is_void_element = false;
-    bool                        is_self_closing = false;
-    std::vector<TokenAttribute> attrs;
-
-    void add_attr(const TokenAttribute& attr) {
-        attrs.push_back(attr);
-    }
-
-    void add_attr(std::string_view name, std::string_view value, bool has_value = true) {
-        attrs.emplace_back(name, value, has_value);
-    }
-
-    void reset() {
-        tag_name.clear();
-        attr_name.clear();
-        attr_value.clear();
-        is_void_element = false;
-        is_self_closing = false;
-        attrs.clear();
-    }
-
-    void finish_current_attribute() {
-        if (!attr_name.empty()) {
-            add_attr(attr_name, attr_value);
-            attr_name.clear();
-            attr_value.clear();
-        }
-    }
 };
 
 class Tokenizer : public NonCopyable {

@@ -416,7 +416,7 @@ std::vector<std::string> ElementQuery::extract_own_texts() const {
     std::vector<std::string> texts;
     for (const auto& element : m_elements) {
         if (element) {
-            texts.push_back(element->get_own_text());
+            texts.push_back(element->text_content());
         }
     }
     return texts;
@@ -464,7 +464,7 @@ bool ElementQuery::contains(const Element& element) const {
 
 bool ElementQuery::contains(std::string_view text) const {
     for (const auto& element : m_elements) {
-        if (element && element->get_text().find(text) != std::string::npos) {
+        if (element && element->text_content().find(text) != std::string::npos) {
             return true;
         }
     }

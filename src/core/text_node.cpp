@@ -4,20 +4,24 @@ namespace hps {
 
 TextNode::TextNode(std::string_view text) noexcept : Node(NodeType::Text), m_text(text) {}
 
-NodeType TextNode::node_type() const {
+NodeType TextNode::type() {
     return NodeType::Text;
 }
 
-std::string TextNode::node_name() const {
-    return "#text";
+std::string TextNode::name() const {
+    return {};
 }
 
-std::string TextNode::node_value() const {
+std::string TextNode::value() const {
     return m_text;
 }
 
 std::string TextNode::text_content() const {
     return m_text;
+}
+
+std::string TextNode::outer_html() const {
+    return {};
 }
 
 std::string TextNode::text() const {

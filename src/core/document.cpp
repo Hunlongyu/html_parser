@@ -5,15 +5,11 @@
 namespace hps {
 Document::Document(std::string html_content) : Node(NodeType::Document), m_html_source(std::move(html_content)) {}
 
-NodeType Document::node_type() const {
-    return {};
+NodeType Document::type() {
+    return NodeType::Document;
 }
 
-std::string Document::node_name() const {
-    return {};
-}
-
-std::string Document::node_value() const {
+std::string Document::outer_html() const {
     return {};
 }
 
@@ -89,7 +85,10 @@ ElementQuery Document::xpath(std::string_view expression) const {
     return {};
 }
 
-void Document::add_child(std::unique_ptr<Node> child) {
-    Node::add_child(std::move(child));
+void Document::add_child(const std::shared_ptr<Node>& child) {
+    if (!child) {
+        return;
+    }
+    append_child(child);
 }
 }  // namespace hps
