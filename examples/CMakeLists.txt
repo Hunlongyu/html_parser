@@ -10,8 +10,9 @@ set(EXAMPLES
     basic
     tokenizer
     tree_builder
-    query_css
     css_selector
+    css_parser
+    css_matcher
 )
 
 foreach(example ${EXAMPLES})

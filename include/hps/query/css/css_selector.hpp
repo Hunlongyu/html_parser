@@ -265,18 +265,50 @@ class ChildSelector : public CombinatorSelector {
 // 相邻兄弟选择器 div + p
 class AdjacentSiblingSelector : public CombinatorSelector {
   public:
-    AdjacentSiblingSelector(std::unique_ptr<CSSSelector> left, std::unique_ptr<CSSSelector> right) : CombinatorSelector(SelectorType::Adjacent, std::move(left), std::move(right)) {}
+    /**
+     * @brief 构造函数
+     * @param left 左侧选择器（前一个兄弟元素的选择器）
+     * @param right 右侧选择器（当前元素的选择器）
+     */
+    AdjacentSiblingSelector(std::unique_ptr<CSSSelector> left, std::unique_ptr<CSSSelector> right) 
+        : CombinatorSelector(SelectorType::Adjacent, std::move(left), std::move(right)) {}
 
-    [[nodiscard]] bool        matches(const Element& element) const override;
+    /**
+     * @brief 检查元素是否匹配相邻兄弟选择器
+     * @param element 要检查的元素
+     * @return 如果匹配返回true，否则返回false
+     */
+    [[nodiscard]] bool matches(const Element& element) const override;
+    
+    /**
+     * @brief 将选择器转换为字符串表示
+     * @return 选择器的字符串形式
+     */
     [[nodiscard]] std::string to_string() const override;
 };
 
 // 通用兄弟选择器 div ~ p
 class GeneralSiblingSelector : public CombinatorSelector {
   public:
-    GeneralSiblingSelector(std::unique_ptr<CSSSelector> left, std::unique_ptr<CSSSelector> right) : CombinatorSelector(SelectorType::Sibling, std::move(left), std::move(right)) {}
+    /**
+     * @brief 构造函数
+     * @param left 左侧选择器（前面兄弟元素的选择器）
+     * @param right 右侧选择器（当前元素的选择器）
+     */
+    GeneralSiblingSelector(std::unique_ptr<CSSSelector> left, std::unique_ptr<CSSSelector> right) 
+        : CombinatorSelector(SelectorType::Sibling, std::move(left), std::move(right)) {}
 
-    [[nodiscard]] bool        matches(const Element& element) const override;
+    /**
+     * @brief 检查元素是否匹配通用兄弟选择器
+     * @param element 要检查的元素
+     * @return 如果匹配返回true，否则返回false
+     */
+    [[nodiscard]] bool matches(const Element& element) const override;
+    
+    /**
+     * @brief 将选择器转换为字符串表示
+     * @return 选择器的字符串形式
+     */
     [[nodiscard]] std::string to_string() const override;
 };
 

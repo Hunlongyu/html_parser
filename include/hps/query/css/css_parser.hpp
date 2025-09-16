@@ -180,7 +180,7 @@ class CSSLexer {
      * @brief 跳过空白字符
      * @note 跳过空格、制表符、换行符等
      */
-    void skip_whitespace();
+    bool skip_whitespace();
 
     /**
      * @brief 读取标识符
@@ -415,7 +415,7 @@ class CSSParser {
      * @param message 错误消息
      * @throws HPSException 包含详细错误信息的异常
      */
-    [[noreturn]] void throw_parse_error(const std::string& message);
+    [[noreturn]] void throw_parse_error(const std::string& message) const;
 };
 
 /**
@@ -473,10 +473,20 @@ class PseudoClassSelector : public CSSSelector {
     [[nodiscard]] std::string to_string() const override;
 
     /**
+     * @brief 计算伪类选择器的特异性
+     * @return 选择器特异性值
+     */
+    [[nodiscard]] SelectorSpecificity calculate_specificity() const override {
+        SelectorSpecificity spec{};
+        spec.classes = 1;  // 伪类选择器增加类选择器计数
+        return spec;
+    }
+
+    /**
      * @brief 获取伪类类型
      * @return 伪类类型
      */
-    [[nodiscard]] PseudoType pseudo_type() const {
+    [[nodiscard]] PseudoType pseudo_type() const noexcept {
         return m_pseudo_type;
     }
 
@@ -484,13 +494,36 @@ class PseudoClassSelector : public CSSSelector {
      * @brief 获取伪类参数
      * @return 伪类参数字符串
      */
-    [[nodiscard]] const std::string& argument() const {
+    [[nodiscard]] const std::string& argument() const noexcept {
         return m_argument;
     }
 
   private:
     PseudoType  m_pseudo_type;  ///< 伪类类型
     std::string m_argument;     ///< 伪类参数（用于nth-child(n)等带参数的伪类）
+
+    /**
+     * @brief 解析nth-child表达式
+     * @param expression nth表达式（如"2n+1"、"odd"、"even"）
+     * @param index 当前元素的索引（从1开始）
+     * @return 是否匹配
+     */
+    [[nodiscard]] static bool matches_nth_expression(const std::string& expression, int index);
+
+    /**
+     * @brief 获取同类型兄弟元素的数量
+     * @param element 目标元素
+     * @return 同类型兄弟元素数量
+     */
+    [[nodiscard]] static int count_siblings_of_type(const Element& element);
+
+    /**
+     * @brief 获取元素在同类型兄弟中的索引
+     * @param element 目标元素
+     * @param from_end 是否从末尾开始计数
+     * @return 索引（从1开始）
+     */
+    [[nodiscard]] static int get_type_index(const Element& element, bool from_end = false);
 };
 
 /**
@@ -536,6 +569,16 @@ class PseudoElementSelector : public CSSSelector {
      */
     [[nodiscard]] ElementType element_type() const {
         return m_element_type;
+    }
+
+    /**
+     * @brief 计算伪元素选择器的特异性
+     * @return 选择器特异性值
+     */
+    [[nodiscard]] SelectorSpecificity calculate_specificity() const override {
+        SelectorSpecificity spec{};
+        spec.elements = 1;  // 伪元素选择器增加元素选择器计数
+        return spec;
     }
 
   private:

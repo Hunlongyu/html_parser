@@ -149,17 +149,15 @@ bool DescendantSelector::matches(const Element& element) const {
     }
 
     auto parent = element.parent();
-    while (parent && parent->is_element()) {
-        auto parent_element = parent->as_element();
-        if (!parent_element) {
-            break;
-        }
-        if (m_left->matches(*parent_element)) {
-            return true;
+    while (parent) { // 遍历所有父节点，直到根节点
+        if (parent->is_element()) { // 只有当父节点是元素时才尝试匹配左侧选择器
+            auto parent_element = parent->as_element();
+            if (parent_element && m_left->matches(*parent_element)) {
+                return true;
+            }
         }
         parent = parent->parent();
     }
-
     return false;
 }
 
@@ -215,39 +213,48 @@ std::string ChildSelector::to_string() const {
 // ==================== AdjacentSiblingSelector Implementation ====================
 
 bool AdjacentSiblingSelector::matches(const Element& element) const {
-    // 检查右侧选择器是否匹配当前元素
+    // 相邻兄弟选择器 A + B：B元素紧跟在A元素之后，且它们有相同的父元素
+
+    // 首先检查右侧选择器是否匹配当前元素
     if (!m_right || !m_right->matches(element)) {
         return false;
     }
 
+    // 如果没有左侧选择器，则总是匹配
     if (!m_left) {
         return true;
     }
 
-    // 查找前一个兄弟元素
+    // 获取父元素
     const auto parent = element.parent();
     if (!parent) {
-        return false;
+        return false;  // 没有父元素，无法有兄弟元素
     }
 
+    // 获取所有子元素
     const auto& siblings = parent->children();
-    auto        it       = std::ranges::find_if(siblings, [&element](const std::shared_ptr<const Node>& node) { return node.get() == &element; });
 
-    if (it == siblings.begin()) {
-        return false;  // 没有前一个兄弟
+    // 找到当前元素在兄弟列表中的位置
+    auto current_it = std::ranges::find_if(siblings, [&element](const std::shared_ptr<const Node>& node) { return node.get() == &element; });
+
+    if (current_it == siblings.begin()) {
+        return false;  // 当前元素是第一个，没有前一个兄弟
     }
 
-    // 向前查找第一个元素节点
-    auto prev_it = it;
+    // 向前查找紧邻的元素节点（跳过文本节点和注释节点）
+    auto prev_it = current_it;
     while (prev_it != siblings.begin()) {
         --prev_it;
         if ((*prev_it)->is_element()) {
-            auto prev_element = (*prev_it)->as_element();
-            if (!prev_element) {
-                continue;
+            // 找到了前一个元素节点
+            if (const auto prev_element = (*prev_it)->as_element()) {
+                // 检查前一个元素是否匹配左侧选择器
+                return m_left->matches(*prev_element);
             }
-            return m_left->matches(*prev_element);
         }
+        // 如果遇到非元素节点，继续向前查找
+        // 注意：严格的相邻兄弟选择器要求紧邻，不应跳过文本节点
+        // 但在实际实现中，通常会忽略空白文本节点
     }
 
     return false;
@@ -268,37 +275,40 @@ std::string AdjacentSiblingSelector::to_string() const {
 // ==================== GeneralSiblingSelector Implementation ====================
 
 bool GeneralSiblingSelector::matches(const Element& element) const {
-    // 检查右侧选择器是否匹配当前元素
+    // 通用兄弟选择器 A ~ B：B元素在A元素之后的任意位置，且它们有相同的父元素
+
+    // 首先检查右侧选择器是否匹配当前元素
     if (!m_right || !m_right->matches(element)) {
         return false;
     }
 
+    // 如果没有左侧选择器，则总是匹配
     if (!m_left) {
         return true;
     }
 
-    // 查找所有前面的兄弟元素
-    auto parent = element.parent();
+    // 获取父元素
+    const auto parent = element.parent();
     if (!parent) {
-        return false;
+        return false;  // 没有父元素，无法有兄弟元素
     }
 
+    // 获取所有子元素
     const auto& siblings = parent->children();
-    auto        it       = std::ranges::find_if(siblings, [&element](const std::shared_ptr<const Node>& node) { return node.get() == &element; });
 
-    if (it == siblings.begin()) {
-        return false;  // 没有前面的兄弟
+    // 找到当前元素在兄弟列表中的位置
+    auto current_it = std::ranges::find_if(siblings, [&element](const std::shared_ptr<const Node>& node) { return node.get() == &element; });
+
+    if (current_it == siblings.begin()) {
+        return false;  // 当前元素是第一个，没有前面的兄弟
     }
 
-    // 检查所有前面的兄弟元素
-    for (auto prev_it = siblings.begin(); prev_it != it; ++prev_it) {
-        if ((*prev_it)->is_element()) {
-            auto prev_element = (*prev_it)->as_element();
-            if (!prev_element) {
-                continue;
-            }
-            if (m_left->matches(*prev_element)) {
-                return true;
+    // 检查当前元素之前的所有兄弟元素
+    for (auto it = siblings.begin(); it != current_it; ++it) {
+        if ((*it)->is_element()) {
+            auto sibling_element = (*it)->as_element();
+            if (sibling_element && m_left->matches(*sibling_element)) {
+                return true;  // 找到匹配左侧选择器的前面兄弟元素
             }
         }
     }
@@ -353,13 +363,7 @@ void SelectorList::add_selector(std::unique_ptr<CSSSelector> selector) {
 }
 
 bool SelectorList::matches(const Element& element) const {
-    // 选择器列表只要有一个匹配即可
-    for (const auto& selector : m_selectors) {
-        if (selector->matches(element)) {
-            return true;
-        }
-    }
-    return false;
+    return std::ranges::any_of(m_selectors, [&element](const auto& selector) { return selector->matches(element); });
 }
 
 std::string SelectorList::to_string() const {

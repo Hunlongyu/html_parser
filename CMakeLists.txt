@@ -37,6 +37,8 @@ set(SOURCE
     "src/query/query.cpp"
     "src/query/element_query.cpp"
     "src/query/css/css_selector.cpp"
+    "src/query/css/css_parser.cpp"
+    "src/query/css/css_matcher.cpp"
 )
 
 if (HPS_BUILD_SHARED)
