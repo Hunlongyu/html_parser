@@ -1,7 +1,6 @@
 #include "hps/query/element_query.hpp"
 
 #include "hps/core/element.hpp"
-#include "hps/query/css/css_engine.hpp"
 
 #include <algorithm>
 #include <functional>

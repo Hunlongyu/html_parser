@@ -13,6 +13,7 @@ set(EXAMPLES
     css_selector
     css_parser
     css_matcher
+    query_css
 )
 
 foreach(example ${EXAMPLES})
