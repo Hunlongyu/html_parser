@@ -1,6 +1,10 @@
 #pragma once
 
+#include "hps/core/document.hpp"
+#include "hps/core/element.hpp"
+#include "hps/core/node.hpp"
 #include "hps/hps_fwd.hpp"
+#include "hps/query/element_query.hpp"
 #include "hps/version.hpp"
 
 namespace hps {

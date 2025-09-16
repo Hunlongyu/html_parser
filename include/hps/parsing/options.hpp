@@ -217,6 +217,10 @@ class Options {
     size_t max_attribute_value_length = 8192;     ///< 属性值最大长度限制
     size_t max_text_length            = 1048576;  ///< 文本节点最大长度限制（1MB）
 
+    // CSS 解析器配置
+    bool   enable_css3         = true;  ///< 启用CSS3特性支持（伪类、伪元素等）
+    size_t max_css3_cache_size = 1000;  ///< 最大缓存条目数量
+
     // 自定义配置
     std::unordered_set<std::string> void_elements;  ///< 自定义void元素列表，为空时使用默认列表
 

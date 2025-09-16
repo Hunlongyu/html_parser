@@ -337,6 +337,14 @@ ElementQuery ElementQuery::siblings() const {
     return ElementQuery(std::move(siblings));
 }
 
+ElementQuery ElementQuery::css(std::string_view selector) const {
+    return {};
+}
+
+ElementQuery ElementQuery::xpath(std::string_view expression) const {
+    return {};
+}
+
 // 高级查询方法
 ElementQuery ElementQuery::filter(std::function<bool(const Element&)> predicate) const {
     std::vector<std::shared_ptr<const Element>> filtered;

@@ -5,6 +5,8 @@
 #include "hps/query/element_query.hpp"
 #include "hps/utils/string_utils.hpp"
 
+//#include "hps/query/css/css_engine.hpp"
+
 #include <algorithm>
 #include <sstream>
 
@@ -117,9 +119,8 @@ std::vector<std::shared_ptr<const Element>> Element::get_elements_by_class_name(
     return result;
 }
 
-ElementQuery Element::css(std::string_view selector) const {
-    // TODO: Implement ElementQuery integration.
-    // This will likely involve creating an ElementQuery object with the current element as context.
+ElementQuery Element::css(const std::string_view selector) const {
+    //return CSSEngine::query(*this, selector);
     return {};
 }
 

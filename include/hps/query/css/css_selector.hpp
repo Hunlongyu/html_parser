@@ -1,5 +1,7 @@
 #pragma once
 
+#include <algorithm>
+#include <cctype>
 #include <memory>
 #include <string>
 #include <vector>
@@ -10,15 +12,18 @@ class Element;
 
 // CSS选择器类型枚举
 enum class SelectorType {
-    Universal,   // *
-    Type,        // div, p, span
-    Class,       // .class-name
-    Id,          // #id-name
-    Attribute,   // [attr], [attr=value]
-    Descendant,  // div p (空格)
-    Child,       // div > p
-    Adjacent,    // div + p
-    Sibling      // div ~ p
+    Universal,     // *
+    Type,          // div, p, span
+    Class,         // .class-name
+    Id,            // #id-name
+    Attribute,     // [attr], [attr=value]
+    Descendant,    // div p (空格)
+    Child,         // div > p
+    Adjacent,      // div + p
+    Sibling,       // div ~ p
+    Compound,      // div.class#id
+    PseudoClass,   // :hover, :first-child
+    PseudoElement  // ::before, ::after
 };
 
 // 属性选择器操作符
@@ -32,17 +37,53 @@ enum class AttributeOperator {
     LangMatch    // [attr|=value]
 };
 
+// 选择器优先级结构
+struct SelectorSpecificity {
+    int inline_style = 0;  // 内联样式
+    int ids          = 0;  // ID选择器数量
+    int classes      = 0;  // 类、属性、伪类选择器数量
+    int elements     = 0;  // 元素、伪元素选择器数量
+
+    // 比较优先级
+    bool operator<(const SelectorSpecificity& other) const {
+        if (inline_style != other.inline_style)
+            return inline_style < other.inline_style;
+        if (ids != other.ids)
+            return ids < other.ids;
+        if (classes != other.classes)
+            return classes < other.classes;
+        return elements < other.elements;
+    }
+
+    bool operator==(const SelectorSpecificity& other) const {
+        return inline_style == other.inline_style && ids == other.ids && classes == other.classes && elements == other.elements;
+    }
+};
+
 // CSS选择器AST节点基类
 class CSSSelector {
   public:
-    explicit CSSSelector(SelectorType type) : m_type(type) {}
+    explicit CSSSelector(const SelectorType type) : m_type(type) {}
     virtual ~CSSSelector() = default;
 
-    SelectorType type() const {
+    // 禁用拷贝，只允许移动
+    CSSSelector(const CSSSelector&)            = delete;
+    CSSSelector& operator=(const CSSSelector&) = delete;
+    CSSSelector(CSSSelector&&)                 = default;
+    CSSSelector& operator=(CSSSelector&&)      = default;
+
+    [[nodiscard]] SelectorType type() const noexcept {
         return m_type;
     }
-    virtual bool        matches(const Element& element) const = 0;
-    virtual std::string to_string() const                     = 0;
+
+    [[nodiscard]] virtual bool                matches(const Element& element) const = 0;
+    [[nodiscard]] virtual std::string         to_string() const                     = 0;
+    [[nodiscard]] virtual SelectorSpecificity calculate_specificity() const         = 0;
+
+    // 快速匹配检查（可选优化）
+    [[nodiscard]] virtual bool can_quick_reject(const Element& element) const {
+        return false;
+    }
 
   protected:
     SelectorType m_type;
@@ -52,24 +93,43 @@ class CSSSelector {
 class UniversalSelector : public CSSSelector {
   public:
     UniversalSelector() : CSSSelector(SelectorType::Universal) {}
-    bool        matches(const Element& element) const override;
-    std::string to_string() const override {
+
+    [[nodiscard]] bool matches(const Element& element) const override {
+        return true;  // 通用选择器匹配所有元素
+    }
+
+    [[nodiscard]] std::string to_string() const override {
         return "*";
+    }
+
+    [[nodiscard]] SelectorSpecificity calculate_specificity() const override {
+        return {.inline_style = 0, .ids = 0, .classes = 0, .elements = 0};  // 通用选择器优先级为0
     }
 };
 
 // 类型选择器 div, p, span
 class TypeSelector : public CSSSelector {
   public:
-    explicit TypeSelector(std::string tag_name) : CSSSelector(SelectorType::Type), m_tag_name(std::move(tag_name)) {}
+    explicit TypeSelector(std::string tag_name) : CSSSelector(SelectorType::Type), m_tag_name(std::move(tag_name)) {
+        // 转换为小写以支持大小写不敏感匹配
+        std::ranges::transform(m_tag_name, m_tag_name.begin(), [](const char c) { return std::tolower(c); });
+    }
 
-    bool        matches(const Element& element) const override;
-    std::string to_string() const override {
+    [[nodiscard]] bool matches(const Element& element) const override;
+
+    [[nodiscard]] std::string to_string() const override {
         return m_tag_name;
     }
-    const std::string& tag_name() const {
+
+    [[nodiscard]] const std::string& tag_name() const noexcept {
         return m_tag_name;
     }
+
+    [[nodiscard]] SelectorSpecificity calculate_specificity() const override {
+        return {.inline_style = 0, .ids = 0, .classes = 0, .elements = 1};  // 元素选择器优先级为1
+    }
+
+    [[nodiscard]] bool can_quick_reject(const Element& element) const override;
 
   private:
     std::string m_tag_name;
@@ -80,13 +140,21 @@ class ClassSelector : public CSSSelector {
   public:
     explicit ClassSelector(std::string class_name) : CSSSelector(SelectorType::Class), m_class_name(std::move(class_name)) {}
 
-    bool        matches(const Element& element) const override;
-    std::string to_string() const override {
+    [[nodiscard]] bool matches(const Element& element) const override;
+
+    [[nodiscard]] std::string to_string() const override {
         return "." + m_class_name;
     }
-    const std::string& class_name() const {
+
+    [[nodiscard]] const std::string& class_name() const noexcept {
         return m_class_name;
     }
+
+    [[nodiscard]] SelectorSpecificity calculate_specificity() const override {
+        return {.inline_style = 0, .ids = 0, .classes = 1, .elements = 0};  // 类选择器优先级为10
+    }
+
+    [[nodiscard]] bool can_quick_reject(const Element& element) const override;
 
   private:
     std::string m_class_name;
@@ -97,13 +165,21 @@ class IdSelector : public CSSSelector {
   public:
     explicit IdSelector(std::string id_name) : CSSSelector(SelectorType::Id), m_id_name(std::move(id_name)) {}
 
-    bool        matches(const Element& element) const override;
-    std::string to_string() const override {
+    [[nodiscard]] bool matches(const Element& element) const override;
+
+    [[nodiscard]] std::string to_string() const override {
         return "#" + m_id_name;
     }
-    const std::string& id_name() const {
+
+    [[nodiscard]] const std::string& id_name() const noexcept {
         return m_id_name;
     }
+
+    [[nodiscard]] SelectorSpecificity calculate_specificity() const override {
+        return {.inline_style = 0, .ids = 1, .classes = 0, .elements = 0};  // ID选择器优先级为100
+    }
+
+    [[nodiscard]] bool can_quick_reject(const Element& element) const override;
 
   private:
     std::string m_id_name;
@@ -112,37 +188,55 @@ class IdSelector : public CSSSelector {
 // 属性选择器 [attr], [attr=value]
 class AttributeSelector : public CSSSelector {
   public:
-    AttributeSelector(std::string attr_name, AttributeOperator op, std::string value = "") : CSSSelector(SelectorType::Attribute), m_attr_name(std::move(attr_name)), m_operator(op), m_value(std::move(value)) {}
+    AttributeSelector(std::string attr_name, AttributeOperator op, std::string value = "") : CSSSelector(SelectorType::Attribute), m_attr_name(std::move(attr_name)), m_operator(op), m_value(std::move(value)) {
+        // 属性名转换为小写
+        std::ranges::transform(m_attr_name, m_attr_name.begin(), [](const char c) { return std::tolower(c); });
+    }
 
-    bool        matches(const Element& element) const override;
-    std::string to_string() const override;
+    [[nodiscard]] bool        matches(const Element& element) const override;
+    [[nodiscard]] std::string to_string() const override;
 
-    const std::string& attr_name() const {
+    [[nodiscard]] const std::string& attr_name() const noexcept {
         return m_attr_name;
     }
-    AttributeOperator operator_type() const {
+
+    [[nodiscard]] AttributeOperator operator_type() const noexcept {
         return m_operator;
     }
-    const std::string& value() const {
+
+    [[nodiscard]] const std::string& value() const noexcept {
         return m_value;
+    }
+
+    [[nodiscard]] SelectorSpecificity calculate_specificity() const override {
+        return {.inline_style = 0, .ids = 0, .classes = 1, .elements = 0};  // 属性选择器优先级为10
     }
 
   private:
     std::string       m_attr_name;
     AttributeOperator m_operator;
     std::string       m_value;
+
+    [[nodiscard]] bool matches_attribute_value(std::string_view attr_value) const;
 };
 
 // 组合选择器基类
 class CombinatorSelector : public CSSSelector {
   public:
-    CombinatorSelector(SelectorType type, std::unique_ptr<CSSSelector> left, std::unique_ptr<CSSSelector> right) : CSSSelector(type), m_left(std::move(left)), m_right(std::move(right)) {}
+    CombinatorSelector(const SelectorType type, std::unique_ptr<CSSSelector> left, std::unique_ptr<CSSSelector> right) : CSSSelector(type), m_left(std::move(left)), m_right(std::move(right)) {}
 
-    const CSSSelector* left() const {
+    [[nodiscard]] const CSSSelector* left() const noexcept {
         return m_left.get();
     }
-    const CSSSelector* right() const {
+
+    [[nodiscard]] const CSSSelector* right() const noexcept {
         return m_right.get();
+    }
+
+    [[nodiscard]] SelectorSpecificity calculate_specificity() const override {
+        const auto left_spec  = m_left ? m_left->calculate_specificity() : SelectorSpecificity{};
+        const auto right_spec = m_right ? m_right->calculate_specificity() : SelectorSpecificity{};
+        return {.inline_style = left_spec.inline_style + right_spec.inline_style, .ids = left_spec.ids + right_spec.ids, .classes = left_spec.classes + right_spec.classes, .elements = left_spec.elements + right_spec.elements};
     }
 
   protected:
@@ -155,8 +249,8 @@ class DescendantSelector : public CombinatorSelector {
   public:
     DescendantSelector(std::unique_ptr<CSSSelector> left, std::unique_ptr<CSSSelector> right) : CombinatorSelector(SelectorType::Descendant, std::move(left), std::move(right)) {}
 
-    bool        matches(const Element& element) const override;
-    std::string to_string() const override;
+    [[nodiscard]] bool        matches(const Element& element) const override;
+    [[nodiscard]] std::string to_string() const override;
 };
 
 // 子选择器 div > p
@@ -164,24 +258,59 @@ class ChildSelector : public CombinatorSelector {
   public:
     ChildSelector(std::unique_ptr<CSSSelector> left, std::unique_ptr<CSSSelector> right) : CombinatorSelector(SelectorType::Child, std::move(left), std::move(right)) {}
 
-    bool        matches(const Element& element) const override;
-    std::string to_string() const override;
+    [[nodiscard]] bool        matches(const Element& element) const override;
+    [[nodiscard]] std::string to_string() const override;
+};
+
+// 相邻兄弟选择器 div + p
+class AdjacentSiblingSelector : public CombinatorSelector {
+  public:
+    AdjacentSiblingSelector(std::unique_ptr<CSSSelector> left, std::unique_ptr<CSSSelector> right) : CombinatorSelector(SelectorType::Adjacent, std::move(left), std::move(right)) {}
+
+    [[nodiscard]] bool        matches(const Element& element) const override;
+    [[nodiscard]] std::string to_string() const override;
+};
+
+// 通用兄弟选择器 div ~ p
+class GeneralSiblingSelector : public CombinatorSelector {
+  public:
+    GeneralSiblingSelector(std::unique_ptr<CSSSelector> left, std::unique_ptr<CSSSelector> right) : CombinatorSelector(SelectorType::Sibling, std::move(left), std::move(right)) {}
+
+    [[nodiscard]] bool        matches(const Element& element) const override;
+    [[nodiscard]] std::string to_string() const override;
 };
 
 // 复合选择器 - 用于组合多个简单选择器 (如 div.class#id)
 class CompoundSelector : public CSSSelector {
   public:
-    CompoundSelector() : CSSSelector(SelectorType::Type) {}  // 使用Type作为默认类型
+    CompoundSelector() : CSSSelector(SelectorType::Compound) {}
 
-    void        add_selector(std::unique_ptr<CSSSelector> selector);
-    bool        matches(const Element& element) const override;
-    std::string to_string() const override;
+    void                      add_selector(std::unique_ptr<CSSSelector> selector);
+    [[nodiscard]] bool        matches(const Element& element) const override;
+    [[nodiscard]] std::string to_string() const override;
 
-    const std::vector<std::unique_ptr<CSSSelector>>& selectors() const {
+    [[nodiscard]] SelectorSpecificity calculate_specificity() const override {
+        SelectorSpecificity total{.inline_style = 0, .ids = 0, .classes = 0, .elements = 0};
+        for (const auto& selector : m_selectors) {
+            const auto [inline_style, ids, classes, elements] = selector->calculate_specificity();
+            total.inline_style += inline_style;
+            total.ids += ids;
+            total.classes += classes;
+            total.elements += elements;
+        }
+        return total;
+    }
+
+    [[nodiscard]] const std::vector<std::unique_ptr<CSSSelector>>& selectors() const noexcept {
         return m_selectors;
     }
-    bool empty() const {
+
+    [[nodiscard]] bool empty() const noexcept {
         return m_selectors.empty();
+    }
+
+    [[nodiscard]] size_t size() const noexcept {
+        return m_selectors.size();
     }
 
   private:
@@ -191,22 +320,34 @@ class CompoundSelector : public CSSSelector {
 // 选择器列表 - 用于逗号分隔的选择器组 (如 div, p, .class)
 class SelectorList {
   public:
-    void        add_selector(std::unique_ptr<CSSSelector> selector);
-    bool        matches(const Element& element) const;
-    std::string to_string() const;
+    void                      add_selector(std::unique_ptr<CSSSelector> selector);
+    [[nodiscard]] bool        matches(const Element& element) const;
+    [[nodiscard]] std::string to_string() const;
 
-    const std::vector<std::unique_ptr<CSSSelector>>& selectors() const {
+    // 获取最高优先级
+    [[nodiscard]] SelectorSpecificity get_max_specificity() const {
+        SelectorSpecificity max_spec{.inline_style = 0, .ids = 0, .classes = 0, .elements = 0};
+        for (const auto& selector : m_selectors) {
+            if (auto spec = selector->calculate_specificity(); max_spec < spec) {
+                max_spec = spec;
+            }
+        }
+        return max_spec;
+    }
+
+    [[nodiscard]] const std::vector<std::unique_ptr<CSSSelector>>& selectors() const noexcept {
         return m_selectors;
     }
-    bool empty() const {
+
+    [[nodiscard]] bool empty() const noexcept {
         return m_selectors.empty();
     }
-    size_t size() const {
+
+    [[nodiscard]] size_t size() const noexcept {
         return m_selectors.size();
     }
 
   private:
     std::vector<std::unique_ptr<CSSSelector>> m_selectors;
 };
-
 }  // namespace hps

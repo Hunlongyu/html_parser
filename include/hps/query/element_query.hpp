@@ -97,6 +97,11 @@ class ElementQuery {
     [[nodiscard]] ElementQuery prev_siblings() const;
     [[nodiscard]] ElementQuery siblings() const;
 
+    // CSS 查询方法
+    [[nodiscard]] ElementQuery css(std::string_view selector) const;
+    // XPath 查询方法
+    [[nodiscard]] ElementQuery xpath(std::string_view expression) const;
+
     // 高级查询方法
     [[nodiscard]] ElementQuery filter(std::function<bool(const Element&)> predicate) const;
     [[nodiscard]] ElementQuery not_(std::string_view selector) const;
