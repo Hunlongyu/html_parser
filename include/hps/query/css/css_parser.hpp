@@ -99,13 +99,13 @@ class CSSLexer {
      * @brief 检查是否还有更多标记
      * @return 如果还有标记返回true，否则返回false
      */
-    bool has_more_tokens() const;
+    [[nodiscard]] bool has_more_tokens() const;
 
     /**
      * @brief 获取当前字符位置
      * @return 当前字符在输入字符串中的位置
      */
-    size_t current_position() const {
+    [[nodiscard]] size_t current_position() const {
         return m_position;
     }
 
@@ -113,7 +113,7 @@ class CSSLexer {
      * @brief 获取当前行号
      * @return 当前行号（从1开始）
      */
-    size_t current_line() const {
+    [[nodiscard]] size_t current_line() const {
         return m_line;
     }
 
@@ -121,7 +121,7 @@ class CSSLexer {
      * @brief 获取当前列号
      * @return 当前列号（从1开始）
      */
-    size_t current_column() const {
+    [[nodiscard]] size_t current_column() const {
         return m_column;
     }
 

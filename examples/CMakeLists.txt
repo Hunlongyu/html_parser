@@ -14,6 +14,8 @@ set(EXAMPLES
     css_parser
     css_matcher
     query_css
+
+    debug_sibling
 )
 
 foreach(example ${EXAMPLES})
