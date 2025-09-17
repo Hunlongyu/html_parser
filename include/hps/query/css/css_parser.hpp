@@ -42,8 +42,10 @@ class CSSLexer {
         WordMatch,     ///< 单词匹配：~= (属性值单词匹配)
         LangMatch,     ///< 语言匹配：|= (属性值语言匹配)
         String,        ///< 字符串字面量："value" 或 'value'
+        Number,        ///< 数字：123, 3.14 (用于nth-child表达式)
         Greater,       ///< 大于号：> (子选择器组合器)
         Plus,          ///< 加号：+ (相邻兄弟选择器组合器)
+        Minus,         ///< 减号：- (用于nth-child表达式)
         Tilde,         ///< 波浪号：~ (一般兄弟选择器组合器)
         Comma,         ///< 逗号：, (选择器列表分隔符)
         Whitespace,    ///< 空白字符：空格、制表符、换行符 (后代选择器组合器)

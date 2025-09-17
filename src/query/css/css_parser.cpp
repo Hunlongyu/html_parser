@@ -2,11 +2,10 @@
 
 #include "hps/core/element.hpp"
 #include "hps/utils/exception.hpp"
+#include "hps/utils/string_utils.hpp"
 
 #include <algorithm>
 #include <cctype>
-#include <codecvt>
-#include <locale>
 #include <regex>
 
 namespace hps {
@@ -15,82 +14,6 @@ namespace hps {
 
 CSSLexer::CSSLexer(const std::string_view input) : m_input(input), m_position(0), m_line(1), m_column(1) {
     preprocess();
-}
-
-// UTF-8 辅助函数
-static bool is_utf8_start_byte(const unsigned char c) {
-    return (c & 0x80) == 0 || (c & 0xE0) == 0xC0 || (c & 0xF0) == 0xE0 || (c & 0xF8) == 0xF0;
-}
-
-static int utf8_char_length(const unsigned char c) {
-    if ((c & 0x80) == 0)
-        return 1;  // 0xxxxxxx - ASCII
-    if ((c & 0xE0) == 0xC0)
-        return 2;  // 110xxxxx - 2字节UTF-8
-    if ((c & 0xF0) == 0xE0)
-        return 3;  // 1110xxxx - 3字节UTF-8
-    if ((c & 0xF8) == 0xF0)
-        return 4;  // 11110xxx - 4字节UTF-8
-    return 1;      // 无效字节，按1字节处理
-}
-
-static bool is_valid_identifier_start(const std::string& input, const size_t pos) {
-    if (pos >= input.size())
-        return false;
-
-    const unsigned char c = static_cast<unsigned char>(input[pos]);
-
-    // ASCII字母、下划线、连字符
-    if (std::isalpha(c) || c == '_' || c == '-') {
-        return true;
-    }
-
-    // UTF-8多字节字符（中文等）
-    if (c >= 0x80) {
-        const int len = utf8_char_length(c);
-        if (pos + len <= input.size()) {
-            // 简单检查：如果是多字节UTF-8序列，认为是有效的标识符字符
-            bool valid_sequence = true;
-            for (int i = 1; i < len; ++i) {
-                if (pos + i >= input.size() || (static_cast<unsigned char>(input[pos + i]) & 0xC0) != 0x80) {
-                    valid_sequence = false;
-                    break;
-                }
-            }
-            return valid_sequence;
-        }
-    }
-
-    return false;
-}
-
-static bool is_valid_identifier_char(const std::string& input, const size_t pos) {
-    if (pos >= input.size())
-        return false;
-
-    const unsigned char c = static_cast<unsigned char>(input[pos]);
-
-    // ASCII字母、数字、下划线、连字符
-    if (std::isalnum(c) || c == '_' || c == '-') {
-        return true;
-    }
-
-    // UTF-8多字节字符
-    if (c >= 0x80) {
-        const int len = utf8_char_length(c);
-        if (pos + len <= input.size()) {
-            bool valid_sequence = true;
-            for (int i = 1; i < len; ++i) {
-                if (pos + i >= input.size() || (static_cast<unsigned char>(input[pos + i]) & 0xC0) != 0x80) {
-                    valid_sequence = false;
-                    break;
-                }
-            }
-            return valid_sequence;
-        }
-    }
-
-    return false;
 }
 
 void CSSLexer::preprocess() {
@@ -171,7 +94,7 @@ CSSLexer::CSSToken CSSLexer::read_next_token() {
     size_t     start_pos = m_position;
 
     // 检查是否是空白字符，如果是则返回Whitespace token
-    if (std::isspace(c)) {
+    if (safe_isspace(c)) {
         // 跳过连续的空白字符
         while (m_position < m_processed_input.size() && std::isspace(m_processed_input[m_position])) {
             update_position(m_processed_input[m_position]);
@@ -179,13 +102,6 @@ CSSLexer::CSSToken CSSLexer::read_next_token() {
         }
         return {CSSTokenType::Whitespace, " ", start_pos};
     }
-
-    // 安全的字符类型检查 - 确保字符在有效范围内
-    auto safe_isalnum = [](const char ch) -> bool { return static_cast<unsigned char>(ch) <= 255 && std::isalnum(static_cast<unsigned char>(ch)); };
-
-    auto safe_isalpha = [](const char ch) -> bool { return static_cast<unsigned char>(ch) <= 255 && std::isalpha(static_cast<unsigned char>(ch)); };
-
-    auto safe_isdigit = [](const char ch) -> bool { return static_cast<unsigned char>(ch) <= 255 && std::isdigit(static_cast<unsigned char>(ch)); };
 
     switch (c) {
         case '#': {
@@ -296,6 +212,11 @@ CSSLexer::CSSToken CSSLexer::read_next_token() {
             return {CSSTokenType::RightParen, ")", start_pos};
         }
 
+        case '-': {
+            advance();
+            return {CSSTokenType::Minus, "-", start_pos};
+        }
+
         case '"':
         case '\'': {
             std::string str = read_string(c);
@@ -303,14 +224,14 @@ CSSLexer::CSSToken CSSLexer::read_next_token() {
         }
 
         default: {
+            if (safe_isdigit(c)) {
+                std::string number = read_number();
+                return {CSSTokenType::Number, number, start_pos};
+            }
+
             if (is_valid_identifier_start(m_processed_input, m_position)) {
                 std::string identifier = read_identifier();
                 return {CSSTokenType::Identifier, identifier, start_pos};
-            }
-
-            if (safe_isdigit(c)) {
-                std::string number = read_number();
-                return {CSSTokenType::Identifier, number, start_pos};
             }
 
             // 对于无法识别的字符，提供更详细的错误信息
@@ -322,6 +243,14 @@ CSSLexer::CSSToken CSSLexer::read_next_token() {
                 error_msg += std::string(1, c);
             }
             error_msg += "'";
+            
+            // 添加调试信息
+            error_msg += " at position " + std::to_string(m_position);
+            error_msg += ", processed_input size: " + std::to_string(m_processed_input.size());
+            if (m_position < m_processed_input.size()) {
+                error_msg += ", char code: " + std::to_string(static_cast<unsigned char>(c));
+            }
+            
             throw_lexer_error(error_msg);
         }
     }
@@ -434,9 +363,6 @@ std::string CSSLexer::read_string(const char quote) {
 
 std::string CSSLexer::read_number() {
     std::string result;
-
-    // 安全的数字字符检查
-    auto safe_isdigit = [](const char ch) -> bool { return static_cast<unsigned char>(ch) <= 255 && std::isdigit(static_cast<unsigned char>(ch)); };
 
     while (m_position < m_processed_input.size()) {
         const char c = current_char();
@@ -721,11 +647,38 @@ std::unique_ptr<CSSSelector> CSSParser::parse_pseudo_class() {
     if (match_token(CSSLexer::CSSTokenType::LeftParen)) {
         consume_token(CSSLexer::CSSTokenType::LeftParen);
 
-        // 读取参数（简化处理）
-        const auto arg_token = m_lexer.next_token();
-        if (arg_token.type == CSSLexer::CSSTokenType::Identifier || arg_token.type == CSSLexer::CSSTokenType::String) {
-            argument = arg_token.value;
+        // 读取完整的参数，支持属性选择器和伪类选择器
+        std::string argument_parts;
+        while (has_more_tokens() && !match_token(CSSLexer::CSSTokenType::RightParen)) {
+            const auto token = m_lexer.next_token();
+            if (token.type == CSSLexer::CSSTokenType::Identifier || 
+                token.type == CSSLexer::CSSTokenType::String ||
+                token.type == CSSLexer::CSSTokenType::Number ||
+                token.type == CSSLexer::CSSTokenType::Plus ||
+                token.type == CSSLexer::CSSTokenType::Minus ||
+                token.type == CSSLexer::CSSTokenType::LeftBracket ||
+                token.type == CSSLexer::CSSTokenType::RightBracket ||
+                token.type == CSSLexer::CSSTokenType::Equals ||
+                token.type == CSSLexer::CSSTokenType::Contains ||
+                token.type == CSSLexer::CSSTokenType::StartsWith ||
+                token.type == CSSLexer::CSSTokenType::EndsWith ||
+                token.type == CSSLexer::CSSTokenType::WordMatch ||
+                token.type == CSSLexer::CSSTokenType::LangMatch ||
+                token.type == CSSLexer::CSSTokenType::Hash ||
+                token.type == CSSLexer::CSSTokenType::Dot ||
+                token.type == CSSLexer::CSSTokenType::Star ||
+                token.type == CSSLexer::CSSTokenType::Colon ||
+                token.type == CSSLexer::CSSTokenType::DoubleColon) {
+                argument_parts += token.value;
+            } else if (token.type == CSSLexer::CSSTokenType::Whitespace) {
+                // 跳过空白字符，但保持表达式的连续性
+                continue;
+            } else {
+                // 遇到意外的token，停止解析
+                break;
+            }
         }
+        argument = argument_parts;
 
         consume_token(CSSLexer::CSSTokenType::RightParen);
     }
@@ -738,6 +691,18 @@ std::unique_ptr<CSSSelector> CSSParser::parse_pseudo_class() {
         type = PseudoClassSelector::PseudoType::LastChild;
     } else if (name == "nth-child") {
         type = PseudoClassSelector::PseudoType::NthChild;
+    } else if (name == "nth-last-child") {
+        type = PseudoClassSelector::PseudoType::NthLastChild;
+    } else if (name == "first-of-type") {
+        type = PseudoClassSelector::PseudoType::FirstOfType;
+    } else if (name == "last-of-type") {
+        type = PseudoClassSelector::PseudoType::LastOfType;
+    } else if (name == "only-child") {
+        type = PseudoClassSelector::PseudoType::OnlyChild;
+    } else if (name == "only-of-type") {
+        type = PseudoClassSelector::PseudoType::OnlyOfType;
+    } else if (name == "not") {
+        type = PseudoClassSelector::PseudoType::Not;
     } else if (name == "empty") {
         type = PseudoClassSelector::PseudoType::Empty;
     } else if (name == "root") {
@@ -1019,9 +984,6 @@ bool PseudoClassSelector::matches(const Element& element) const {
             // :empty - 检查元素是否为空（无子元素和文本内容）
             auto children = element.children();
 
-            // 安全的空白字符检查函数
-            auto safe_isspace = [](const char ch) -> bool { return static_cast<unsigned char>(ch) <= 255 && std::isspace(static_cast<unsigned char>(ch)); };
-
             for (const auto& child : children) {
                 if (child->type() == NodeType::Element) {
                     return false;
@@ -1151,9 +1113,6 @@ bool PseudoClassSelector::matches_nth_expression(const std::string& expression, 
     if (expression == "even") {
         return index % 2 == 0;
     }
-
-    // 安全的数字字符检查
-    auto safe_isdigit = [](const char ch) -> bool { return static_cast<unsigned char>(ch) <= 255 && std::isdigit(static_cast<unsigned char>(ch)); };
 
     // 处理纯数字
     if (std::ranges::all_of(expression, safe_isdigit)) {
@@ -1337,11 +1296,6 @@ std::string normalize_selector(const std::string_view selector) {
     bool in_string      = false;
     char string_quote   = '\0';
     bool last_was_space = false;
-
-    // 安全的字符类型检查函数
-    auto safe_isspace = [](const char ch) -> bool { return static_cast<unsigned char>(ch) <= 255 && std::isspace(static_cast<unsigned char>(ch)); };
-
-    auto safe_tolower = [](const char ch) -> char { return static_cast<unsigned char>(ch) <= 255 ? std::tolower(static_cast<unsigned char>(ch)) : ch; };
 
     for (const char c : selector) {
         if (!in_string && (c == '"' || c == '\'')) {
