@@ -75,6 +75,24 @@ std::shared_ptr<const Node> Node::next_sibling() const noexcept {
     return nullptr;
 }
 
+std::vector<std::shared_ptr<const Node>> Node::siblings() const noexcept {
+    std::vector<std::shared_ptr<const Node>> result;
+    if (m_parent.expired()) {
+        return result;
+    }
+    const auto shared_parent = m_parent.lock();
+    if (!shared_parent) {
+        return result;
+    }
+    const auto& parent_children = shared_parent->m_children;
+    for (const auto& child : parent_children) {
+        if (child.get() != this) {
+            result.push_back(child);
+        }
+    }
+    return result;
+}
+
 void Node::append_child(const std::shared_ptr<Node>& child) {
     if (!child) {
         return;
@@ -82,20 +100,6 @@ void Node::append_child(const std::shared_ptr<Node>& child) {
     child->remove_from_parent();
     m_children.push_back(child);
     child->set_parent(shared_from_this());
-}
-
-void Node::insert_before(const std::shared_ptr<Node>& new_child, const Node* ref_child) {
-    if (!new_child || !ref_child) {
-        return;
-    }
-    new_child->remove_from_parent();
-    const auto it = std::ranges::find_if(m_children, [ref_child](const std::shared_ptr<Node>& c) { return c.get() == ref_child; });
-    if (it != m_children.end()) {
-        m_children.insert(it, new_child);
-        new_child->set_parent(shared_from_this());
-    } else {
-        append_child(new_child);
-    }
 }
 
 void Node::remove_child(const Node* child) {

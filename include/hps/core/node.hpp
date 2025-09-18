@@ -110,6 +110,12 @@ class Node : public std::enable_shared_from_this<Node> {
      */
     [[nodiscard]] std::shared_ptr<const Node> next_sibling() const noexcept;
 
+    /**
+     * @brief 获取所有兄弟节点
+     * @return 包含所有兄弟节点的 vector，不包括当前节点自身
+     */
+    [[nodiscard]] std::vector<std::shared_ptr<const Node>> siblings() const noexcept;
+
     // Content
     /**
      * @brief 获取节点的文本内容 (虚函数)
