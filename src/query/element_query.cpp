@@ -3,6 +3,7 @@
 #include "hps/core/element.hpp"
 #include "hps/query/css/css_parser.hpp"
 #include "hps/query/query.hpp"
+#include "hps/query/css/css_utils.hpp"
 
 #include <algorithm>
 #include <span>

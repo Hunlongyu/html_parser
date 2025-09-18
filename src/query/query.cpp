@@ -2,7 +2,7 @@
 
 #include "hps/core/element.hpp"
 #include "hps/query/css/css_matcher.hpp"
-#include "hps/query/css/css_parser.hpp"
+#include "hps/query/css/css_utils.hpp"
 #include "hps/query/element_query.hpp"
 
 namespace hps {

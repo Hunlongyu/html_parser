@@ -381,14 +381,14 @@ class ElementQuery {
      * @param callback 回调函数 Callback function
      * @return 当前 ElementQuery Current ElementQuery
      */
-    [[nodiscard]] ElementQuery each(const std::function<void(const Element&)>& callback) const;
+    ElementQuery each(const std::function<void(const Element&)>& callback) const;
 
     /**
      * @brief 遍历每个元素并执行带索引的回调函数 Iterate over each element and execute callback function with index
      * @param callback 回调函数 Callback function
      * @return 当前 ElementQuery Current ElementQuery
      */
-    [[nodiscard]] ElementQuery each(const std::function<void(size_t, const Element&)>& callback) const;
+    ElementQuery each(const std::function<void(size_t, const Element&)>& callback) const;
 
     // 布尔检查方法 Boolean check methods
 
