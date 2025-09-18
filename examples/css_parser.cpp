@@ -41,7 +41,7 @@ void print_selector_list(const std::unique_ptr<SelectorList>& list) {
 }
 
 // 辅助函数：打印解析错误
-void print_errors(const std::vector<ParseError>& errors) {
+void print_errors(const std::vector<HPSError>& errors) {
     if (errors.empty()) {
         std::cout << "No parsing errors." << std::endl;
         return;

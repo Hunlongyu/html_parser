@@ -90,7 +90,7 @@ std::shared_ptr<Document> HTMLParser::parse_file(const std::string_view filePath
     }
 }
 
-const std::vector<ParseError>& HTMLParser::get_errors() const noexcept {
+const std::vector<HPSError>& HTMLParser::get_errors() const noexcept {
     return m_errors;
 }
 }  // namespace hps

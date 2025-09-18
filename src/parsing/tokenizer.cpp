@@ -110,7 +110,7 @@ size_t Tokenizer::total_length() const noexcept {
     return m_source.length();
 }
 
-const std::vector<ParseError>& Tokenizer::get_errors() const noexcept {
+const std::vector<HPSError>& Tokenizer::get_errors() const noexcept {
     return m_errors;
 }
 

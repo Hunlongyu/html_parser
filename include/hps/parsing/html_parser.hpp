@@ -61,10 +61,10 @@ class HTMLParser : public NonCopyable {
      * @brief 获取解析过程中的错误列表
      * @return 错误列表的常量引用
      */
-    [[nodiscard]] const std::vector<ParseError>& get_errors() const noexcept;
+    [[nodiscard]] const std::vector<HPSError>& get_errors() const noexcept;
 
   private:
-    std::vector<ParseError> m_errors;  ///< 解析错误列表
+    std::vector<HPSError> m_errors;  ///< 解析错误列表
 };
 
 }  // namespace hps

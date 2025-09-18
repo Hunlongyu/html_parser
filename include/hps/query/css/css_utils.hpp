@@ -9,7 +9,8 @@
 #include <vector>
 
 namespace hps {
-static bool is_valid_selector(const std::string_view selector) {
+
+inline bool is_valid_selector(const std::string_view selector) {
     try {
         CSSParser  parser(selector);
         const auto result = parser.parse_selector_list();
@@ -19,7 +20,7 @@ static bool is_valid_selector(const std::string_view selector) {
     }
 }
 
-static std::string normalize_selector(const std::string_view selector) {
+inline std::string normalize_selector(const std::string_view selector) {
     // 移除多余空格，统一格式
     std::string result;
     result.reserve(selector.size());
@@ -61,7 +62,7 @@ static std::string normalize_selector(const std::string_view selector) {
     return result;
 }
 
-static std::unique_ptr<SelectorList> parse_css_selector(const std::string_view selector, const Options& options) {
+inline std::unique_ptr<SelectorList> parse_css_selector(const std::string_view selector, const Options& options) {
     const std::string normalized = normalize_selector(selector);
     CSSParser         parser(normalized, options);  // 使用规范化后的选择器字符串
     auto              result = parser.parse_selector_list();
@@ -71,11 +72,11 @@ static std::unique_ptr<SelectorList> parse_css_selector(const std::string_view s
     return result;
 }
 
-static std::unique_ptr<SelectorList> parse_css_selector(const std::string_view selector) {
+inline std::unique_ptr<SelectorList> parse_css_selector(const std::string_view selector) {
     return parse_css_selector(selector, Options{});
 }
 
-static std::vector<std::unique_ptr<SelectorList>> parse_css_selectors(const std::vector<std::string_view>& selectors) {
+inline std::vector<std::unique_ptr<SelectorList>> parse_css_selectors(const std::vector<std::string_view>& selectors) {
     std::vector<std::unique_ptr<SelectorList>> results;
     results.reserve(selectors.size());
 

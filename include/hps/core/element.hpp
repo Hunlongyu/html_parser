@@ -3,8 +3,6 @@
 #include "hps/core/attribute.hpp"
 #include "hps/core/node.hpp"
 
-#include <unordered_set>
-
 namespace hps {
 
 class ElementQuery;

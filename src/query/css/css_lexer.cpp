@@ -384,6 +384,6 @@ void CSSLexer::update_position(const char c) {
 }
 
 void CSSLexer::throw_lexer_error(const std::string& message) const {
-    throw HPSException(ErrorCode::InvalidSelector, "CSS Lexer Error at line " + std::to_string(m_line) + ", column " + std::to_string(m_column) + ": " + message, SourceLocation(m_position, m_line, m_column));
+    throw HPSException(ErrorCode::InvalidSelector, "CSS Lexer Error at line " + std::to_string(m_line) + ", column " + std::to_string(m_column) + ": " + message, Location(m_position, m_line, m_column));
 }
 }  // namespace hps

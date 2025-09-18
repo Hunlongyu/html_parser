@@ -5,8 +5,6 @@
 #include "hps/utils/exception.hpp"
 #include "hps/utils/noncopyable.hpp"
 
-#include <memory>
-
 namespace hps {
 
 /**
@@ -72,7 +70,7 @@ class TreeBuilder : public NonCopyable {
      *
      * 返回在解析过程中收集的所有错误信息，用于诊断和调试。
      */
-    [[nodiscard]] const std::vector<ParseError>& errors() const noexcept;
+    [[nodiscard]] const std::vector<HPSError>& errors() const noexcept;
 
   private:
     // === Token处理方法 ===
@@ -204,7 +202,7 @@ class TreeBuilder : public NonCopyable {
   private:
     std::shared_ptr<Document>             m_document;       ///< 目标文档对象，存储构建的DOM树
     std::vector<std::shared_ptr<Element>> m_element_stack;  ///< 元素栈，跟踪当前的嵌套结构
-    std::vector<ParseError>               m_errors;         ///< 解析错误列表，收集处理过程中的错误
+    std::vector<HPSError>                 m_errors;         ///< 解析错误列表，收集处理过程中的错误
     const Options&                        m_options;        ///< 解析选项
 };
 

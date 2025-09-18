@@ -61,7 +61,7 @@ std::shared_ptr<Document> TreeBuilder::document() const noexcept {
     return m_document;
 }
 
-const std::vector<ParseError>& TreeBuilder::errors() const noexcept {
+const std::vector<HPSError>& TreeBuilder::errors() const noexcept {
     return m_errors;
 }
 
@@ -185,7 +185,7 @@ void TreeBuilder::close_elements_until(const std::string_view tag_name) {
 }
 
 void TreeBuilder::parse_error(const ErrorCode code, const std::string& message) {
-    ParseError error(code, message, 0);
+    HPSError error(code, message, 0);
     m_errors.push_back(std::move(error));
 }
 

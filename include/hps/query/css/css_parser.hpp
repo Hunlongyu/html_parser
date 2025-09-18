@@ -48,7 +48,7 @@ class CSSParser {
      * @brief 获取解析过程中收集的错误信息
      * @return 错误信息列表的常量引用
      */
-    [[nodiscard]] const std::vector<ParseError>& get_errors() const {
+    [[nodiscard]] const std::vector<HPSError>& get_errors() const {
         return m_errors;
     }
 
@@ -71,7 +71,7 @@ class CSSParser {
   private:
     CSSLexer                m_lexer;    ///< 词法分析器实例
     Options                 m_options;  ///< 解析选项配置
-    std::vector<ParseError> m_errors;   ///< 收集的解析错误列表
+    std::vector<HPSError> m_errors;   ///< 收集的解析错误列表
 
     // 核心解析方法
 

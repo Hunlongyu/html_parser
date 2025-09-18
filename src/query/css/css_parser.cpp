@@ -469,7 +469,7 @@ bool CSSParser::try_recover_from_error() {
 }
 
 void CSSParser::throw_parse_error(const std::string& message) const {
-    throw HPSException(ErrorCode::InvalidSelector, "CSS Parser Error: " + message, SourceLocation(m_lexer.current_position(), m_lexer.current_line(), m_lexer.current_column()));
+    throw HPSException(ErrorCode::InvalidSelector, "CSS Parser Error: " + message, Location(m_lexer.current_position(), m_lexer.current_line(), m_lexer.current_column()));
 }
 
 // ==================== PseudoClassSelector Implementation ====================

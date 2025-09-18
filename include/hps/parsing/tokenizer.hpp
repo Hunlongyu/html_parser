@@ -5,9 +5,6 @@
 #include "hps/parsing/token_builder.hpp"
 #include "hps/utils/exception.hpp"
 
-#include <iostream>
-#include <optional>
-
 namespace hps {
 
 /**
@@ -94,7 +91,7 @@ class Tokenizer : public NonCopyable {
      * @brief 获取解析过程中收集的所有错误
      * @return 包含所有ParseError对象的向量引用
      */
-    [[nodiscard]] const std::vector<ParseError>& get_errors() const noexcept;
+    [[nodiscard]] const std::vector<HPSError>& get_errors() const noexcept;
 
   private:
     // ==================== 状态处理方法 ====================
@@ -324,7 +321,7 @@ class Tokenizer : public NonCopyable {
 
     TokenBuilder            m_token_builder;    ///< Token构造器，用于逐步构建复杂的Token对象
     std::string             m_end_tag;          ///< 当前正在解析的结束标签名称缓存
-    std::vector<ParseError> m_errors;           ///< 解析过程中收集的所有错误信息列表
+    std::vector<HPSError> m_errors;           ///< 解析过程中收集的所有错误信息列表
     std::string             m_char_ref_buffer;  ///< 字符引用解析缓冲区，用于处理HTML实体
 };
 

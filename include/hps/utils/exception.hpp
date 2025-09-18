@@ -1,21 +1,23 @@
 #pragma once
 #include <exception>
 #include <string>
-#include <system_error>
 
 namespace hps {
 
 // 统一的位置信息结构
-struct SourceLocation {
+struct Location {
     size_t position = 0;
     size_t line     = 1;
     size_t column   = 1;
 
-    SourceLocation() = default;
+    Location() = default;
 
-    explicit SourceLocation(const size_t position, const size_t line = 1, const size_t column = 1) : position(position), line(line), column(column) {}
+    explicit Location(const size_t position, const size_t line = 1, const size_t column = 1)
+        : position(position),
+          line(line),
+          column(column) {}
 
-    static SourceLocation from_position(const std::string_view& source, const size_t position);
+    static Location from_position(const std::string_view& source, const size_t position);
 };
 
 enum class ErrorCode {
@@ -50,54 +52,70 @@ enum class ErrorCode {
 };
 
 // 错误信息结构体
-struct ParseError {
-    ErrorCode      code;
-    std::string    message;
-    SourceLocation location;
+struct HPSError {
+    ErrorCode   code;
+    std::string message;
+    Location    location;
 
-    ParseError(const ErrorCode code, std::string message, const size_t position) : code(code), message(std::move(message)), location(position) {}
+    HPSError(const ErrorCode code, std::string message, const size_t position)
+        : code(code),
+          message(std::move(message)),
+          location(position) {}
 
-    ParseError(const ErrorCode code, std::string message, const SourceLocation& loc = {}) : code(code), message(std::move(message)), location(loc) {}
+    HPSError(const ErrorCode code, std::string message, const Location& loc = {})
+        : code(code),
+          message(std::move(message)),
+          location(loc) {}
 };
 
 // 解析异常
 class HPSException : public std::exception {
   public:
-    HPSException(const ErrorCode code, std::string message, const SourceLocation& location = {}) : m_code(code), m_message(std::move(message)), m_location(location) {}
+    explicit HPSException(const HPSError& error)
+        : m_error(error) {}
 
-    HPSException(const ErrorCode code, std::string message, const size_t position) : m_code(code), m_message(std::move(message)), m_location(position) {}
+    explicit HPSException(HPSError&& error)
+        : m_error(std::move(error)) {}
+
+    HPSException(const ErrorCode code, std::string message, const Location& location = {})
+        : m_error(code, std::move(message), location) {}
+
+    HPSException(const ErrorCode code, std::string message, const size_t position)
+        : m_error(code, std::move(message), position) {}
 
     [[nodiscard]] ErrorCode code() const noexcept {
-        return m_code;
+        return m_error.code;
     }
 
     [[nodiscard]] const char* what() const noexcept override {
-        return m_message.c_str();
+        return m_error.message.c_str();
     }
 
     [[nodiscard]] const std::string& message() const noexcept {
-        return m_message;
+        return m_error.message;
     }
 
-    [[nodiscard]] const SourceLocation& location() const noexcept {
-        return m_location;
+    [[nodiscard]] const Location& location() const noexcept {
+        return m_error.location;
     }
 
     [[nodiscard]] size_t position() const noexcept {
-        return m_location.position;
+        return m_error.location.position;
     }
 
     [[nodiscard]] size_t line() const noexcept {
-        return m_location.line;
+        return m_error.location.line;
     }
 
     [[nodiscard]] size_t column() const noexcept {
-        return m_location.column;
+        return m_error.location.column;
+    }
+
+    [[nodiscard]] const HPSError& error() const noexcept {
+        return m_error;
     }
 
   private:
-    ErrorCode      m_code;
-    std::string    m_message;
-    SourceLocation m_location;
+    HPSError m_error;
 };
 }  // namespace hps
