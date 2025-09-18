@@ -14,6 +14,7 @@ if(NOT DEFINED HPS_BUILD_STATIC)
 endif()
 
 set(EXAMPLES
+    complete
     basic
     tokenizer
     tree_builder
