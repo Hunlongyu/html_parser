@@ -151,11 +151,9 @@ class Options {
      * @return 如果是void元素返回true，否则返回false
      */
     [[nodiscard]] bool is_void_element(const std::string& tag_name) const {
-        // 优先使用用户自定义的void_elements
         if (!void_elements.empty()) {
             return void_elements.contains(tag_name);
         }
-        // 使用默认的void元素列表
         return get_default_void_elements().contains(tag_name);
     }
 
@@ -218,15 +216,10 @@ class Options {
     size_t max_text_length            = 1048576;  ///< 文本节点最大长度限制（1MB）
 
     // CSS 解析器配置
-    bool   enable_css3         = true;  ///< 启用CSS3特性支持（伪类、伪元素等）
     size_t max_css3_cache_size = 1000;  ///< 最大缓存条目数量
 
     // 自定义配置
     std::unordered_set<std::string> void_elements;  ///< 自定义void元素列表，为空时使用默认列表
-
-    // 回调函数（高级定制功能）
-    std::function<bool(const std::string&)>                     tag_filter;        ///< 标签过滤器回调
-    std::function<bool(const std::string&, const std::string&)> attribute_filter;  ///< 属性过滤器回调
 
     // ==================== 便利方法 ====================
 
@@ -262,24 +255,6 @@ class Options {
      */
     void reset_to_defaults() {
         *this = Options{};
-    }
-
-    /**
-     * @brief 设置标签过滤器
-     *
-     * @param filter 标签过滤器函数，返回true表示保留该标签
-     */
-    void set_tag_filter(std::function<bool(const std::string&)> filter) {
-        tag_filter = std::move(filter);
-    }
-
-    /**
-     * @brief 设置属性过滤器
-     *
-     * @param filter 属性过滤器函数，返回true表示保留该属性
-     */
-    void set_attribute_filter(std::function<bool(const std::string&, const std::string&)> filter) {
-        attribute_filter = std::move(filter);
     }
 
     /**

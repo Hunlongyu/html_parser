@@ -57,10 +57,6 @@ bool TreeBuilder::finish() {
     return true;
 }
 
-std::shared_ptr<Document> TreeBuilder::document() const noexcept {
-    return m_document;
-}
-
 const std::vector<HPSError>& TreeBuilder::errors() const noexcept {
     return m_errors;
 }
@@ -149,28 +145,11 @@ void TreeBuilder::push_element(const std::shared_ptr<Element>& element) {
     m_element_stack.push_back(element);
 }
 
-std::shared_ptr<Element> TreeBuilder::pop_element() {
-    if (m_element_stack.empty()) {
-        return nullptr;
-    }
-
-    auto element = std::move(m_element_stack.back());
-    m_element_stack.pop_back();
-    return element;
-}
-
 std::shared_ptr<Element> TreeBuilder::current_element() const {
     if (m_element_stack.empty()) {
         return nullptr;
     }
     return m_element_stack.back();
-}
-
-bool TreeBuilder::should_close_element(const std::string_view tag_name) const {
-    if (const auto current = current_element()) {
-        return current->tag_name() == tag_name;
-    }
-    return false;
 }
 
 void TreeBuilder::close_elements_until(const std::string_view tag_name) {

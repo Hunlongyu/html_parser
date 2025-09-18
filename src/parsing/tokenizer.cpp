@@ -5,7 +5,11 @@
 
 namespace hps {
 
-Tokenizer::Tokenizer(const std::string_view source, const Options& options) : m_source(source), m_pos(0), m_state(TokenizerState::Data), m_options(options) {}
+Tokenizer::Tokenizer(const std::string_view source, const Options& options)
+    : m_source(source),
+      m_pos(0),
+      m_state(TokenizerState::Data),
+      m_options(options) {}
 
 std::optional<Token> Tokenizer::next_token() {
     while (has_more()) {
@@ -153,10 +157,10 @@ std::optional<Token> Tokenizer::consume_tag_open_state() {
             std::string cdata_content;
             while (has_more()) {
                 if (starts_with("]]")) {
-                    advance();  // 跳过第一个 ]
-                    advance();  // 跳过第二个 ]
+                    advance();
+                    advance();
                     if (has_more() && current_char() == '>') {
-                        advance();  // 跳过 >
+                        advance();
                     }
                     break;
                 }
@@ -175,7 +179,6 @@ std::optional<Token> Tokenizer::consume_tag_open_state() {
         m_token_builder.reset();
         m_state = TokenizerState::TagName;
     } else if (current_char() == '?') {
-        // 处理 XML 声明或处理指令
         advance();
         while (has_more() && current_char() != '>') {
             advance();
@@ -185,7 +188,6 @@ std::optional<Token> Tokenizer::consume_tag_open_state() {
         }
         m_state = TokenizerState::Data;
     } else {
-        // 不是有效的标签开始，作为文本处理
         m_state = TokenizerState::Data;
         return create_text_token("<");
     }
@@ -287,8 +289,6 @@ std::optional<Token> Tokenizer::consume_before_attribute_name_state() {
         advance();
         return {};
     }
-
-    // 开始新属性
     m_token_builder.attr_name.clear();
     m_token_builder.attr_value.clear();
     m_state = TokenizerState::AttributeName;
@@ -296,7 +296,6 @@ std::optional<Token> Tokenizer::consume_before_attribute_name_state() {
 }
 
 std::optional<Token> Tokenizer::consume_attribute_name_state() {
-    // 收集完整的属性名
     while (has_more() && is_alnum(current_char()) || current_char() == '-' || current_char() == '_') {
         m_token_builder.attr_name += to_lower(current_char());
         advance();
@@ -309,7 +308,6 @@ std::optional<Token> Tokenizer::consume_attribute_name_state() {
         advance();
         m_state = TokenizerState::BeforeAttributeValue;
     } else if (current_char() == '>') {
-        // 没有值的属性
         m_token_builder.finish_current_attribute();
         advance();
         m_state = TokenizerState::Data;
@@ -322,7 +320,6 @@ std::optional<Token> Tokenizer::consume_attribute_name_state() {
         handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in attribute name");
         return {};
     } else {
-        // 遇到非法字符，完成当前属性
         m_token_builder.finish_current_attribute();
         m_state = TokenizerState::BeforeAttributeName;
     }
@@ -348,7 +345,6 @@ std::optional<Token> Tokenizer::consume_after_attribute_name_state() {
         handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF after attribute name");
         return {};
     } else {
-        // 新的属性开始，先完成当前属性
         m_token_builder.finish_current_attribute();
         m_token_builder.attr_name.clear();
         m_state = TokenizerState::AttributeName;
@@ -449,16 +445,16 @@ std::optional<Token> Tokenizer::consume_self_closing_start_tag_state() {
 
 std::optional<Token> Tokenizer::consume_comment_state() {
     if (starts_with("--")) {
-        advance();  // 跳过第一个 -
-        advance();  // 跳过第二个 -
+        advance();
+        advance();
     }
     m_char_ref_buffer.clear();
     while (has_more()) {
         if (current_char() == '-' && peek_char() == '-') {
             if (peek_char(2) == '>') {
                 m_pos += 3;
-                m_state              = TokenizerState::Data;
-                auto comment_content = m_char_ref_buffer;
+                m_state                    = TokenizerState::Data;
+                const auto comment_content = m_char_ref_buffer;
                 m_char_ref_buffer.clear();
                 return create_comment_token(comment_content);
             }
@@ -510,43 +506,33 @@ std::optional<Token> Tokenizer::consume_doctype_state() {
 
 std::optional<Token> Tokenizer::consume_script_data_state() {
     const size_t start = m_pos;
-
     while (has_more()) {
         if (current_char() == '<' && starts_with("</script")) {
-            // 检查是否真的是结束标签
             const size_t saved_pos = m_pos;
-            m_pos += 8;  // 跳过 "</script"
-
+            m_pos += 8;
             skip_whitespace();
             if (current_char() == '>') {
-                // 找到真正的结束标签
                 if (start < saved_pos) {
                     m_pos                           = saved_pos;
                     std::string_view script_content = m_source.substr(start, saved_pos - start);
                     return create_text_token(script_content);
                 }
-                // 创建结束标签
-                advance();  // 跳过 >
+                advance();
                 m_state   = TokenizerState::Data;
                 m_end_tag = "script";
                 return create_end_tag_token();
             }
-            // 不是真正的结束标签，恢复位置继续
             m_pos = saved_pos;
             advance();
-
         } else {
             advance();
         }
     }
-
-    // 到达文件末尾
     if (start < m_pos) {
-        std::string_view script_content = m_source.substr(start, m_pos - start);
-        m_state                         = TokenizerState::Data;
+        const std::string_view script_content = m_source.substr(start, m_pos - start);
+        m_state                               = TokenizerState::Data;
         return create_text_token(script_content);
     }
-
     handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in script data");
     m_state = TokenizerState::Data;
     return {};
@@ -568,7 +554,7 @@ std::optional<Token> Tokenizer::consume_rawtext_state() {
                     const std::string_view content = m_source.substr(start, saved_pos - start);
                     return create_text_token(content);
                 }
-                advance();  // 跳过 >
+                advance();
                 m_state = TokenizerState::Data;
                 return {};
             }
@@ -607,7 +593,7 @@ std::optional<Token> Tokenizer::consume_rcdata_state() {
                     std::string_view content = m_source.substr(start, saved_pos - start);
                     return create_text_token(content);
                 }
-                advance();  // 跳过 >
+                advance();
                 m_state = TokenizerState::Data;
                 return {};
             }

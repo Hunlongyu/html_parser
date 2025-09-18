@@ -18,19 +18,19 @@ class CSSMatcher {
   public:
     /**
      * 在指定根元素下查找所有匹配选择器的元素
-     * @param root 根元素
+     * @param element 元素
      * @param selector CSS选择器
      * @return 匹配的元素列表
      */
-    static std::vector<std::shared_ptr<const Element>> find_all(const Element& root, const CSSSelector& selector);
+    static std::vector<std::shared_ptr<const Element>> find_all(const Element& element, const CSSSelector& selector);
 
     /**
      * 在指定根元素下查找所有匹配选择器列表的元素
-     * @param root 根元素
+     * @param element 元素
      * @param selector_list 选择器列表
      * @return 匹配的元素列表（去重）
      */
-    static std::vector<std::shared_ptr<const Element>> find_all(const Element& root, const SelectorList& selector_list);
+    static std::vector<std::shared_ptr<const Element>> find_all(const Element& element, const SelectorList& selector_list);
 
     /**
      * 在文档中查找所有匹配选择器的元素
@@ -50,19 +50,19 @@ class CSSMatcher {
 
     /**
      * 在指定根元素下查找第一个匹配选择器的元素
-     * @param root 根元素
+     * @param element 元素
      * @param selector CSS选择器
      * @return 第一个匹配的元素，如果没有找到返回nullptr
      */
-    static std::shared_ptr<const Element> find_first(const Element& root, const CSSSelector& selector);
+    static std::shared_ptr<const Element> find_first(const Element& element, const CSSSelector& selector);
 
     /**
      * 在指定根元素下查找第一个匹配选择器列表的元素
-     * @param root 根元素
+     * @param element 元素
      * @param selector_list 选择器列表
      * @return 第一个匹配的元素，如果没有找到返回nullptr
      */
-    static std::shared_ptr<const Element> find_first(const Element& root, const SelectorList& selector_list);
+    static std::shared_ptr<const Element> find_first(const Element& element, const SelectorList& selector_list);
 
     /**
      * 在文档中查找第一个匹配选择器的元素

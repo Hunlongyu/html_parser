@@ -54,16 +54,6 @@ class TreeBuilder : public NonCopyable {
      */
     [[nodiscard]] bool finish();
 
-    // === 访问器方法 ===
-
-    /**
-     * @brief 获取构建的文档对象
-     * @return 文档对象的智能指针
-     *
-     * 返回包含完整DOM树的文档对象，通常在树构建完成后调用。
-     */
-    [[nodiscard]] std::shared_ptr<Document> document() const noexcept;
-
     /**
      * @brief 获取解析过程中的错误列表
      * @return 解析错误列表的常量引用
@@ -153,31 +143,12 @@ class TreeBuilder : public NonCopyable {
     void push_element(const std::shared_ptr<Element>& element);
 
     /**
-     * @brief 从元素栈弹出顶部元素
-     * @return 被弹出的元素，如果栈为空则返回nullptr
-     *
-     * 移除并返回栈顶元素，用于处理结束标签。
-     */
-    [[nodiscard]] std::shared_ptr<Element> pop_element();
-
-    /**
      * @brief 获取当前元素（栈顶元素）
      * @return 当前元素的智能指针，如果栈为空则返回nullptr
      *
      * 返回栈顶元素但不移除它，用于确定新节点的插入位置。
      */
     [[nodiscard]] std::shared_ptr<Element> current_element() const;
-
-    // === 作用域和验证方法 ===
-
-    /**
-     * @brief 检查是否应该关闭指定标签
-     * @param tag_name 标签名称
-     * @return 如果应该关闭则返回true
-     *
-     * 简单的作用域检查，用于处理HTML的容错性。
-     */
-    [[nodiscard]] bool should_close_element(std::string_view tag_name) const;
 
     /**
      * @brief 关闭元素直到遇到指定标签

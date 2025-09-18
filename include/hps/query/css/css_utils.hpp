@@ -64,9 +64,9 @@ inline std::string normalize_selector(const std::string_view selector) {
 
 inline std::unique_ptr<SelectorList> parse_css_selector(const std::string_view selector, const Options& options) {
     const std::string normalized = normalize_selector(selector);
-    CSSParser         parser(normalized, options);  // 使用规范化后的选择器字符串
+    CSSParser         parser(normalized, options);
     auto              result = parser.parse_selector_list();
-    if (parser.has_errors() && options.error_handling == ErrorHandlingMode::Strict) {
+    if (options.error_handling == ErrorHandlingMode::Strict) {
         throw HPSException(ErrorCode::InvalidSelector, "CSS parsing failed");
     }
     return result;

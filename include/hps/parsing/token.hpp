@@ -189,8 +189,6 @@ class Token : public NonCopyable {
     [[nodiscard]] bool is_tag(std::string_view name) const noexcept;
 
   private:
-    // === 成员变量 ===
-
     TokenType                   m_type;   ///< Token类型，决定了Token的基本行为
     std::string                 m_name;   ///< Token名称，对于标签是标签名，对于文本通常为空
     std::string                 m_value;  ///< Token值，对于文本是内容，对于注释是注释文本
