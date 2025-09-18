@@ -2,13 +2,16 @@
 
 #include "hps/core/element.hpp"
 #include "hps/query/element_query.hpp"
+#include "hps/query/query.hpp"
 #include "hps/utils/string_utils.hpp"
 
 #include <algorithm>
 #include <sstream>
 
 namespace hps {
-Document::Document(std::string html_content) : Node(NodeType::Document), m_html_source(std::move(html_content)) {}
+Document::Document(std::string html_content)
+    : Node(NodeType::Document),
+      m_html_source(std::move(html_content)) {}
 
 NodeType Document::type() const noexcept {
     return NodeType::Document;
@@ -230,7 +233,7 @@ std::vector<std::shared_ptr<const Element>> Document::get_elements_by_class_name
 }
 
 ElementQuery Document::css(const std::string_view selector) const {
-    return ElementQuery(querySelectorAll(selector));
+    return Query::css(*this, selector);
 }
 
 ElementQuery Document::xpath(std::string_view expression) const {

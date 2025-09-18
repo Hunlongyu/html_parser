@@ -6,6 +6,13 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+if(NOT DEFINED HPS_BUILD_SHARED)
+    set(HPS_BUILD_SHARED ON)
+endif()
+if(NOT DEFINED HPS_BUILD_STATIC)
+    set(HPS_BUILD_STATIC ON)
+endif()
+
 set(EXAMPLES
     basic
     tokenizer
@@ -18,9 +25,18 @@ set(EXAMPLES
     debug_sibling
 )
 
+set(HPS_LIB_TO_LINK "")
+if(HPS_BUILD_STATIC)
+    set(HPS_LIB_TO_LINK hps_static)
+elseif(HPS_BUILD_SHARED)
+    set(HPS_LIB_TO_LINK hps)
+endif()
+
 foreach(example ${EXAMPLES})
     add_executable(${example} ${example}.cpp)
-    target_link_libraries(${example} PRIVATE hps_static)
+    if(HPS_LIB_TO_LINK)
+        target_link_libraries(${example} PRIVATE ${HPS_LIB_TO_LINK})
+    endif()
     target_include_directories(${example} PRIVATE
         ${CMAKE_SOURCE_DIR}/include
     )

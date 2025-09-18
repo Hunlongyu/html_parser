@@ -7,13 +7,15 @@
 #include <iostream>
 #include <memory>
 
+using namespace hps;
+
 int main() {
 #ifdef _WIN32
     system("chcp 65001 > nul");
 #endif
 
     try {
-        hps::HTMLParser parser;
+        HTMLParser parser;
         const std::string html = R"(
             <div>
                 <h1>标题</h1>
@@ -27,7 +29,7 @@ int main() {
 
         // 调试：打印DOM结构
         std::cout << "=== DOM结构 ===" << std::endl;
-        auto container = hps::CSSMatcher::find_first(*document, *hps::parse_css_selector("div"));
+        auto container = CSSMatcher::find_first(*document, *parse_css_selector("div"));
         if (container) {
             for (const auto& child : container->children()) {
                 if (child->is_element()) {
@@ -43,10 +45,10 @@ int main() {
 
         // 测试相邻兄弟选择器
         std::cout << "\n=== 相邻兄弟选择器测试 ===" << std::endl;
-        auto selector_list = hps::parse_css_selector("h1 + p");
+        auto selector_list = parse_css_selector("h1 + p");
         std::cout << "解析的选择器: " << selector_list->to_string() << std::endl;
         
-        auto results = hps::CSSMatcher::find_all(*document, *selector_list);
+        auto results = CSSMatcher::find_all(*document, *selector_list);
         std::cout << "找到 " << results.size() << " 个匹配:" << std::endl;
         for (const auto& element : results) {
             std::cout << "  - <" << element->tag_name() << ">";
@@ -58,9 +60,9 @@ int main() {
 
         // 手动测试每个p元素
         std::cout << "\n=== 手动测试每个p元素 ===" << std::endl;
-        auto all_p = hps::CSSMatcher::find_all(*document, *hps::parse_css_selector("p"));
+        auto all_p = CSSMatcher::find_all(*document, *parse_css_selector("p"));
         for (const auto& p : all_p) {
-            bool matches = hps::CSSMatcher::matches(*p, *selector_list);
+            const bool matches = selector_list->matches(*p);
             std::cout << "<" << p->tag_name() << ">";
             if (p->has_attribute("class")) {
                 std::cout << " class=\"" << p->get_attribute("class") << "\"";

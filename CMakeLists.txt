@@ -43,6 +43,7 @@ set(SOURCE
 
 if (HPS_BUILD_SHARED)
     add_library(hps SHARED ${SOURCE})
+    set_target_properties(hps PROPERTIES OUTPUT_NAME "hps" WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()
 
 if (HPS_BUILD_STATIC)

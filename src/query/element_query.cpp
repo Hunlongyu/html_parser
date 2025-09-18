@@ -215,7 +215,7 @@ ElementQuery ElementQuery::children(const std::string_view selector) const {
     if (!selector_list) {
         return {};
     }
-    return children().filter([selector_list](const Element& elem) { return selector_list->matches(elem); });
+    return children().filter([&selector_list](const Element& elem) { return selector_list->matches(elem); });
 }
 
 ElementQuery ElementQuery::parent() const {
@@ -381,7 +381,7 @@ ElementQuery ElementQuery::filter(const std::function<bool(const Element&)>& pre
     return ElementQuery(std::move(filtered));
 }
 
-ElementQuery ElementQuery::not_(std::string_view selector) const {
+ElementQuery ElementQuery::not_(const std::string_view selector) const {
     if (selector.empty()) {
         return *this;
     }
@@ -389,7 +389,7 @@ ElementQuery ElementQuery::not_(std::string_view selector) const {
     if (!selector_list || selector_list->empty()) {
         return *this;
     }
-    return filter([selector_list](const Element& ele) { return !selector_list->matches(ele); });
+    return filter([&selector_list](const Element& ele) { return !selector_list->matches(ele); });
 }
 
 ElementQuery ElementQuery::even() const {
