@@ -335,13 +335,17 @@ ElementQuery ElementQuery::prev_siblings() const {
 
 ElementQuery ElementQuery::siblings() const {
     std::vector<std::shared_ptr<const Element>> siblings;
+    std::unordered_set<std::shared_ptr<const Element>> seen;
     for (const auto& element : m_elements) {
         if (element && element->parent()) {
             auto parent_children = element->parent()->children();
             for (const auto& child : parent_children) {
                 if (child != element) {
                     if (auto sibling_elem = std::dynamic_pointer_cast<const Element>(child)) {
-                        siblings.push_back(sibling_elem);
+                        if (!seen.contains(sibling_elem)) {
+                            siblings.push_back(sibling_elem);
+                            seen.insert(sibling_elem);
+                        }
                     }
                 }
             }
@@ -453,7 +457,7 @@ std::vector<std::string> ElementQuery::extract_own_texts() const {
     std::vector<std::string> texts;
     for (const auto& element : m_elements) {
         if (element) {
-            texts.push_back(element->text_content());
+            texts.push_back(element->own_text_content());
         }
     }
     return texts;

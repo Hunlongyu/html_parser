@@ -33,6 +33,12 @@ class Element : public Node {
      */
     [[nodiscard]] std::string text_content() const override;
 
+    /**
+     * @brief 获取元素自身的文本内容
+     * @return 元素自身的文本内容
+     */
+    [[nodiscard]] std::string own_text_content() const;
+
     // Element Specific Properties
     /**
      * @brief 获取元素标签名

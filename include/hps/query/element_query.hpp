@@ -103,25 +103,25 @@ class ElementQuery {
      * @brief 获取常量开始迭代器 Get const begin iterator
      * @return 常量开始迭代器 Const begin iterator
      */
-    const_iterator begin() const;
+    [[nodiscard]] const_iterator begin() const;
 
     /**
      * @brief 获取常量结束迭代器 Get const end iterator
      * @return 常量结束迭代器 Const end iterator
      */
-    const_iterator end() const;
+    [[nodiscard]] const_iterator end() const;
 
     /**
      * @brief 获取常量开始迭代器 Get const begin iterator
      * @return 常量开始迭代器 Const begin iterator
      */
-    const_iterator cbegin() const;
+    [[nodiscard]] const_iterator cbegin() const;
 
     /**
      * @brief 获取常量结束迭代器 Get const end iterator
      * @return 常量结束迭代器 Const end iterator
      */
-    const_iterator cend() const;
+    [[nodiscard]] const_iterator cend() const;
 
     // 条件过滤方法 (返回新的ElementQuery) Conditional filtering methods (return new ElementQuery)
 

@@ -28,6 +28,16 @@ std::string Element::text_content() const {
     return ss.str();
 }
 
+std::string Element::own_text_content() const {
+    std::stringstream ss;
+    for (const auto& child : children()) {
+        if (child->is_text()) {
+            ss << child->as_text()->value();
+        }
+    }
+    return ss.str();
+}
+
 const std::string& Element::tag_name() const noexcept {
     return m_name;
 }
