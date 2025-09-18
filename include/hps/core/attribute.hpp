@@ -32,7 +32,10 @@ class Attribute {
      * 创建一个具有指定名称和值的属性。
      * 对于无值属性（如 disabled），应将 hv 设置为 false。
      */
-    explicit Attribute(const std::string_view name, const std::string_view value = {}, const bool hv = true) noexcept : m_name(name), m_value(value), m_has_value(hv) {}
+    explicit Attribute(const std::string_view name, const std::string_view value = {}, const bool hv = true) noexcept
+        : m_name(name),
+          m_value(value),
+          m_has_value(hv) {}
 
     /**
      * @brief 从 TokenAttribute 构造
@@ -41,7 +44,10 @@ class Attribute {
      * 从解析器生成的 TokenAttribute 对象创建 Attribute 实例。
      * 用于将解析阶段的属性信息转换为 DOM 树中的属性对象。
      */
-    explicit Attribute(const TokenAttribute& attr) : m_name(attr.m_name), m_value(attr.m_value), m_has_value(attr.m_has_value) {}
+    explicit Attribute(const TokenAttribute& attr)
+        : m_name(attr.m_name),
+          m_value(attr.m_value),
+          m_has_value(attr.m_has_value) {}
 
     // Attribute Access Methods
     /**

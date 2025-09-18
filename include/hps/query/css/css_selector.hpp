@@ -63,7 +63,8 @@ struct SelectorSpecificity {
 // CSS选择器AST节点基类
 class CSSSelector {
   public:
-    explicit CSSSelector(const SelectorType type) : m_type(type) {}
+    explicit CSSSelector(const SelectorType type)
+        : m_type(type) {}
     virtual ~CSSSelector() = default;
 
     // 禁用拷贝，只允许移动
@@ -92,7 +93,8 @@ class CSSSelector {
 // 通用选择器 *
 class UniversalSelector : public CSSSelector {
   public:
-    UniversalSelector() : CSSSelector(SelectorType::Universal) {}
+    UniversalSelector()
+        : CSSSelector(SelectorType::Universal) {}
 
     [[nodiscard]] bool matches(const Element& element) const override {
         return true;  // 通用选择器匹配所有元素
@@ -110,7 +112,9 @@ class UniversalSelector : public CSSSelector {
 // 类型选择器 div, p, span
 class TypeSelector : public CSSSelector {
   public:
-    explicit TypeSelector(std::string tag_name) : CSSSelector(SelectorType::Type), m_tag_name(std::move(tag_name)) {
+    explicit TypeSelector(std::string tag_name)
+        : CSSSelector(SelectorType::Type),
+          m_tag_name(std::move(tag_name)) {
         // 转换为小写以支持大小写不敏感匹配
         std::ranges::transform(m_tag_name, m_tag_name.begin(), [](const char c) { return std::tolower(c); });
     }
@@ -138,7 +142,9 @@ class TypeSelector : public CSSSelector {
 // 类选择器 .class-name
 class ClassSelector : public CSSSelector {
   public:
-    explicit ClassSelector(std::string class_name) : CSSSelector(SelectorType::Class), m_class_name(std::move(class_name)) {}
+    explicit ClassSelector(std::string class_name)
+        : CSSSelector(SelectorType::Class),
+          m_class_name(std::move(class_name)) {}
 
     [[nodiscard]] bool matches(const Element& element) const override;
 
@@ -163,7 +169,9 @@ class ClassSelector : public CSSSelector {
 // ID选择器 #id-name
 class IdSelector : public CSSSelector {
   public:
-    explicit IdSelector(std::string id_name) : CSSSelector(SelectorType::Id), m_id_name(std::move(id_name)) {}
+    explicit IdSelector(std::string id_name)
+        : CSSSelector(SelectorType::Id),
+          m_id_name(std::move(id_name)) {}
 
     [[nodiscard]] bool matches(const Element& element) const override;
 
@@ -188,7 +196,11 @@ class IdSelector : public CSSSelector {
 // 属性选择器 [attr], [attr=value]
 class AttributeSelector : public CSSSelector {
   public:
-    AttributeSelector(std::string attr_name, AttributeOperator op, std::string value = "") : CSSSelector(SelectorType::Attribute), m_attr_name(std::move(attr_name)), m_operator(op), m_value(std::move(value)) {
+    AttributeSelector(std::string attr_name, AttributeOperator op, std::string value = "")
+        : CSSSelector(SelectorType::Attribute),
+          m_attr_name(std::move(attr_name)),
+          m_operator(op),
+          m_value(std::move(value)) {
         // 属性名转换为小写
         std::ranges::transform(m_attr_name, m_attr_name.begin(), [](const char c) { return std::tolower(c); });
     }
@@ -223,7 +235,10 @@ class AttributeSelector : public CSSSelector {
 // 组合选择器基类
 class CombinatorSelector : public CSSSelector {
   public:
-    CombinatorSelector(const SelectorType type, std::unique_ptr<CSSSelector> left, std::unique_ptr<CSSSelector> right) : CSSSelector(type), m_left(std::move(left)), m_right(std::move(right)) {}
+    CombinatorSelector(const SelectorType type, std::unique_ptr<CSSSelector> left, std::unique_ptr<CSSSelector> right)
+        : CSSSelector(type),
+          m_left(std::move(left)),
+          m_right(std::move(right)) {}
 
     [[nodiscard]] const CSSSelector* left() const noexcept {
         return m_left.get();
@@ -247,7 +262,8 @@ class CombinatorSelector : public CSSSelector {
 // 后代选择器 div p
 class DescendantSelector : public CombinatorSelector {
   public:
-    DescendantSelector(std::unique_ptr<CSSSelector> left, std::unique_ptr<CSSSelector> right) : CombinatorSelector(SelectorType::Descendant, std::move(left), std::move(right)) {}
+    DescendantSelector(std::unique_ptr<CSSSelector> left, std::unique_ptr<CSSSelector> right)
+        : CombinatorSelector(SelectorType::Descendant, std::move(left), std::move(right)) {}
 
     [[nodiscard]] bool        matches(const Element& element) const override;
     [[nodiscard]] std::string to_string() const override;
@@ -256,7 +272,8 @@ class DescendantSelector : public CombinatorSelector {
 // 子选择器 div > p
 class ChildSelector : public CombinatorSelector {
   public:
-    ChildSelector(std::unique_ptr<CSSSelector> left, std::unique_ptr<CSSSelector> right) : CombinatorSelector(SelectorType::Child, std::move(left), std::move(right)) {}
+    ChildSelector(std::unique_ptr<CSSSelector> left, std::unique_ptr<CSSSelector> right)
+        : CombinatorSelector(SelectorType::Child, std::move(left), std::move(right)) {}
 
     [[nodiscard]] bool        matches(const Element& element) const override;
     [[nodiscard]] std::string to_string() const override;
@@ -270,7 +287,7 @@ class AdjacentSiblingSelector : public CombinatorSelector {
      * @param left 左侧选择器（前一个兄弟元素的选择器）
      * @param right 右侧选择器（当前元素的选择器）
      */
-    AdjacentSiblingSelector(std::unique_ptr<CSSSelector> left, std::unique_ptr<CSSSelector> right) 
+    AdjacentSiblingSelector(std::unique_ptr<CSSSelector> left, std::unique_ptr<CSSSelector> right)
         : CombinatorSelector(SelectorType::Adjacent, std::move(left), std::move(right)) {}
 
     /**
@@ -279,7 +296,7 @@ class AdjacentSiblingSelector : public CombinatorSelector {
      * @return 如果匹配返回true，否则返回false
      */
     [[nodiscard]] bool matches(const Element& element) const override;
-    
+
     /**
      * @brief 将选择器转换为字符串表示
      * @return 选择器的字符串形式
@@ -295,7 +312,7 @@ class GeneralSiblingSelector : public CombinatorSelector {
      * @param left 左侧选择器（前面兄弟元素的选择器）
      * @param right 右侧选择器（当前元素的选择器）
      */
-    GeneralSiblingSelector(std::unique_ptr<CSSSelector> left, std::unique_ptr<CSSSelector> right) 
+    GeneralSiblingSelector(std::unique_ptr<CSSSelector> left, std::unique_ptr<CSSSelector> right)
         : CombinatorSelector(SelectorType::Sibling, std::move(left), std::move(right)) {}
 
     /**
@@ -304,7 +321,7 @@ class GeneralSiblingSelector : public CombinatorSelector {
      * @return 如果匹配返回true，否则返回false
      */
     [[nodiscard]] bool matches(const Element& element) const override;
-    
+
     /**
      * @brief 将选择器转换为字符串表示
      * @return 选择器的字符串形式
@@ -315,7 +332,8 @@ class GeneralSiblingSelector : public CombinatorSelector {
 // 复合选择器 - 用于组合多个简单选择器 (如 div.class#id)
 class CompoundSelector : public CSSSelector {
   public:
-    CompoundSelector() : CSSSelector(SelectorType::Compound) {}
+    CompoundSelector()
+        : CSSSelector(SelectorType::Compound) {}
 
     void                      add_selector(std::unique_ptr<CSSSelector> selector);
     [[nodiscard]] bool        matches(const Element& element) const override;

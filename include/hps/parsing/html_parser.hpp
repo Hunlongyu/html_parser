@@ -7,7 +7,7 @@ namespace hps {
 
 /**
  * @brief HTML解析器类
- * 
+ *
  * HTMLParser是HTML解析的协调器，负责整合词法分析器(Tokenizer)和语法分析器(TreeBuilder)，
  * 将HTML字符串解析为DOM文档树。支持完整HTML文档和文件解析，提供灵活的错误处理选项。
  */
@@ -17,7 +17,7 @@ class HTMLParser : public NonCopyable {
      * @brief 默认构造函数
      */
     HTMLParser() = default;
-    
+
     /**
      * @brief 析构函数
      */

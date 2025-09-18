@@ -168,8 +168,8 @@ class Node : public std::enable_shared_from_this<Node> {
     void remove_from_parent() const noexcept;
 
   private:
-    NodeType m_type;
-    std::weak_ptr<Node> m_parent;
+    NodeType                           m_type;
+    std::weak_ptr<Node>                m_parent;
     std::vector<std::shared_ptr<Node>> m_children;
 };
 

@@ -74,7 +74,11 @@ class CSSLexer {
          * @param pos 起始位置
          * @param len 长度（默认为值的长度）
          */
-        CSSToken(const CSSTokenType t, const std::string_view v, const size_t pos, const size_t len = 0) : type(t), value(v), position(pos), length(len > 0 ? len : v.length()) {}
+        CSSToken(const CSSTokenType t, const std::string_view v, const size_t pos, const size_t len = 0)
+            : type(t),
+              value(v),
+              position(pos),
+              length(len > 0 ? len : v.length()) {}
     };
 
     /**
@@ -303,49 +307,49 @@ class CSSParser {
     /**
      * @brief 解析标签选择器
      * @return 标签选择器AST
-     * @note 处理如"div"、"p"、"span"等标签选择器
+     * @note 处理如 "div"、"p"、"span" 等标签选择器
      */
     std::unique_ptr<TypeSelector> parse_type_selector();
 
     /**
      * @brief 解析类选择器
      * @return 类选择器AST
-     * @note 处理如".class-name"的类选择器
+     * @note 处理如 ".class-name" 的类选择器
      */
     std::unique_ptr<ClassSelector> parse_class_selector();
 
     /**
-     * @brief 解析ID选择器
-     * @return ID选择器AST
-     * @note 处理如"#element-id"的ID选择器
+     * @brief 解析 ID 选择器
+     * @return ID 选择器 AST
+     * @note 处理如 "#element-id" 的ID选择器
      */
     std::unique_ptr<IdSelector> parse_id_selector();
 
     /**
      * @brief 解析属性选择器
-     * @return 属性选择器AST
-     * @note 处理如"[attr]"、"[attr=value]"、"[attr*=value]"等属性选择器
+     * @return 属性选择器 AST
+     * @note 处理如 "[attr]"、"[attr=value]"、"[attr*=value]" 等属性选择器
      */
     std::unique_ptr<AttributeSelector> parse_attribute_selector();
 
     /**
      * @brief 解析伪选择器（伪类或伪元素）
-     * @return 伪选择器AST
-     * @note 处理如":hover"、"::before"等伪选择器
+     * @return 伪选择器 AST
+     * @note 处理如 ":hover"、"::before" 等伪选择器
      */
     std::unique_ptr<CSSSelector> parse_pseudo_selector();
 
     /**
      * @brief 解析伪类选择器
-     * @return 伪类选择器AST
-     * @note 处理如":first-child"、":nth-child(2n+1)"等伪类
+     * @return 伪类选择器 AST
+     * @note 处理如 ":first-child"、":nth-child(2n+1)" 等伪类
      */
     std::unique_ptr<CSSSelector> parse_pseudo_class();
 
     /**
      * @brief 解析伪元素选择器
-     * @return 伪元素选择器AST
-     * @note 处理如"::before"、"::after"等伪元素
+     * @return 伪元素选择器 AST
+     * @note 处理如 "::before"、"::after" 等伪元素
      */
     std::unique_ptr<CSSSelector> parse_pseudo_element();
 
@@ -375,7 +379,7 @@ class CSSParser {
     /**
      * @brief 检查当前标记是否匹配指定类型
      * @param type 要检查的标记类型
-     * @return 如果匹配返回true，否则返回false
+     * @return 如果匹配返回 true，否则返回 false
      */
     bool match_token(CSSLexer::CSSTokenType type);
 
@@ -387,7 +391,7 @@ class CSSParser {
 
     /**
      * @brief 检查是否还有更多标记可解析
-     * @return 如果还有标记返回true，否则返回false
+     * @return 如果还有标记返回 true，否则返回 false
      */
     bool has_more_tokens();
 
@@ -407,7 +411,7 @@ class CSSParser {
 
     /**
      * @brief 尝试从解析错误中恢复
-     * @return 如果成功恢复返回true，否则返回false
+     * @return 如果成功恢复返回 true，否则返回 false
      * @note 在遇到语法错误时尝试跳过错误部分继续解析
      */
     bool try_recover_from_error();
@@ -459,7 +463,10 @@ class PseudoClassSelector : public CSSSelector {
      * @param type 伪类类型
      * @param argument 伪类参数（如nth-child的公式）
      */
-    explicit PseudoClassSelector(const PseudoType type, std::string argument = "") : CSSSelector(SelectorType::PseudoClass), m_pseudo_type(type), m_argument(std::move(argument)) {}
+    explicit PseudoClassSelector(const PseudoType type, std::string argument = "")
+        : CSSSelector(SelectorType::PseudoClass),
+          m_pseudo_type(type),
+          m_argument(std::move(argument)) {}
 
     /**
      * @brief 检查元素是否匹配该伪类选择器
@@ -549,7 +556,9 @@ class PseudoElementSelector : public CSSSelector {
      * @brief 构造函数
      * @param type 伪元素类型
      */
-    explicit PseudoElementSelector(const ElementType type) : CSSSelector(SelectorType::PseudoElement), m_element_type(type) {}
+    explicit PseudoElementSelector(const ElementType type)
+        : CSSSelector(SelectorType::PseudoElement),
+          m_element_type(type) {}
 
     /**
      * @brief 检查元素是否匹配该伪元素选择器

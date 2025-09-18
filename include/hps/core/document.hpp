@@ -7,7 +7,7 @@ class ElementQuery;
 
 /**
  * @brief HTML 文档类
- * 
+ *
  * Document 类表示一个完整的 HTML 文档，继承自 Node 类。
  * 它提供了访问文档结构、元数据和执行查询操作的功能。
  * Document 是 DOM 树的根节点，包含整个 HTML 文档的结构信息。
@@ -153,7 +153,7 @@ class Document : public Node {
     /**
      * @brief 向文档添加子节点
      * @param child 要添加的子节点
-     * 
+     *
      * 将指定的节点添加为文档的子节点。通常用于添加根元素（如 html 元素）。
      * 如果传入的节点为 nullptr，则不执行任何操作。
      */

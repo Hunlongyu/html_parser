@@ -20,7 +20,7 @@ Cpp11BracedListStyle: true
 # === 缩进设置 ===
 IndentCaseLabels: true
 IndentPPDirectives: None
-ContinuationIndentWidth: 4
+ContinuationIndentWidth: 11
 ConstructorInitializerIndentWidth: 4
 AccessModifierOffset: -2
 
@@ -65,11 +65,11 @@ SpacesBeforeTrailingComments: 2
 
 # === 对齐设置 - 关键修改 ===
 AlignAfterOpenBracket: Align
-AlignConsecutiveAssignments: false
-AlignConsecutiveBitFields: false
-AlignConsecutiveDeclarations: false
+AlignConsecutiveAssignments: true
+AlignConsecutiveBitFields: true
+AlignConsecutiveDeclarations: true
 AlignEscapedNewlines: Left
-AlignOperands: Align
+AlignOperands: true
 AlignTrailingComments: true
 
 # === Lambda和管道操作符格式化 ===
