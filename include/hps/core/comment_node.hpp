@@ -13,7 +13,7 @@ class CommentNode : public Node {
      * @brief 节点类型
      * @return 节点类型
      */
-    [[nodiscard]] static NodeType type();
+    [[nodiscard]] NodeType type() const noexcept override;
 
     /**
      * @brief 注释内容

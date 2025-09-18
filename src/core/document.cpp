@@ -10,7 +10,7 @@
 namespace hps {
 Document::Document(std::string html_content) : Node(NodeType::Document), m_html_source(std::move(html_content)) {}
 
-NodeType Document::type() {
+NodeType Document::type() const noexcept {
     return NodeType::Document;
 }
 

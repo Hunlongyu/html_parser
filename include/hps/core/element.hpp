@@ -27,7 +27,7 @@ class Element : public Node {
      * @brief 获取节点类型
      * @return 节点类型，对于 Element 始终返回 NodeType::Element
      */
-    [[nodiscard]] static NodeType type();
+    [[nodiscard]] NodeType type() const noexcept override;
 
     /**
      * @brief 递归获取元素的所有文本内容

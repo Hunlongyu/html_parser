@@ -2,9 +2,9 @@
 
 namespace hps {
 
-CommentNode::CommentNode(std::string_view comment) noexcept : Node(NodeType::Comment), m_comment(comment) {}
+CommentNode::CommentNode(const std::string_view comment) noexcept : Node(NodeType::Comment), m_comment(comment) {}
 
-NodeType CommentNode::type() {
+NodeType CommentNode::type() const noexcept {
     return NodeType::Comment;
 }
 

@@ -39,7 +39,6 @@ AllowShortIfStatementsOnASingleLine: Never
 AllowShortLoopsOnASingleLine: false
 AllowShortCaseLabelsOnASingleLine: false
 AllowShortBlocksOnASingleLine: Never
-AllowShortLambdasOnASingleLine: All
 
 # === 换行控制 ===
 AlwaysBreakTemplateDeclarations: Yes
@@ -47,6 +46,10 @@ BreakBeforeTernaryOperators: true
 BreakConstructorInitializers: BeforeColon
 BreakInheritanceList: BeforeColon
 MaxEmptyLinesToKeep: 1
+
+# === 管道操作符和Lambda特殊处理 ===
+PenaltyBreakBeforeFirstCallParameter: 100
+PenaltyBreakAssignment: 100
 
 # === 空格控制 ===
 SpaceAfterTemplateKeyword: true
@@ -60,14 +63,18 @@ SpacesInParentheses: false
 SpacesInSquareBrackets: false
 SpacesBeforeTrailingComments: 2
 
-# === 对齐设置 ===
+# === 对齐设置 - 关键修改 ===
 AlignAfterOpenBracket: Align
-AlignConsecutiveAssignments: true
-AlignConsecutiveBitFields: true
-AlignConsecutiveDeclarations: true
+AlignConsecutiveAssignments: false
+AlignConsecutiveBitFields: false
+AlignConsecutiveDeclarations: false
 AlignEscapedNewlines: Left
-AlignOperands: true
+AlignOperands: Align
 AlignTrailingComments: true
+
+# === Lambda和管道操作符格式化 ===
+AllowAllArgumentsOnNextLine: false
+AllowAllConstructorInitializersOnNextLine: false
 
 # === 排序和包含 ===
 SortIncludes: true
@@ -92,3 +99,17 @@ CompactNamespaces: false
 KeepEmptyLinesAtTheStartOfBlocks: false
 SpaceAfterCStyleCast: false
 SpaceBeforeCpp11BracedList: false
+
+# === 控制管道操作符和Lambda的换行 - 关键修改 ===
+BreakAfterJavaFieldAnnotations: false
+BreakBeforeBinaryOperators: NonAssignment
+BreakBeforeConceptDeclarations: Always
+BreakBeforeInlineASMColon: OnlyMultiline
+
+# === Lambda特定设置 ===
+LambdaBodyIndentation: Signature
+
+# === Ranges管道操作符支持 ===
+ExperimentalAutoDetectBinPacking: false
+PackConstructorInitializers: Never
+AlwaysBreakBeforeMultilineStrings: false

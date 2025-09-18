@@ -3,17 +3,20 @@
 #include "hps/core/text_node.hpp"
 #include "hps/parsing/html_parser.hpp"
 #include "hps/query/element_query.hpp"
+#include "hps/query/query.hpp"
 #include "hps/utils/string_utils.hpp"
 
-//#include "hps/query/css/css_engine.hpp"
-
 #include <algorithm>
+#include <numeric>
+#include <ranges>
 #include <sstream>
 
 namespace hps {
-Element::Element(const std::string_view name) : Node(NodeType::Element), m_name(name) {}
+Element::Element(const std::string_view name)
+    : Node(NodeType::Element),
+      m_name(name) {}
 
-NodeType Element::type() {
+NodeType Element::type() const noexcept {
     return NodeType::Element;
 }
 
@@ -30,16 +33,12 @@ const std::string& Element::tag_name() const noexcept {
 }
 
 bool Element::has_attribute(const std::string_view name) const noexcept {
-    return std::ranges::any_of(m_attributes, [&](const auto& attr) { return attr.name() == name; });
+    return std::ranges::any_of(m_attributes, [name](const Attribute& attr) { return attr.name() == name; });
 }
 
 std::string Element::get_attribute(const std::string_view name) const noexcept {
-    for (const auto& attr : m_attributes) {
-        if (attr.name() == name) {
-            return attr.value();
-        }
-    }
-    return "";
+    const auto it = std::ranges::find_if(m_attributes, [name](const Attribute& attr) { return attr.name() == name; });
+    return it != m_attributes.end() ? it->value() : "";
 }
 
 const std::vector<Attribute>& Element::attributes() const noexcept {
@@ -59,44 +58,62 @@ std::string Element::class_name() const noexcept {
 }
 
 std::unordered_set<std::string> Element::class_names() const noexcept {
-    const std::string class_attr = get_attribute("class");
-    if (class_attr.empty()) {
-        return {};
+    for (const auto& attr : m_attributes) {
+        if (attr.name() == "class") {
+            return split_class_names(attr.value());
+        }
     }
-    return split_class_names(class_attr);
-}
-
-bool Element::has_class(const std::string_view class_name) const noexcept {
-    const std::string class_attr = get_attribute("class");
-    if (class_attr.empty()) {
-        return false;
-    }
-    const auto class_names = split_class_names(class_attr);
-    return class_names.contains(std::string(class_name));
-}
-
-std::shared_ptr<const Element> Element::querySelector(std::string_view selector) const {
-    // TODO: Implement logic for CSS selector query. This will likely involve a CSS selector engine.
-    return nullptr;
-}
-
-std::vector<std::shared_ptr<const Element>> Element::querySelectorAll(std::string_view selector) const {
-    // TODO: Implement logic for CSS selector query. This will likely involve a CSS selector engine.
     return {};
 }
 
+bool Element::has_class(const std::string_view class_name) const noexcept {
+    for (const auto& attr : m_attributes) {
+        if (attr.name() == "class") {
+            return split_class_names(attr.value()).contains(std::string(class_name));
+        }
+    }
+    return false;
+}
+
+std::shared_ptr<const Element> Element::querySelector(const std::string_view selector) const {
+    const auto elements = Query::css(*this, selector);
+    return elements.first_element();
+}
+
+std::vector<std::shared_ptr<const Element>> Element::querySelectorAll(const std::string_view selector) const {
+    return Query::css(*this, selector).elements();
+}
+
 std::shared_ptr<const Element> Element::get_element_by_id(std::string_view id) const {
-    // TODO: Implement logic to find an element by ID among its descendants.
-    // This will require a recursive search.
+    std::function<std::shared_ptr<const Element>(const std::shared_ptr<const Node>&)> find_by_id = [&](const std::shared_ptr<const Node>& node) -> std::shared_ptr<const Element> {
+        if (!node || node->type() != NodeType::Element) {
+            return nullptr;
+        }
+        auto element = node->as_element();
+        if (element->id() == id) {
+            return element;
+        }
+        for (const auto& child : element->children()) {
+            if (auto found = find_by_id(child)) {
+                return found;
+            }
+        }
+        return nullptr;
+    };
+    for (const auto& child : children()) {
+        if (auto found = find_by_id(child)) {
+            return found;
+        }
+    }
     return nullptr;
 }
 
 std::vector<std::shared_ptr<const Element>> Element::get_elements_by_tag_name(const std::string_view tag_name) const {
-    // TODO: Implement logic to find direct children by tag name.
     std::vector<std::shared_ptr<const Element>> result;
+    result.reserve(children().size());
     for (const auto& child : children()) {
         if (child->type() == NodeType::Element) {
-            auto element_child = std::static_pointer_cast<const Element>(child);
+            auto element_child = child->as_element();
             if (element_child->tag_name() == tag_name) {
                 result.push_back(element_child);
             }
@@ -106,11 +123,11 @@ std::vector<std::shared_ptr<const Element>> Element::get_elements_by_tag_name(co
 }
 
 std::vector<std::shared_ptr<const Element>> Element::get_elements_by_class_name(const std::string_view class_name) const {
-    // TODO: Implement logic to find direct children by class name.
     std::vector<std::shared_ptr<const Element>> result;
+    result.reserve(children().size());
     for (const auto& child : children()) {
         if (child->type() == NodeType::Element) {
-            auto element_child = std::static_pointer_cast<const Element>(child);
+            auto element_child = child->as_element();
             if (element_child->has_class(class_name)) {
                 result.push_back(element_child);
             }
@@ -120,13 +137,11 @@ std::vector<std::shared_ptr<const Element>> Element::get_elements_by_class_name(
 }
 
 ElementQuery Element::css(const std::string_view selector) const {
-    //return CSSEngine::query(*this, selector);
-    return {};
+    return Query::css(*this, selector);
 }
 
 ElementQuery Element::xpath(std::string_view expression) const {
     // TODO: Implement ElementQuery integration.
-    // This will likely involve creating an ElementQuery object with the current element as context.
     return {};
 }
 
@@ -138,13 +153,12 @@ void Element::add_child(const std::shared_ptr<Node>& child) {
 }
 
 void Element::add_attribute(std::string_view name, std::string_view value) {
-    for (auto& attr : m_attributes) {
-        if (attr.name() == name) {
-            attr.set_value(value);
-            return;
-        }
+    const auto it = std::ranges::find_if(m_attributes, [name](const Attribute& attr) { return attr.name() == name; });
+    if (it != m_attributes.end()) {
+        it->set_value(value);
+    } else {
+        m_attributes.emplace_back(name, value);
     }
-    m_attributes.emplace_back(name, value);
 }
 
 }  // namespace hps

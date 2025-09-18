@@ -6,7 +6,7 @@ namespace hps {
 
 TextNode::TextNode(const std::string_view text) noexcept : Node(NodeType::Text), m_text(text) {}
 
-NodeType TextNode::type() {
+NodeType TextNode::type() const noexcept {
     return NodeType::Text;
 }
 

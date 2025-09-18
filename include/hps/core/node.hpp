@@ -21,7 +21,7 @@ class Node : public std::enable_shared_from_this<Node> {
      * @brief 获取节点类型
      * @return 节点类型
      */
-    [[nodiscard]] NodeType type() const noexcept {
+    [[nodiscard]] virtual NodeType type() const noexcept {
         return m_type;
     }
 
@@ -59,16 +59,10 @@ class Node : public std::enable_shared_from_this<Node> {
 
     // Tree traversal
     /**
-     * @brief 获取父节点 (const 版本)
+     * @brief 获取父节点
      * @return 父节点的共享指针，如果不存在则为 nullptr
      */
     [[nodiscard]] std::shared_ptr<const Node> parent() const noexcept;
-
-    /**
-     * @brief 获取父节点 (非 const 版本)
-     * @return 父节点的共享指针，如果不存在则为 nullptr
-     */
-    [[nodiscard]] std::shared_ptr<Node> parent() noexcept;
 
     /**
      * @brief 判断是否有父节点
@@ -79,16 +73,10 @@ class Node : public std::enable_shared_from_this<Node> {
     }
 
     /**
-     * @brief 获取所有子节点 (const 版本)
+     * @brief 获取所有子节点
      * @return 包含所有子节点共享指针的 vector
      */
     [[nodiscard]] std::vector<std::shared_ptr<const Node>> children() const noexcept;
-
-    /**
-     * @brief 获取所有子节点 (非 const 版本)
-     * @return 包含所有子节点共享指针的 vector
-     */
-    [[nodiscard]] std::vector<std::shared_ptr<Node>> children() noexcept;
 
     /**
      * @brief 判断是否有子节点
@@ -99,52 +87,28 @@ class Node : public std::enable_shared_from_this<Node> {
     }
 
     /**
-     * @brief 获取第一个子节点 (const 版本)
+     * @brief 获取第一个子节点
      * @return 第一个子节点的共享指针，如果不存在则为 nullptr
      */
     [[nodiscard]] std::shared_ptr<const Node> first_child() const noexcept;
 
     /**
-     * @brief 获取第一个子节点 (非 const 版本)
-     * @return 第一个子节点的共享指针，如果不存在则为 nullptr
-     */
-    [[nodiscard]] std::shared_ptr<Node> first_child() noexcept;
-
-    /**
-     * @brief 获取最后一个子节点 (const 版本)
+     * @brief 获取最后一个子节点
      * @return 最后一个子节点的共享指针，如果不存在则为 nullptr
      */
     [[nodiscard]] std::shared_ptr<const Node> last_child() const noexcept;
 
     /**
-     * @brief 获取最后一个子节点 (非 const 版本)
-     * @return 最后一个子节点的共享指针，如果不存在则为 nullptr
-     */
-    [[nodiscard]] std::shared_ptr<Node> last_child() noexcept;
-
-    /**
-     * @brief 获取前一个兄弟节点 (const 版本)
+     * @brief 获取前一个兄弟节点
      * @return 前一个兄弟节点的共享指针，如果不存在则为 nullptr
      */
     [[nodiscard]] std::shared_ptr<const Node> previous_sibling() const noexcept;
 
     /**
-     * @brief 获取前一个兄弟节点 (非 const 版本)
-     * @return 前一个兄弟节点的共享指针，如果不存在则为 nullptr
-     */
-    [[nodiscard]] std::shared_ptr<Node> previous_sibling() noexcept;
-
-    /**
-     * @brief 获取后一个兄弟节点 (const 版本)
+     * @brief 获取后一个兄弟节点
      * @return 后一个兄弟节点的共享指针，如果不存在则为 nullptr
      */
     [[nodiscard]] std::shared_ptr<const Node> next_sibling() const noexcept;
-
-    /**
-     * @brief 获取后一个兄弟节点 (非 const 版本)
-     * @return 后一个兄弟节点的共享指针，如果不存在则为 nullptr
-     */
-    [[nodiscard]] std::shared_ptr<Node> next_sibling() noexcept;
 
     // Content
     /**
@@ -155,51 +119,26 @@ class Node : public std::enable_shared_from_this<Node> {
         return "";
     }
 
-    // Casts
     /**
-     * @brief 尝试将节点转换为 Document 类型 (非 const 版本)
-     * @return Document 节点的共享指针，如果转换失败则为 nullptr
-     */
-    [[nodiscard]] std::shared_ptr<Document> as_document() noexcept;
-
-    /**
-     * @brief 尝试将节点转换为 Document 类型 (const 版本)
+     * @brief 尝试将节点转换为 Document 类型
      * @return Document 节点的共享指针，如果转换失败则为 nullptr
      */
     [[nodiscard]] std::shared_ptr<const Document> as_document() const noexcept;
 
     /**
-     * @brief 尝试将节点转换为 Element 类型 (非 const 版本)
-     * @return Element 节点的共享指针，如果转换失败则为 nullptr
-     */
-    [[nodiscard]] std::shared_ptr<Element> as_element() noexcept;
-
-    /**
-     * @brief 尝试将节点转换为 Element 类型 (const 版本)
+     * @brief 尝试将节点转换为 Element 类型
      * @return Element 节点的共享指针，如果转换失败则为 nullptr
      */
     [[nodiscard]] std::shared_ptr<const Element> as_element() const noexcept;
 
     /**
-     * @brief 尝试将节点转换为 TextNode 类型 (非 const 版本)
-     * @return TextNode 节点的共享指针，如果转换失败则为 nullptr
-     */
-    [[nodiscard]] std::shared_ptr<TextNode> as_text() noexcept;
-
-    /**
-     * @brief 尝试将节点转换为 TextNode 类型 (const 版本)
+     * @brief 尝试将节点转换为 TextNode 类型
      * @return TextNode 节点的共享指针，如果转换失败则为 nullptr
      */
     [[nodiscard]] std::shared_ptr<const TextNode> as_text() const noexcept;
 
     /**
-     * @brief 尝试将节点转换为 CommentNode 类型 (非 const 版本)
-     * @return CommentNode 节点的共享指针，如果转换失败则为 nullptr
-     */
-    [[nodiscard]] std::shared_ptr<CommentNode> as_comment() noexcept;
-
-    /**
-     * @brief 尝试将节点转换为 CommentNode 类型 (const 版本)
+     * @brief 尝试将节点转换为 CommentNode 类型
      * @return CommentNode 节点的共享指针，如果转换失败则为 nullptr
      */
     [[nodiscard]] std::shared_ptr<const CommentNode> as_comment() const noexcept;
@@ -210,13 +149,6 @@ class Node : public std::enable_shared_from_this<Node> {
      * @param child 子节点的共享指针
      */
     void append_child(const std::shared_ptr<Node>& child);
-
-    /**
-     * @brief 在指定引用子节点之前插入新子节点
-     * @param new_child 新子节点的共享指针
-     * @param ref_child 引用子节点的原始指针
-     */
-    void insert_before(const std::shared_ptr<Node>& new_child, const Node* ref_child);
 
     /**
      * @brief 移除指定子节点
@@ -236,8 +168,8 @@ class Node : public std::enable_shared_from_this<Node> {
     void remove_from_parent() const noexcept;
 
   private:
-    NodeType                           m_type;
-    std::weak_ptr<Node>                m_parent;
+    NodeType m_type;
+    std::weak_ptr<Node> m_parent;
     std::vector<std::shared_ptr<Node>> m_children;
 };
 

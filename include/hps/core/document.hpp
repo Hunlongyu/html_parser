@@ -30,7 +30,7 @@ class Document : public Node {
      * @brief 获取节点类型
      * @return 节点类型，对于 Document 始终返回 NodeType::Document
      */
-    [[nodiscard]] static NodeType type();
+    [[nodiscard]] NodeType type() const noexcept override;
 
     /**
      * @brief 获取文档的文本内容
