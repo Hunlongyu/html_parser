@@ -4,6 +4,8 @@
 [![C++](https://img.shields.io/badge/C++-23-blue.svg)](https://en.cppreference.com/w/cpp/23)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
+> ⚠️ **开发中 (WIP)** - 这是一个正在积极开发的项目，API 可能会发生变化。不建议在生产环境中使用当前版本。
+
 一个高性能、现代化的 C++ HTML 解析库，支持完整的 HTML5 标准解析和 CSS 选择器查询。
 
 ## ✨ 核心特性
@@ -41,6 +43,7 @@
 - **内存优化**：内存池管理、零拷贝设计、智能缓存机制
 - **查询加速**：ID/类名索引、LRU 策略优化
 - **现代 C++23**：模块化架构，充分利用新语言特性
+- **无第三方依赖**：仅依赖 C++23 标准库，无需额外安装任何第三方库
 
 ## 🚀 快速演示
 
