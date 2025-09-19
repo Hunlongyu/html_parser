@@ -1,6 +1,15 @@
 #pragma once
 #include "string_view"
 
+#ifdef _WIN32
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#else
+#include <iconv.h>
+#endif
+
+#include <stdexcept>
 #include <unordered_set>
 
 namespace hps {
@@ -191,6 +200,49 @@ inline bool is_valid_identifier_char(const std::string& input, const size_t pos)
     }
 
     return false;
+}
+
+inline std::string gbk_to_utf8(std::string_view gbk_str) {
+    if (gbk_str.empty()) {
+        return {};
+    }
+#ifdef _WIN32
+    const int wide_size = MultiByteToWideChar(936, 0, gbk_str.data(), static_cast<int>(gbk_str.size()), nullptr, 0);
+    if (wide_size <= 0) {
+        throw std::runtime_error("Failed to calculate UTF-16 size");
+    }
+    std::vector<wchar_t> wide_str(wide_size);
+    if (MultiByteToWideChar(936, 0, gbk_str.data(), static_cast<int>(gbk_str.size()), wide_str.data(), wide_size) != wide_size) {
+        throw std::runtime_error("Failed to convert GBK to UTF-16");
+    }
+    const int utf8_size = WideCharToMultiByte(CP_UTF8, 0, wide_str.data(), wide_size, nullptr, 0, nullptr, nullptr);
+    if (utf8_size <= 0) {
+        throw std::runtime_error("Failed to calculate UTF-8 size");
+    }
+    std::string utf8_str(utf8_size, '\0');
+    if (WideCharToMultiByte(CP_UTF8, 0, wide_str.data(), wide_size, utf8_str.data(), utf8_size, nullptr, nullptr) != utf8_size) {
+        throw std::runtime_error("Failed to convert UTF-16 to UTF-8");
+    }
+    return utf8_str;
+
+#else
+    // Linux/macOS 实现 (使用 iconv)
+    iconv_t cd = iconv_open("UTF-8", "GBK");
+    if (cd == reinterpret_cast<iconv_t>(-1)) {
+        throw std::runtime_error("Failed to open iconv for GBK to UTF-8 conversion");
+    }
+    size_t            in_bytes_left  = gbk_str.size();
+    size_t            out_bytes_left = gbk_str.size() * 4;  // UTF-8 最多4字节
+    std::vector<char> out_buffer(out_bytes_left);
+    char*             in_ptr  = const_cast<char*>(gbk_str.data());
+    char*             out_ptr = out_buffer.data();
+    size_t            result  = iconv(cd, &in_ptr, &in_bytes_left, &out_ptr, &out_bytes_left);
+    iconv_close(cd);
+    if (result == static_cast<size_t>(-1)) {
+        throw std::runtime_error("Failed to convert GBK to UTF-8");
+    }
+    return std::string(out_buffer.data(), out_buffer.size() - out_bytes_left);
+#endif
 }
 
 }  // namespace hps
