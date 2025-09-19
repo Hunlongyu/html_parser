@@ -241,7 +241,7 @@ class ElementQuery {
     [[nodiscard]] ElementQuery parents() const;
 
     /**
-     * @brief 获取最近的匹配选择器的祖先元素 Get closest ancestor element matching selector
+     * @brief 获取最近的匹配选择器的祖先元素 Get the closest ancestor element matching selector
      * @param selector CSS 选择器 CSS selector
      * @return 新的 ElementQuery New ElementQuery
      */

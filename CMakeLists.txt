@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.28)
 
-project(hps VERSION 0.0.2 LANGUAGES CXX)
+project(hps VERSION 0.0.3 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -12,7 +12,7 @@ endif()
 
 configure_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/version.hpp.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/include/hps/version.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/hps/version.hpp"
     @ONLY
 )
 
@@ -24,7 +24,6 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/include) 
 
 set(SOURCE 
-    "src/hps.cpp"
     "src/core/comment_node.cpp"
     "src/core/document.cpp"
     "src/core/element.cpp"
@@ -34,12 +33,13 @@ set(SOURCE
     "src/parsing/tokenizer.cpp"
     "src/parsing/tree_builder.cpp"
     "src/parsing/html_parser.cpp"
-    "src/query/query.cpp"
-    "src/query/element_query.cpp"
     "src/query/css/css_lexer.cpp"
     "src/query/css/css_selector.cpp"
     "src/query/css/css_parser.cpp"
     "src/query/css/css_matcher.cpp"
+    "src/query/element_query.cpp"
+    "src/query/query.cpp"
+    "src/hps.cpp"
 )
 
 if (HPS_BUILD_SHARED)

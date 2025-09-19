@@ -1,6 +1,4 @@
 #include <hps/hps.hpp>
-#include <hps/query/query.hpp>
-#include <hps/query/element_query.hpp>
 #include <iostream>
 #include <vector>
 #include <string>

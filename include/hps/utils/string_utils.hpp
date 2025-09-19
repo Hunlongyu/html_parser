@@ -118,11 +118,11 @@ inline std::unordered_set<std::string> split_class_names(const std::string_view 
 }
 
 // UTF-8 辅助函数
-static bool is_utf8_start_byte(const unsigned char c) {
+inline bool is_utf8_start_byte(const unsigned char c) {
     return (c & 0x80) == 0 || (c & 0xE0) == 0xC0 || (c & 0xF0) == 0xE0 || (c & 0xF8) == 0xF0;
 }
 
-static int utf8_char_length(const unsigned char c) {
+inline int utf8_char_length(const unsigned char c) {
     if ((c & 0x80) == 0)
         return 1;  // 0xxxxxxx - ASCII
     if ((c & 0xE0) == 0xC0)
@@ -134,7 +134,7 @@ static int utf8_char_length(const unsigned char c) {
     return 1;      // 无效字节，按1字节处理
 }
 
-static bool is_valid_identifier_start(const std::string& input, const size_t pos) {
+inline bool is_valid_identifier_start(const std::string& input, const size_t pos) {
     if (pos >= input.size())
         return false;
 
@@ -164,7 +164,7 @@ static bool is_valid_identifier_start(const std::string& input, const size_t pos
     return false;
 }
 
-static bool is_valid_identifier_char(const std::string& input, const size_t pos) {
+inline bool is_valid_identifier_char(const std::string& input, const size_t pos) {
     if (pos >= input.size())
         return false;
 
