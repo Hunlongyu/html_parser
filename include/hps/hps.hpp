@@ -4,6 +4,7 @@
 #include "hps/core/element.hpp"
 #include "hps/hps_fwd.hpp"
 #include "hps/query/query.hpp"
+#include "hps/parsing/options.hpp"
 #include "hps/version.hpp"
 
 namespace hps {

@@ -304,7 +304,7 @@ std::optional<Token> Tokenizer::consume_before_attribute_name_state() {
 }
 
 std::optional<Token> Tokenizer::consume_attribute_name_state() {
-    while (has_more() && is_alnum(current_char()) || current_char() == '-' || current_char() == '_') {
+    while (has_more() && (is_alnum(current_char()) || current_char() == '-' || current_char() == '_' || current_char() == ':')) {
         if (m_options.preserve_case) {
             m_token_builder.attr_name += current_char();
         } else {
@@ -519,19 +519,20 @@ std::optional<Token> Tokenizer::consume_doctype_state() {
 std::optional<Token> Tokenizer::consume_script_data_state() {
     const size_t start = m_pos;
     while (has_more()) {
-        if (current_char() == '<' && starts_with("</script")) {
+        if (current_char() == '<' && (starts_with("</script") || starts_with("</svg"))) {
             const size_t saved_pos = m_pos;
-            m_pos += 8;
+            const bool   is_script = starts_with("</script");
+            m_pos += (is_script ? 8 : 5);
             skip_whitespace();
             if (current_char() == '>') {
                 if (start < saved_pos) {
                     m_pos                           = saved_pos;
-                    std::string_view script_content = m_source.substr(start, saved_pos - start);
-                    return create_text_token(script_content);
+                    std::string_view content = m_source.substr(start, saved_pos - start);
+                    return create_text_token(content);
                 }
                 advance();
                 m_state   = TokenizerState::Data;
-                m_end_tag = "script";
+                m_end_tag = is_script ? "script" : "svg";
                 return create_end_tag_token();
             }
             m_pos = saved_pos;
@@ -541,9 +542,9 @@ std::optional<Token> Tokenizer::consume_script_data_state() {
         }
     }
     if (start < m_pos) {
-        const std::string_view script_content = m_source.substr(start, m_pos - start);
-        m_state                               = TokenizerState::Data;
-        return create_text_token(script_content);
+        const std::string_view content = m_source.substr(start, m_pos - start);
+        m_state                        = TokenizerState::Data;
+        return create_text_token(content);
     }
     handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in script data");
     m_state = TokenizerState::Data;
@@ -673,6 +674,8 @@ Token Tokenizer::create_start_tag_token() {
     }
 
     if (m_token_builder.tag_name == "script") {
+        m_state = TokenizerState::ScriptData;
+    } else if (m_token_builder.tag_name == "svg") {
         m_state = TokenizerState::ScriptData;
     }
 
