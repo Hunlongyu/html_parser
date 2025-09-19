@@ -1,6 +1,7 @@
 #include "hps/query/css/css_parser.hpp"
 
 #include "hps/parsing/options.hpp"
+#include "hps/query/css/css_utils.hpp"
 #include "hps/utils/exception.hpp"
 
 #include <chrono>
