@@ -2,7 +2,6 @@
 
 #include "hps/parsing/token_attribute.hpp"
 
-#include <format>
 #include <string>
 
 namespace hps {
@@ -89,7 +88,7 @@ class Attribute {
         if (!m_has_value) {
             return m_name;
         }
-        return std::format("{}=\"{}\"", m_name, m_value);
+        return m_name + "=\"" + m_value + "\"";
     }
 
     // Attribute Modification Methods

@@ -196,7 +196,11 @@ std::optional<Token> Tokenizer::consume_tag_open_state() {
 
 std::optional<Token> Tokenizer::consume_tag_name_state() {
     while (has_more() && is_alnum(current_char())) {
-        m_token_builder.tag_name += to_lower(current_char());
+        if (m_options.preserve_case) {
+            m_token_builder.tag_name += current_char();
+        } else {
+            m_token_builder.tag_name += to_lower(current_char());
+        }
         advance();
     }
     if (is_whitespace(current_char())) {
@@ -233,7 +237,11 @@ std::optional<Token> Tokenizer::consume_end_tag_open_state() {
 
 std::optional<Token> Tokenizer::consume_end_tag_name_state() {
     while (has_more() && is_alnum(current_char())) {
-        m_end_tag += to_lower(current_char());
+        if (m_options.preserve_case) {
+            m_end_tag += current_char();
+        } else {
+            m_end_tag += to_lower(current_char());
+        }
         advance();
     }
 
@@ -297,7 +305,11 @@ std::optional<Token> Tokenizer::consume_before_attribute_name_state() {
 
 std::optional<Token> Tokenizer::consume_attribute_name_state() {
     while (has_more() && is_alnum(current_char()) || current_char() == '-' || current_char() == '_') {
-        m_token_builder.attr_name += to_lower(current_char());
+        if (m_options.preserve_case) {
+            m_token_builder.attr_name += current_char();
+        } else {
+            m_token_builder.attr_name += to_lower(current_char());
+        }
         advance();
     }
 

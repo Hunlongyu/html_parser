@@ -198,14 +198,14 @@ class Options {
     // ==================== 配置选项 ====================
 
     // 核心解析选项
-    ErrorHandlingMode error_handling = ErrorHandlingMode::Lenient;  ///< 错误处理模式，默认宽松模式
+    ErrorHandlingMode error_handling = ErrorHandlingMode::Lenient;  ///< ✅ 错误处理模式，默认宽松模式
 
     // 内容处理选项
-    CommentMode    comment_mode    = CommentMode::Preserve;     ///< 注释处理模式，默认保留注释
-    WhitespaceMode whitespace_mode = WhitespaceMode::Preserve;  ///< 空白文本处理模式，默认保留空白
+    CommentMode    comment_mode    = CommentMode::Preserve;     ///< ✅ 注释处理模式，默认保留注释
+    WhitespaceMode whitespace_mode = WhitespaceMode::Preserve;  ///< ✅ 空白文本处理模式，默认保留空白
 
     // 高级选项
-    bool preserve_case = false;  ///< 是否保持标签和属性名大小写，默认转为小写
+    bool preserve_case = false;  ///< ✅ 是否保持标签和属性名大小写，默认转为小写
 
     // 性能和安全限制
     size_t max_tokens                 = 1000000;  ///< 最大Token数量限制
@@ -219,7 +219,7 @@ class Options {
     size_t max_css3_cache_size = 1000;  ///< 最大缓存条目数量
 
     // 自定义配置
-    std::unordered_set<std::string> void_elements;  ///< 自定义void元素列表，为空时使用默认列表
+    std::unordered_set<std::string> void_elements;  ///< ✅ 自定义void元素列表，为空时使用默认列表
 
     // ==================== 便利方法 ====================
 

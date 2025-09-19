@@ -4,6 +4,7 @@
 #include "hps/core/document.hpp"
 #include "hps/core/text_node.hpp"
 #include "hps/parsing/token.hpp"
+#include "hps/utils/string_utils.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -11,7 +12,9 @@
 
 namespace hps {
 
-TreeBuilder::TreeBuilder(const std::shared_ptr<Document>& document, const Options& options) : m_document(document), m_options(options) {
+TreeBuilder::TreeBuilder(const std::shared_ptr<Document>& document, const Options& options)
+    : m_document(document),
+      m_options(options) {
     assert(m_document != nullptr);
     m_element_stack.reserve(32);
 }
@@ -93,7 +96,18 @@ void TreeBuilder::process_text(const Token& token) const {
     if (text.empty()) {
         return;
     }
-    insert_text(text);
+
+    switch (m_options.whitespace_mode) {
+        case WhitespaceMode::Preserve:
+            insert_comment(text);
+            break;
+        case WhitespaceMode::Normalize:
+        case WhitespaceMode::Trim:
+            insert_text(trim_whitespace(text));
+            break;
+        case WhitespaceMode::Remove:
+            break;
+    }
 }
 
 void TreeBuilder::process_comment(const Token& token) const {
@@ -101,7 +115,15 @@ void TreeBuilder::process_comment(const Token& token) const {
     if (comment.empty()) {
         return;
     }
-    insert_comment(comment);
+
+    switch (m_options.comment_mode) {
+        case CommentMode::Preserve:
+            insert_comment(comment);
+            break;
+        case CommentMode::Remove:
+        case CommentMode::ProcessOnly:
+            break;
+    }
 }
 
 std::shared_ptr<Element> TreeBuilder::create_element(const Token& token) {
