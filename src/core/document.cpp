@@ -26,29 +26,40 @@ std::string Document::text_content() const {
 }
 
 std::string Document::title() const {
-    if (const auto elements = get_elements_by_tag_name("title"); !elements.empty()) {
-        return elements.at(0)->text_content();
+    if (m_cached_title.has_value()) {
+        return m_cached_title.value();
     }
-    return {};
+    if (const auto elements = get_elements_by_tag_name("title"); !elements.empty()) {
+        m_cached_title = elements.at(0)->text_content();
+    } else {
+        m_cached_title = std::string{};
+    }
+    return m_cached_title.value();
 }
 
 std::string Document::charset() const {
+    if (m_cached_charset.has_value()) {
+        return m_cached_charset.value();
+    }
     const auto meta_elements = get_elements_by_tag_name("meta");
     for (const auto& meta : meta_elements) {
         if (meta->has_attribute("charset")) {
-            return meta->get_attribute("charset");
+            m_cached_charset = meta->get_attribute("charset");
+            return m_cached_charset.value();
         }
         if (meta->get_attribute("http-equiv") == "Content-Type") {
-            const std::string content     = meta->get_attribute("content");
-            const size_t      charset_pos = content.find("charset=");
+            const std::string content = meta->get_attribute("content");
+            const size_t charset_pos = content.find("charset=");
             if (charset_pos != std::string::npos) {
                 const size_t start = charset_pos + 8;
-                const size_t end   = content.find_first_of("; \t\n\r", start);
-                return content.substr(start, end == std::string::npos ? std::string::npos : end - start);
+                const size_t end = content.find_first_of("; \t\n\r", start);
+                m_cached_charset = content.substr(start, end == std::string::npos ? std::string::npos : end - start);
+                return m_cached_charset.value();
             }
         }
     }
-    return {};
+    m_cached_charset = std::string{};
+    return m_cached_charset.value();
 }
 
 std::string Document::source_html() const {

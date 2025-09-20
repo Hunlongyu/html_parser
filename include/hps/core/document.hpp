@@ -161,6 +161,9 @@ class Document : public Node {
 
   private:
     std::string m_html_source; /**< 原始 HTML 源代码 */
+
+    mutable std::optional<std::string> m_cached_title;   /**< 缓存的文档标题 */
+    mutable std::optional<std::string> m_cached_charset; /**< 缓存的字符编码 */
 };
 
 }  // namespace hps
