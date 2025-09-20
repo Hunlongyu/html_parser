@@ -20,7 +20,7 @@ Cpp11BracedListStyle: true
 # === 缩进设置 ===
 IndentCaseLabels: true
 IndentPPDirectives: None
-ContinuationIndentWidth: 11
+ContinuationIndentWidth: 4
 ConstructorInitializerIndentWidth: 4
 AccessModifierOffset: -2
 
@@ -46,6 +46,10 @@ BreakBeforeTernaryOperators: true
 BreakConstructorInitializers: BeforeColon
 BreakInheritanceList: BeforeColon
 MaxEmptyLinesToKeep: 1
+
+# === 二元操作符换行 - 关键修改 ===
+BreakBeforeBinaryOperators: All
+AlwaysBreakBeforeMultilineStrings: true
 
 # === 管道操作符和Lambda特殊处理 ===
 PenaltyBreakBeforeFirstCallParameter: 100
@@ -102,7 +106,6 @@ SpaceBeforeCpp11BracedList: false
 
 # === 控制管道操作符和Lambda的换行 - 关键修改 ===
 BreakAfterJavaFieldAnnotations: false
-BreakBeforeBinaryOperators: None
 BreakBeforeConceptDeclarations: Always
 BreakBeforeInlineASMColon: OnlyMultiline
 
@@ -112,4 +115,3 @@ LambdaBodyIndentation: Signature
 # === Ranges管道操作符支持 ===
 ExperimentalAutoDetectBinPacking: false
 PackConstructorInitializers: Never
-AlwaysBreakBeforeMultilineStrings: false

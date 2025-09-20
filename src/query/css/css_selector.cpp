@@ -149,8 +149,8 @@ bool DescendantSelector::matches(const Element& element) const {
     }
 
     auto parent = element.parent();
-    while (parent) { // 遍历所有父节点，直到根节点
-        if (parent->is_element()) { // 只有当父节点是元素时才尝试匹配左侧选择器
+    while (parent) {                 // 遍历所有父节点，直到根节点
+        if (parent->is_element()) {  // 只有当父节点是元素时才尝试匹配左侧选择器
             auto parent_element = parent->as_element();
             if (parent_element && m_left->matches(*parent_element)) {
                 return true;

@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <ranges>
 #include <regex>
 
 namespace hps {
@@ -500,9 +501,9 @@ bool PseudoClassSelector::matches(const Element& element) const {
             }
 
             auto siblings = parent->children();
-            for (auto it = siblings.rbegin(); it != siblings.rend(); ++it) {
-                if ((*it)->type() == NodeType::Element) {
-                    return it->get() == &element;
+            for (auto& sibling : std::ranges::reverse_view(siblings)) {
+                if (sibling->type() == NodeType::Element) {
+                    return sibling.get() == &element;
                 }
             }
             return false;
@@ -544,10 +545,10 @@ bool PseudoClassSelector::matches(const Element& element) const {
             }
 
             // 从末尾开始计算索引
-            for (int i = element_children.size() - 1; i >= 0; i--) {
-                if (element_children[i] == &element) {
-                    int reverse_index = element_children.size() - i;
-                    return matches_nth_expression(m_argument, reverse_index);
+            for (size_t i = element_children.size(); i > 0; i--) {
+                if (element_children[i - 1] == &element) {
+                    size_t reverse_index = element_children.size() - (i - 1);
+                    return matches_nth_expression(m_argument, static_cast<int>(reverse_index));
                 }
             }
             return false;
@@ -703,9 +704,8 @@ std::string PseudoClassSelector::to_string() const {
             return ":enabled";
         case PseudoType::Checked:
             return ":checked";
-        default:
-            return ":unknown";
     }
+    return ":unknown";
 }
 
 bool PseudoClassSelector::matches_nth_expression(const std::string& expression, const int index) {
@@ -738,7 +738,7 @@ bool PseudoClassSelector::matches_nth_expression(const std::string& expression, 
         // 解析系数a
         const std::string a_str = match[1].str();
         if (!a_str.empty()) {
-            if (a_str == "+" || a_str == "") {
+            if (a_str == "+" || a_str.empty()) {
                 a = 1;
             } else if (a_str == "-") {
                 a = -1;
@@ -817,10 +817,9 @@ int PseudoClassSelector::get_type_index(const Element& element, const bool from_
     for (size_t i = 0; i < same_type_elements.size(); i++) {
         if (same_type_elements[i] == &element) {
             if (from_end) {
-                return same_type_elements.size() - i;
-            } else {
-                return i + 1;
+                return static_cast<int>(same_type_elements.size() - i);
             }
+            return static_cast<int>(i + 1);
         }
     }
 
@@ -837,9 +836,8 @@ std::string PseudoElementSelector::to_string() const {
             return "::first-line";
         case ElementType::FirstLetter:
             return "::first-letter";
-        default:
-            return "::unknown";
     }
+    return "::unknown";
 }
 
 /**
@@ -877,9 +875,7 @@ bool PseudoElementSelector::matches(const Element& element) const {
                 static const std::vector<std::string> block_elements = {"div", "p", "h1", "h2", "h3", "h4", "h5", "h6", "article", "section", "header", "footer", "main", "aside", "nav", "blockquote", "pre", "address"};
                 return std::ranges::find(block_elements, tag) != block_elements.end();
             }
-
-        default:
-            return false;
     }
+    return false;
 }
 }  // namespace hps
