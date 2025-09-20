@@ -40,12 +40,23 @@ enum class CommentMode {
 };
 
 /**
+ * @brief 文本处理模式枚举
+ *
+ * 定义如何处理HTML文本内容中的实体和特殊标签。
+ */
+enum class TextProcessingMode {
+    Raw,     ///< 保持原始文本，不进行任何转换
+    Decode,  ///< 解码HTML实体但保留标签
+};
+
+/**
  * @brief HTML解析器配置选项类
  *
  * Options类提供了HTML解析器的各种配置选项，包括错误处理模式、
  * 内容处理选项、性能限制和自定义过滤器等。支持通过工厂方法
  * 创建预定义的配置组合。
  */
+
 class Options {
   public:
     /**
@@ -200,8 +211,9 @@ class Options {
     ErrorHandlingMode error_handling = ErrorHandlingMode::Lenient;  ///< ✅ 错误处理模式，默认宽松模式
 
     // 内容处理选项
-    CommentMode    comment_mode    = CommentMode::Preserve;     ///< ✅ 注释处理模式，默认保留注释
-    WhitespaceMode whitespace_mode = WhitespaceMode::Preserve;  ///< ✅ 空白文本处理模式，默认保留空白
+    CommentMode        comment_mode         = CommentMode::Preserve;       ///< ✅ 注释处理模式，默认保留注释
+    WhitespaceMode     whitespace_mode      = WhitespaceMode::Preserve;    ///< ✅ 空白文本处理模式，默认保留空白
+    TextProcessingMode text_processing_mode = TextProcessingMode::Decode;  ///< ✅ 文本处理模式，默认保持原始
 
     // 高级选项
     bool preserve_case = false;  ///< ✅ 是否保持标签和属性名大小写，默认转为小写

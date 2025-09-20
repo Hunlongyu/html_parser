@@ -11,14 +11,13 @@ int main() {
 #endif
 
     try {
-        const auto res   = parse_file_with_error("./html/tepis.htm");
+        const auto res   = parse_file_with_error("./html/crxs.htm");
         const auto start = std::chrono::high_resolution_clock::now();
 
-        const auto contents = res.document->css(".content > .content-block p ").elements();
+        const auto contents = res.document->css(".fiction-body p").elements();
 
         for (const auto& content : contents) {
-            std::cout << content->text_content() << std::endl;
-            std::cout << std::endl;
+            std::cout << "    " << content->text_content() << std::endl;
         }
 
         const auto end      = std::chrono::high_resolution_clock::now();

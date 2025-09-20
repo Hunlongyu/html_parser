@@ -96,14 +96,25 @@ void TreeBuilder::process_text(const Token& token) const {
     if (text.empty()) {
         return;
     }
+    std::string processed_text(text);
+
+    switch (m_options.text_processing_mode) {
+        case TextProcessingMode::Raw:
+            break;
+        case TextProcessingMode::Decode:
+            processed_text = decode_html_entities(processed_text);
+            break;
+    }
 
     switch (m_options.whitespace_mode) {
         case WhitespaceMode::Preserve:
-            insert_comment(text);
+            insert_comment(processed_text);
             break;
         case WhitespaceMode::Normalize:
+            insert_text(normalize_whitespace(processed_text));
+            break;
         case WhitespaceMode::Trim:
-            insert_text(trim_whitespace(text));
+            insert_text(trim_whitespace(processed_text));
             break;
         case WhitespaceMode::Remove:
             break;

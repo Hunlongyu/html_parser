@@ -1,6 +1,8 @@
 #pragma once
 #include "string_view"
 
+#include <regex>
+
 #ifdef _WIN32
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
@@ -10,6 +12,7 @@
 #endif
 
 #include <stdexcept>
+#include <unordered_map>
 #include <unordered_set>
 
 namespace hps {
@@ -245,4 +248,54 @@ inline std::string gbk_to_utf8(std::string_view gbk_str) {
 #endif
 }
 
+/**
+ * @brief 解码HTML实体
+ *
+ * @param text 包含HTML实体的文本
+ * @return 解码后的文本
+ */
+inline std::string decode_html_entities(const std::string& text) {
+    static const std::unordered_map<std::string, std::string> entity_map = {{"&amp;", "&"},
+                                                                            {"&lt;", "<"},
+                                                                            {"&gt;", ">"},
+                                                                            {"&quot;", "\""},
+                                                                            {"&apos;", "'"},
+                                                                            // 空白字符（最常用）
+                                                                            {"&nbsp;", " "}};
+    std::string                                               result     = text;
+    for (const auto& [entity, replacement] : entity_map) {
+        size_t pos = 0;
+        while ((pos = result.find(entity, pos)) != std::string::npos) {
+            result.replace(pos, entity.length(), replacement);
+            pos += replacement.length();
+        }
+    }
+    return result;
+}
+
+/**
+ * @brief 标准化空白字符（合并连续空白为单个空格）
+ * @param text 要处理的文本
+ * @return 标准化后的文本
+ */
+inline std::string normalize_whitespace(const std::string& text) {
+    std::string result;
+    result.reserve(text.length());
+    
+    bool in_whitespace = false;
+    for (char c : text) {
+        if (is_whitespace(c)) {
+            if (!in_whitespace) {
+                result += ' '; // 用单个空格替换所有空白字符
+                in_whitespace = true;
+            }
+            // 跳过连续的空白字符
+        } else {
+            result += c;
+            in_whitespace = false;
+        }
+    }
+    
+    return result;
+}
 }  // namespace hps
