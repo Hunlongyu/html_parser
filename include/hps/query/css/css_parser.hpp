@@ -1,9 +1,10 @@
 #pragma once
 
-#include "css_lexer.hpp"
-#include "css_selector.hpp"
 #include "hps/parsing/options.hpp"
 #include "hps/utils/exception.hpp"
+
+#include "css_lexer.hpp"
+#include "css_selector.hpp"
 
 #include <memory>
 #include <string>
@@ -28,7 +29,7 @@ class CSSParser {
      * @param selector CSS选择器字符串
      * @param options 解析选项（可选）
      */
-    explicit CSSParser(std::string_view selector, const Options& options = Options{});
+    explicit CSSParser(std::string_view selector, Options options = Options{});
 
     /**
      * @brief 解析选择器列表
@@ -69,8 +70,8 @@ class CSSParser {
     }
 
   private:
-    CSSLexer                m_lexer;    ///< 词法分析器实例
-    Options                 m_options;  ///< 解析选项配置
+    CSSLexer              m_lexer;    ///< 词法分析器实例
+    Options               m_options;  ///< 解析选项配置
     std::vector<HPSError> m_errors;   ///< 收集的解析错误列表
 
     // 核心解析方法

@@ -5,7 +5,6 @@
 #include "hps/utils/string_utils.hpp"
 
 #include <algorithm>
-#include <cctype>
 #include <ranges>
 #include <regex>
 
@@ -13,9 +12,9 @@ namespace hps {
 
 // ==================== CSSParser Implementation ====================
 
-CSSParser::CSSParser(const std::string_view selector, const Options& options)
+CSSParser::CSSParser(const std::string_view selector, Options options)
     : m_lexer(selector),
-      m_options(options) {}
+      m_options(std::move(options)) {}
 
 std::unique_ptr<SelectorList> CSSParser::parse_selector_list() {
     auto selector_list = std::make_unique<SelectorList>();
