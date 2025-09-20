@@ -11,7 +11,7 @@ namespace hps {
 class Element;
 
 // CSS选择器类型枚举
-enum class SelectorType {
+enum class SelectorType : std::uint8_t {
     Universal,     // *
     Type,          // div, p, span
     Class,         // .class-name
@@ -27,7 +27,7 @@ enum class SelectorType {
 };
 
 // 属性选择器操作符
-enum class AttributeOperator {
+enum class AttributeOperator : std::uint8_t {
     Exists,      // [attr]
     Equals,      // [attr=value]
     Contains,    // [attr*=value]

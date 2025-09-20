@@ -222,7 +222,7 @@ class PseudoClassSelector : public CSSSelector {
      *
      * 定义了支持的所有伪类类型
      */
-    enum class PseudoType {
+    enum class PseudoType : std::uint8_t {
         FirstChild,    ///< :first-child - 第一个子元素
         LastChild,     ///< :last-child - 最后一个子元素
         NthChild,      ///< :nth-child(n) - 第n个子元素
@@ -331,7 +331,7 @@ class PseudoElementSelector : public CSSSelector {
     /**
      * @brief 伪元素类型枚举
      */
-    enum class ElementType {
+    enum class ElementType : std::uint8_t {
         Before,      ///< ::before - 元素内容之前插入的虚拟元素
         After,       ///< ::after - 元素内容之后插入的虚拟元素
         FirstLine,   ///< ::first-line - 元素的第一行

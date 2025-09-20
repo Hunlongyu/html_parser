@@ -10,7 +10,7 @@
 
 namespace hps {
 
-enum class NodeType {
+enum class NodeType : std::uint8_t {
     Undefined, /**< 未定义节点 */
     Element,   /**< 元素节点 <div> */
     Text,      /**< 文本节点 <p>Hello</p> 包括 <![CDATA[hello world]]> */
@@ -18,7 +18,7 @@ enum class NodeType {
     Document,  /**< 文档节点 整个文档的根节点 */
 };
 
-enum class TokenType {
+enum class TokenType : std::uint8_t {
     OPEN,          /// <tag ...>
     CLOSE,         /// </tag>
     CLOSE_SELF,    /// <tag ... />
@@ -34,7 +34,7 @@ enum class TokenType {
  *
  * 定义HTML词法分析器在解析过程中的各种状态，用于状态机驱动的解析流程。
  */
-enum class TokenizerState {
+enum class TokenizerState : std::uint8_t {
     Data,        /// 普通文本
     TagOpen,     /// <          标签开始
     TagName,     /// <tag       标签名

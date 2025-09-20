@@ -21,7 +21,7 @@ class CSSLexer {
      *
      * 定义了CSS选择器中所有可能的标记类型
      */
-    enum class CSSTokenType {
+    enum class CSSTokenType : std::uint8_t {
         Identifier,    ///< 标识符：div, class-name, attr-name
         Hash,          ///< 哈希标记：#id (ID选择器)
         Dot,           ///< 点标记：. (类选择器前缀)
