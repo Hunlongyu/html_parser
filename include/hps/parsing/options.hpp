@@ -165,31 +165,31 @@ class Options {
      */
     static const std::unordered_set<std::string>& get_default_void_elements() {
         static const std::unordered_set<std::string> default_void_elements = {
-                   // HTML5 标准 void 元素（不能有结束标签）
-                   "area",    ///< 图像映射区域
-                   "base",    ///< 文档基础URL
-                   "br",      ///< 换行符
-                   "col",     ///< 表格列
-                   "embed",   ///< 嵌入内容
-                   "hr",      ///< 水平分割线
-                   "img",     ///< 图像
-                   "input",   ///< 输入控件
-                   "link",    ///< 外部资源链接
-                   "meta",    ///< 元数据
-                   "param",   ///< 对象参数
-                   "source",  ///< 媒体资源
-                   "track",   ///< 文本轨道
-                   "wbr",     ///< 可选换行点
+            // HTML5 标准 void 元素（不能有结束标签）
+            "area",    ///< 图像映射区域
+            "base",    ///< 文档基础URL
+            "br",      ///< 换行符
+            "col",     ///< 表格列
+            "embed",   ///< 嵌入内容
+            "hr",      ///< 水平分割线
+            "img",     ///< 图像
+            "input",   ///< 输入控件
+            "link",    ///< 外部资源链接
+            "meta",    ///< 元数据
+            "param",   ///< 对象参数
+            "source",  ///< 媒体资源
+            "track",   ///< 文本轨道
+            "wbr",     ///< 可选换行点
 
-                   // HTML4 遗留 void 元素（向后兼容）
-                   "basefont",  ///< 基础字体（已废弃但仍需支持）
-                   "frame",     ///< 框架（已废弃但仍需支持）
-                   "isindex",   ///< 索引输入（已废弃但仍需支持）
+            // HTML4 遗留 void 元素（向后兼容）
+            "basefont",  ///< 基础字体（已废弃但仍需支持）
+            "frame",     ///< 框架（已废弃但仍需支持）
+            "isindex",   ///< 索引输入（已废弃但仍需支持）
 
-                   // 常见的自闭合元素
-                   "command",   ///< 命令按钮
-                   "keygen",    ///< 密钥生成器
-                   "menuitem",  ///< 菜单项
+            // 常见的自闭合元素
+            "command",   ///< 命令按钮
+            "keygen",    ///< 密钥生成器
+            "menuitem",  ///< 菜单项
         };
         return default_void_elements;
     }

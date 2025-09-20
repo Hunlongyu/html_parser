@@ -24,6 +24,7 @@ set(EXAMPLES
     query_css
 
     debug_sibling
+    novel
 )
 
 set(HPS_LIB_TO_LINK "")

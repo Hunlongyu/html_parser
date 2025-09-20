@@ -2,6 +2,7 @@
 
 #include "hps/core/document.hpp"
 
+#include <filesystem>
 #include <fstream>
 #include <sstream>
 
@@ -71,6 +72,14 @@ std::shared_ptr<Document> HTMLParser::parse_file(const std::string_view filePath
 std::shared_ptr<Document> HTMLParser::parse_file(const std::string_view filePath, const Options& options) {
     const auto mode = options.error_handling;
     try {
+        if (!std::filesystem::exists(filePath)) {
+            throw std::runtime_error("File does not exist: " + std::string(filePath));
+        }
+
+        if (!std::filesystem::is_regular_file(filePath)) {
+            throw std::runtime_error("Path is not a regular file: " + std::string(filePath));
+        }
+
         const std::ifstream file{std::string(filePath)};
         if (!file.is_open()) {
             throw std::runtime_error("Cannot open file: " + std::string(filePath));
