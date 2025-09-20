@@ -4,7 +4,9 @@
 
 namespace hps {
 
-TextNode::TextNode(const std::string_view text) noexcept : Node(NodeType::Text), m_text(text) {}
+TextNode::TextNode(const std::string_view text) noexcept
+    : Node(NodeType::Text),
+      m_text(text) {}
 
 NodeType TextNode::type() const noexcept {
     return NodeType::Text;
@@ -31,7 +33,7 @@ std::string TextNode::text() const {
     return m_text;
 }
 
-std::string TextNode::normalized_text() const {
+std::string TextNode::trim() const {
     if (m_text.empty()) {
         return m_text;
     }

@@ -1,30 +1,17 @@
 #include "hps/parsing/tree_builder.hpp"
 
-#include "hps/hps.hpp"
 #include "hps/core/comment_node.hpp"
 #include "hps/core/document.hpp"
 #include "hps/core/text_node.hpp"
+#include "hps/hps.hpp"
 #include "hps/parsing/tokenizer.hpp"
 
-#include <fstream>
 #include <functional>
 #include <iostream>
-#include <sstream>
 
 using namespace hps;
 
-static std::string read_file(const std::string& filename) {
-    std::ifstream file(filename);
-    if (!file.is_open()) {
-        throw std::runtime_error("无法打开文件: " + filename);
-    }
-
-    std::stringstream buffer;
-    buffer << file.rdbuf();
-    return buffer.str();
-}
-
-void print_node(const hps::Node* node, int depth = 0) {
+void print_node(const Node* node, int depth = 0) {
     if (!node)
         return;
 
@@ -35,7 +22,7 @@ void print_node(const hps::Node* node, int depth = 0) {
 
     // 根据节点类型打印信息
     switch (node->type()) {
-        case hps::NodeType::Element: {
+        case NodeType::Element: {
             const auto element = node->as_element();
             std::cout << "<" << element->tag_name();
 
@@ -57,23 +44,23 @@ void print_node(const hps::Node* node, int depth = 0) {
             std::cout << "</" << element->tag_name() << ">" << std::endl;
             break;
         }
-        case hps::NodeType::Text: {
+        case NodeType::Text: {
             const auto  text_node = node->as_text();
-            std::string text      = text_node->normalized_text();
+            std::string text      = text_node->trim();
             if (!text.empty()) {
                 std::cout << "TEXT: \"" << text << "\"" << std::endl;
             }
             break;
         }
-        case hps::NodeType::Comment: {
+        case NodeType::Comment: {
             const auto  comment_node = node->as_comment();
-            std::string comment      = comment_node->normalized_comment();
+            std::string comment      = comment_node->trim();
             if (!comment.empty()) {
                 std::cout << "COMMENT: \"" << comment << "\"" << std::endl;
             }
             break;
         }
-        case hps::NodeType::Document:
+        case NodeType::Document:
             std::cout << "DOCUMENT" << std::endl;
             for (const auto& child : node->children()) {
                 print_node(child.get(), depth + 1);
@@ -90,19 +77,16 @@ int main() {
     system("chcp 65001 > nul");
 #endif
 
-    std::string html = read_file("./html/base.html");
-
     try {
-
         std::cout << "hps version: " << version() << std::endl;
         // 创建文档对象
-        auto       document        = std::make_shared<hps::Document>(html);
+        auto       document        = parse_file("./html/base.html");
         const auto default_options = Options();
 
         // 创建TreeBuilder
-        hps::TreeBuilder builder(document, default_options);
+        TreeBuilder builder(document, default_options);
         // 创建Tokenizer
-        hps::Tokenizer tokenizer(html, default_options);
+        Tokenizer tokenizer(document->source_html(), default_options);
 
         std::cout << "开始解析..." << std::endl;
 
@@ -115,22 +99,22 @@ int main() {
             // 显示Token信息（可选）
             std::cout << "处理Token: ";
             switch (token->type()) {
-                case hps::TokenType::OPEN:
+                case TokenType::OPEN:
                     std::cout << "OPEN <" << token->name() << ">";
                     break;
-                case hps::TokenType::CLOSE:
+                case TokenType::CLOSE:
                     std::cout << "CLOSE </" << token->name() << ">";
                     break;
-                case hps::TokenType::CLOSE_SELF:
+                case TokenType::CLOSE_SELF:
                     std::cout << "SELF_CLOSE <" << token->name() << " />";
                     break;
-                case hps::TokenType::TEXT:
+                case TokenType::TEXT:
                     std::cout << "TEXT: \"" << token->value() << "\"";
                     break;
-                case hps::TokenType::COMMENT:
+                case TokenType::COMMENT:
                     std::cout << "COMMENT: \"" << token->value() << "\"";
                     break;
-                case hps::TokenType::DONE:
+                case TokenType::DONE:
                     std::cout << "DONE";
                     break;
                 default:
@@ -145,7 +129,7 @@ int main() {
                 break;
             }
 
-            if (token->type() == hps::TokenType::DONE) {
+            if (token->type() == TokenType::DONE) {
                 break;
             }
         }
@@ -172,9 +156,9 @@ int main() {
         std::cout << "\n=== 元素查询演示 ===" << std::endl;
 
         // 遍历所有子节点寻找元素
-        std::function<void(const hps::Node*, const std::string&)> find_elements;
-        find_elements = [&](const hps::Node* node, const std::string& tag_name) {
-            if (node->type() == hps::NodeType::Element) {
+        std::function<void(const Node*, const std::string&)> find_elements;
+        find_elements = [&](const Node* node, const std::string& tag_name) {
+            if (node->type() == NodeType::Element) {
                 const auto element = node->as_element();
                 if (element->tag_name() == tag_name) {
                     std::cout << "找到 <" << tag_name << "> 元素";
@@ -204,9 +188,9 @@ int main() {
         std::cout << "\n=== 文本内容提取 ===" << std::endl;
 
         // 提取所有文本内容
-        std::function<void(const hps::Node*)> extract_text;
-        extract_text = [&](const hps::Node* node) {
-            if (node->type() == hps::NodeType::Text) {
+        std::function<void(const Node*)> extract_text;
+        extract_text = [&](const Node* node) {
+            if (node->type() == NodeType::Text) {
                 const auto  text_node = node->as_text();
                 std::string text      = std::string(text_node->text());
                 text.erase(0, text.find_first_not_of(" \t\n\r"));

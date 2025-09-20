@@ -1,8 +1,13 @@
 #include "hps/core/comment_node.hpp"
 
+#include <algorithm>
+#include <ranges>
+
 namespace hps {
 
-CommentNode::CommentNode(const std::string_view comment) noexcept : Node(NodeType::Comment), m_comment(comment) {}
+CommentNode::CommentNode(const std::string_view comment) noexcept
+    : Node(NodeType::Comment),
+      m_comment(comment) {}
 
 NodeType CommentNode::type() const noexcept {
     return NodeType::Comment;
@@ -20,7 +25,7 @@ std::string CommentNode::comment() const {
     return m_comment;
 }
 
-std::string CommentNode::normalized_comment() const {
+std::string CommentNode::trim() const {
     if (m_comment.empty()) {
         return m_comment;
     }

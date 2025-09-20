@@ -93,7 +93,7 @@ std::vector<std::shared_ptr<const Element>> Element::querySelectorAll(const std:
     return Query::css(*this, selector).elements();
 }
 
-std::shared_ptr<const Element> Element::get_element_by_id(std::string_view id) const {
+std::shared_ptr<const Element> Element::get_element_by_id(const std::string_view id) const {
     std::function<std::shared_ptr<const Element>(const std::shared_ptr<const Node>&)> find_by_id = [&](const std::shared_ptr<const Node>& node) -> std::shared_ptr<const Element> {
         if (!node || node->type() != NodeType::Element) {
             return nullptr;

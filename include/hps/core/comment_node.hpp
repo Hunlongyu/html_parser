@@ -34,10 +34,10 @@ class CommentNode : public Node {
     [[nodiscard]] std::string comment() const;
 
     /**
-     * @brief 获取注释内容 移除多余空白字符
+     * @brief 获取注释内容 移除两端空白字符
      * @return 注释内容
      */
-    [[nodiscard]] std::string normalized_comment() const;
+    [[nodiscard]] std::string trim() const;
 
     /**
      * @brief 判断是否为空

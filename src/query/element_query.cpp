@@ -2,8 +2,8 @@
 
 #include "hps/core/element.hpp"
 #include "hps/query/css/css_parser.hpp"
-#include "hps/query/query.hpp"
 #include "hps/query/css/css_utils.hpp"
+#include "hps/query/query.hpp"
 
 #include <algorithm>
 #include <span>
@@ -255,7 +255,7 @@ ElementQuery ElementQuery::closest(const std::string_view selector) const {
     if (selector.empty()) {
         return {};
     }
-    auto selector_list = parse_css_selector(selector);
+    const auto selector_list = parse_css_selector(selector);
     if (!selector_list) {
         return {};
     }
@@ -286,22 +286,32 @@ ElementQuery ElementQuery::closest(const std::string_view selector) const {
 }
 
 ElementQuery ElementQuery::next_sibling() const {
-    std::vector<std::shared_ptr<const Element>> siblings;
+    std::vector<std::shared_ptr<const Element>>        siblings;
+    std::unordered_set<std::shared_ptr<const Element>> seen;
     for (const auto& element : m_elements) {
         if (const auto ele = element->next_sibling(); ele && ele->is_element()) {
-            siblings.push_back(ele->as_element());
+            auto sibling_elem = ele->as_element();
+            if (!seen.contains(sibling_elem)) {
+                siblings.push_back(sibling_elem);
+                seen.insert(sibling_elem);
+            }
         }
     }
     return ElementQuery(std::move(siblings));
 }
 
 ElementQuery ElementQuery::next_siblings() const {
-    std::vector<std::shared_ptr<const Element>> siblings;
+    std::vector<std::shared_ptr<const Element>>        siblings;
+    std::unordered_set<std::shared_ptr<const Element>> seen;
     for (const auto& element : m_elements) {
         auto current = element->next_sibling();
         while (current) {
             if (current->is_element()) {
-                siblings.push_back(current->as_element());
+                auto sibling_elem = current->as_element();
+                if (!seen.contains(sibling_elem)) {
+                    siblings.push_back(sibling_elem);
+                    seen.insert(sibling_elem);
+                }
             }
             current = current->next_sibling();
         }
@@ -310,22 +320,32 @@ ElementQuery ElementQuery::next_siblings() const {
 }
 
 ElementQuery ElementQuery::prev_sibling() const {
-    std::vector<std::shared_ptr<const Element>> siblings;
+    std::vector<std::shared_ptr<const Element>>        siblings;
+    std::unordered_set<std::shared_ptr<const Element>> seen;
     for (const auto& element : m_elements) {
         if (const auto ele = element->previous_sibling(); ele && ele->is_element()) {
-            siblings.push_back(ele->as_element());
+            auto sibling_elem = ele->as_element();
+            if (!seen.contains(sibling_elem)) {
+                siblings.push_back(sibling_elem);
+                seen.insert(sibling_elem);
+            }
         }
     }
     return ElementQuery(std::move(siblings));
 }
 
 ElementQuery ElementQuery::prev_siblings() const {
-    std::vector<std::shared_ptr<const Element>> siblings;
+    std::vector<std::shared_ptr<const Element>>        siblings;
+    std::unordered_set<std::shared_ptr<const Element>> seen;
     for (const auto& element : m_elements) {
         auto current = element->previous_sibling();
         while (current) {
             if (current->is_element()) {
-                siblings.push_back(current->as_element());
+                auto sibling_elem = current->as_element();
+                if (!seen.contains(sibling_elem)) {
+                    siblings.push_back(sibling_elem);
+                    seen.insert(sibling_elem);
+                }
             }
             current = current->previous_sibling();
         }
@@ -334,7 +354,7 @@ ElementQuery ElementQuery::prev_siblings() const {
 }
 
 ElementQuery ElementQuery::siblings() const {
-    std::vector<std::shared_ptr<const Element>> siblings;
+    std::vector<std::shared_ptr<const Element>>        siblings;
     std::unordered_set<std::shared_ptr<const Element>> seen;
     for (const auto& element : m_elements) {
         if (element && element->parent()) {
@@ -489,12 +509,7 @@ bool ElementQuery::is(const std::string_view selector) const {
     if (!selector_list || selector_list->empty()) {
         return false;
     }
-    for (const auto& element : m_elements) {
-        if (element && selector_list->matches(*element)) {
-            return true;
-        }
-    }
-    return false;
+    return std::ranges::any_of(m_elements, [&selector_list](const auto& element) { return element && selector_list->matches(*element); });
 }
 
 bool ElementQuery::contains(const Element& element) const {

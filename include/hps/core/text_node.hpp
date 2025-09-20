@@ -40,10 +40,10 @@ class TextNode : public Node {
     [[nodiscard]] std::string text() const;
 
     /**
-     * @brief 获取文本内容 移除多余空白字符
+     * @brief 获取文本内容 移除两端空白字符
      * @return 文本内容
      */
-    [[nodiscard]] std::string normalized_text() const;
+    [[nodiscard]] std::string trim() const;
 
     /**
      * @brief 判断是否为空
