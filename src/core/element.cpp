@@ -86,8 +86,7 @@ bool Element::has_class(const std::string_view class_name) const noexcept {
 }
 
 std::shared_ptr<const Element> Element::querySelector(const std::string_view selector) const {
-    const auto elements = Query::css(*this, selector);
-    return elements.first_element();
+    return Query::css(*this, selector).first_element();
 }
 
 std::vector<std::shared_ptr<const Element>> Element::querySelectorAll(const std::string_view selector) const {

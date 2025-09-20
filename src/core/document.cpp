@@ -48,12 +48,12 @@ std::string Document::charset() const {
             return m_cached_charset.value();
         }
         if (meta->get_attribute("http-equiv") == "Content-Type") {
-            const std::string content = meta->get_attribute("content");
-            const size_t charset_pos = content.find("charset=");
+            const std::string content     = meta->get_attribute("content");
+            const size_t      charset_pos = content.find("charset=");
             if (charset_pos != std::string::npos) {
                 const size_t start = charset_pos + 8;
-                const size_t end = content.find_first_of("; \t\n\r", start);
-                m_cached_charset = content.substr(start, end == std::string::npos ? std::string::npos : end - start);
+                const size_t end   = content.find_first_of("; \t\n\r", start);
+                m_cached_charset   = content.substr(start, end == std::string::npos ? std::string::npos : end - start);
                 return m_cached_charset.value();
             }
         }
@@ -87,37 +87,17 @@ std::string Document::get_meta_property(const std::string_view property) const {
 }
 
 std::vector<std::string> Document::get_all_links() const {
-    std::vector<std::string> links;
-    const auto               a_elements = get_elements_by_tag_name("a");
-    for (const auto& a : a_elements) {
-        if (a->has_attribute("href")) {
-            const std::string href = a->get_attribute("href");
-            if (!href.empty()) {
-                links.push_back(href);
-            }
-        }
-    }
-    return links;
+    return Query::css(*this, "a[href]").extract_attributes("href");
 }
 
 std::vector<std::string> Document::get_all_images() const {
-    std::vector<std::string> images;
-    const auto               img_elements = get_elements_by_tag_name("img");
-    for (const auto& img : img_elements) {
-        if (img->has_attribute("src")) {
-            const std::string src = img->get_attribute("src");
-            if (!src.empty()) {
-                images.push_back(src);
-            }
-        }
-    }
-    return images;
+    return Query::css(*this, "img[src]").extract_attributes("src");
 }
 
 std::shared_ptr<const Element> Document::root() const {
     for (const auto& child : children()) {
         if (child->is_element()) {
-            return std::static_pointer_cast<const Element>(child);
+            return child->as_element();
         }
     }
     return nullptr;
@@ -126,7 +106,7 @@ std::shared_ptr<const Element> Document::root() const {
 std::shared_ptr<const Element> Document::html() const {
     for (const auto& child : children()) {
         if (child->is_element()) {
-            const auto element = std::static_pointer_cast<const Element>(child);
+            const auto element = child->as_element();
             if (element->tag_name() == "html") {
                 return element;
             }
@@ -136,111 +116,23 @@ std::shared_ptr<const Element> Document::html() const {
 }
 
 std::shared_ptr<const Element> Document::querySelector(const std::string_view selector) const {
-    // TODO: 实现完整的 CSS 选择器解析
-    const auto elements = querySelectorAll(selector);
-    return elements.empty() ? nullptr : elements.front();
+    return Query::css(*this, selector).first_element();
 }
 
 std::vector<std::shared_ptr<const Element>> Document::querySelectorAll(const std::string_view selector) const {
-    // TODO: 实现完整的 CSS 选择器解析
-    std::vector<std::shared_ptr<const Element>> result;
-
-    if (selector.empty()) {
-        return result;
-    }
-
-    // 简单的选择器实现
-    if (selector[0] == '#') {
-        // ID 选择器
-        const std::string id(selector.substr(1));
-        if (const auto element = get_element_by_id(id)) {
-            result.push_back(element);
-        }
-    } else if (selector[0] == '.') {
-        // 类选择器
-        const std::string class_name(selector.substr(1));
-        result = get_elements_by_class_name(class_name);
-    } else {
-        // 标签选择器
-        result = get_elements_by_tag_name(selector);
-    }
-
-    return result;
+    return Query::css(*this, selector).elements();
 }
 
 std::shared_ptr<const Element> Document::get_element_by_id(const std::string_view id) const {
-    // 递归搜索所有子节点
-    std::function<std::shared_ptr<const Element>(const std::shared_ptr<const Node>&)> search_recursive;
-    search_recursive = [&](const std::shared_ptr<const Node>& node) -> std::shared_ptr<const Element> {
-        if (node->is_element()) {
-            const auto element = std::static_pointer_cast<const Element>(node);
-            if (element->id() == id) {
-                return element;
-            }
-        }
-
-        for (const auto& child : node->children()) {
-            if (const auto found = search_recursive(child)) {
-                return found;
-            }
-        }
-        return nullptr;
-    };
-
-    for (const auto& child : children()) {
-        if (const auto found = search_recursive(child)) {
-            return found;
-        }
-    }
-    return nullptr;
+    return Query::css(*this, "#" + std::string(id)).first_element();
 }
 
 std::vector<std::shared_ptr<const Element>> Document::get_elements_by_tag_name(const std::string_view tag_name) const {
-    std::vector<std::shared_ptr<const Element>> result;
-
-    // 递归搜索所有子节点
-    std::function<void(const std::shared_ptr<const Node>&)> search_recursive;
-    search_recursive = [&](const std::shared_ptr<const Node>& node) {
-        if (node->is_element()) {
-            const auto element = std::static_pointer_cast<const Element>(node);
-            if (element->tag_name() == tag_name) {
-                result.push_back(element);
-            }
-        }
-
-        for (const auto& child : node->children()) {
-            search_recursive(child);
-        }
-    };
-
-    for (const auto& child : children()) {
-        search_recursive(child);
-    }
-    return result;
+    return Query::css(*this, std::string(tag_name)).elements();
 }
 
 std::vector<std::shared_ptr<const Element>> Document::get_elements_by_class_name(const std::string_view class_name) const {
-    std::vector<std::shared_ptr<const Element>> result;
-
-    // 递归搜索所有子节点
-    std::function<void(const std::shared_ptr<const Node>&)> search_recursive;
-    search_recursive = [&](const std::shared_ptr<const Node>& node) {
-        if (node->is_element()) {
-            const auto element = std::static_pointer_cast<const Element>(node);
-            if (element->has_class(class_name)) {
-                result.push_back(element);
-            }
-        }
-
-        for (const auto& child : node->children()) {
-            search_recursive(child);
-        }
-    };
-
-    for (const auto& child : children()) {
-        search_recursive(child);
-    }
-    return result;
+    return Query::css(*this, "." + std::string(class_name)).elements();
 }
 
 ElementQuery Document::css(const std::string_view selector) const {
@@ -249,7 +141,6 @@ ElementQuery Document::css(const std::string_view selector) const {
 
 ElementQuery Document::xpath(std::string_view expression) const {
     // TODO: 实现 XPath 表达式解析
-    // 目前返回空的 ElementQuery
     return ElementQuery();
 }
 
