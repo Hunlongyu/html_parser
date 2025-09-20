@@ -66,11 +66,11 @@ SpacesBeforeTrailingComments: 2
 # === 对齐设置 - 关键修改 ===
 AlignAfterOpenBracket: Align
 AlignConsecutiveAssignments: true
-AlignConsecutiveBitFields: true
 AlignConsecutiveDeclarations: true
-AlignEscapedNewlines: Left
-AlignOperands: true
+AlignOperands: Align
 AlignTrailingComments: true
+AlignConsecutiveBitFields: true
+AlignEscapedNewlines: Left
 
 # === Lambda和管道操作符格式化 ===
 AllowAllArgumentsOnNextLine: false
@@ -81,7 +81,7 @@ SortIncludes: true
 SortUsingDeclarations: true
 IncludeBlocks: Regroup
 IncludeCategories:
-  - Regex: '^"htmlcrawler/'
+  - Regex: '^"hps/'
     Priority: 1
   - Regex: '^"'
     Priority: 2
@@ -102,7 +102,7 @@ SpaceBeforeCpp11BracedList: false
 
 # === 控制管道操作符和Lambda的换行 - 关键修改 ===
 BreakAfterJavaFieldAnnotations: false
-BreakBeforeBinaryOperators: NonAssignment
+BreakBeforeBinaryOperators: None
 BreakBeforeConceptDeclarations: Always
 BreakBeforeInlineASMColon: OnlyMultiline
 

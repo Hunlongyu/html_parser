@@ -1,6 +1,5 @@
 #include "hps/query/query.hpp"
 
-#include "hps/core/element.hpp"
 #include "hps/query/css/css_matcher.hpp"
 #include "hps/query/css/css_utils.hpp"
 #include "hps/query/element_query.hpp"

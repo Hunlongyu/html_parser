@@ -526,7 +526,7 @@ std::optional<Token> Tokenizer::consume_script_data_state() {
             skip_whitespace();
             if (current_char() == '>') {
                 if (start < saved_pos) {
-                    m_pos                           = saved_pos;
+                    m_pos                    = saved_pos;
                     std::string_view content = m_source.substr(start, saved_pos - start);
                     return create_text_token(content);
                 }

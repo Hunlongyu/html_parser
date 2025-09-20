@@ -1,6 +1,5 @@
 #include "hps/core/comment_node.hpp"
 
-#include <algorithm>
 #include <ranges>
 
 namespace hps {

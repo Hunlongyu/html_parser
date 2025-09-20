@@ -2,7 +2,10 @@
 
 namespace hps {
 
-Token::Token(const TokenType type, const std::string_view name, const std::string_view value) noexcept : m_type(type), m_name(name), m_value(value) {}
+Token::Token(const TokenType type, const std::string_view name, const std::string_view value) noexcept
+    : m_type(type),
+      m_name(name),
+      m_value(value) {}
 
 TokenType Token::type() const noexcept {
     return m_type;

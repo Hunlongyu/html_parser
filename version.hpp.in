@@ -6,8 +6,8 @@
 #define HPS_VERSION "@PROJECT_VERSION@"
 
 namespace hps {
-    constexpr int version_major = HPS_VERSION_MAJOR;
-    constexpr int version_minor = HPS_VERSION_MINOR;
-    constexpr int version_patch = HPS_VERSION_PATCH;
-    constexpr const char* version_string = HPS_VERSION;
+constexpr int version_major = HPS_VERSION_MAJOR;
+constexpr int version_minor = HPS_VERSION_MINOR;
+constexpr int version_patch = HPS_VERSION_PATCH;
+constexpr auto version_string = HPS_VERSION;
 }
