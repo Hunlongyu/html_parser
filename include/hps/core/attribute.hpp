@@ -44,9 +44,9 @@ class Attribute {
      * 用于将解析阶段的属性信息转换为 DOM 树中的属性对象。
      */
     explicit Attribute(const TokenAttribute& attr)
-        : m_name(attr.m_name),
-          m_value(attr.m_value),
-          m_has_value(attr.m_has_value) {}
+        : m_name(attr.name),
+          m_value(attr.value),
+          m_has_value(attr.has_value) {}
 
     // Attribute Access Methods
     /**

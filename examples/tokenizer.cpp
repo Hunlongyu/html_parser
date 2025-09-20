@@ -35,7 +35,7 @@ int main() {
                     if (!token->attrs().empty()) {
                         std::cout << " ";
                         for (const auto& attr : token->attrs()) {
-                            std::cout << attr.m_name << "=\"" << attr.m_value << "\"";
+                            std::cout << attr.name << "=\"" << attr.value << "\"";
                         }
                     }
                     std::cout << ">" << std::endl;
@@ -50,7 +50,7 @@ int main() {
                     if (!token->attrs().empty()) {
                         std::cout << ", 属性: ";
                         for (const auto& attr : token->attrs()) {
-                            std::cout << attr.m_name << "=\"" << attr.m_value << "\" ";
+                            std::cout << attr.name << "=\"" << attr.value << "\" ";
                         }
                     }
                     std::cout << "/>" << std::endl;

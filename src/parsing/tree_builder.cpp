@@ -129,7 +129,7 @@ void TreeBuilder::process_comment(const Token& token) const {
 std::shared_ptr<Element> TreeBuilder::create_element(const Token& token) {
     auto element = std::make_shared<Element>(token.name());
     for (const auto& attr : token.attrs()) {
-        element->add_attribute(attr.m_name, attr.m_value);
+        element->add_attribute(attr.name, attr.value);
     }
     return element;
 }

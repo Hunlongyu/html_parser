@@ -14,9 +14,9 @@ namespace hps {
  * - 无值属性：如 disabled, checked, selected
  */
 struct TokenAttribute {
-    std::string m_name;              ///< 属性名称
-    std::string m_value;             ///< 属性值
-    bool        m_has_value = true;  ///< 是否有值标志，区分 <input disabled> 和 <input disabled="true">
+    std::string name;              ///< 属性名称
+    std::string value;             ///< 属性值
+    bool        has_value = true;  ///< 是否有值标志，区分 <input disabled> 和 <input disabled="true">
 
     /**
      * @brief 默认构造函数
@@ -39,9 +39,9 @@ struct TokenAttribute {
      * - TokenAttribute("disabled", "", false) - 无值属性
      */
     explicit TokenAttribute(const std::string_view n, const std::string_view v = {}, const bool hv = true)
-        : m_name(n),
-          m_value(v),
-          m_has_value(hv) {}
+        : name(n),
+          value(v),
+          has_value(hv) {}
 };
 
 }  // namespace hps
