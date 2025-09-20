@@ -24,6 +24,7 @@ set(EXAMPLES
     query_css
 
     debug_sibling
+    debug_not
     novel
 )
 

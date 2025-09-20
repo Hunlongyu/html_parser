@@ -271,23 +271,38 @@ std::unique_ptr<CSSSelector> CSSParser::parse_pseudo_class() {
     if (match_token(CSSLexer::CSSTokenType::LeftParen)) {
         consume_token(CSSLexer::CSSTokenType::LeftParen);
 
-        // 读取完整的参数，支持属性选择器和伪类选择器
+        // 改进的参数解析
         std::string argument_parts;
-        while (has_more_tokens() && !match_token(CSSLexer::CSSTokenType::RightParen)) {
-            const auto token = m_lexer.next_token();
-            if (token.type == CSSLexer::CSSTokenType::Identifier || token.type == CSSLexer::CSSTokenType::String || token.type == CSSLexer::CSSTokenType::Number || token.type == CSSLexer::CSSTokenType::Plus || token.type == CSSLexer::CSSTokenType::Minus
-                || token.type == CSSLexer::CSSTokenType::LeftBracket || token.type == CSSLexer::CSSTokenType::RightBracket || token.type == CSSLexer::CSSTokenType::Equals || token.type == CSSLexer::CSSTokenType::Contains || token.type == CSSLexer::CSSTokenType::StartsWith
-                || token.type == CSSLexer::CSSTokenType::EndsWith || token.type == CSSLexer::CSSTokenType::WordMatch || token.type == CSSLexer::CSSTokenType::LangMatch || token.type == CSSLexer::CSSTokenType::Hash || token.type == CSSLexer::CSSTokenType::Dot
-                || token.type == CSSLexer::CSSTokenType::Star || token.type == CSSLexer::CSSTokenType::Colon || token.type == CSSLexer::CSSTokenType::DoubleColon) {
+        int paren_depth = 0;
+        
+        while (has_more_tokens()) {
+            const auto token = m_lexer.peek_token();
+            
+            if (token.type == CSSLexer::CSSTokenType::LeftParen) {
+                paren_depth++;
+                m_lexer.next_token();
                 argument_parts += token.value;
-            } else if (token.type == CSSLexer::CSSTokenType::Whitespace) {
+            } else if (token.type == CSSLexer::CSSTokenType::RightParen) {
+                if (paren_depth == 0) {
+                    // 这是结束的右括号
+                    break;
+                }
+                paren_depth--;
+                m_lexer.next_token();
+                argument_parts += token.value;
+            } else if (token.type == CSSLexer::CSSTokenType::EndOfFile) {
+                add_error("Unexpected end of input in pseudo-class arguments");
+                return nullptr;
             } else {
-                // 遇到意外的token，停止解析
-                break;
+                // 消费其他类型的 token
+                m_lexer.next_token();
+                if (token.type != CSSLexer::CSSTokenType::Whitespace || !argument_parts.empty()) {
+                    argument_parts += token.value;
+                }
             }
         }
+        
         argument = argument_parts;
-
         consume_token(CSSLexer::CSSTokenType::RightParen);
     }
 
@@ -614,9 +629,20 @@ bool PseudoClassSelector::matches(const Element& element) const {
         }
 
         case PseudoType::Not: {
-            // :not(selector) - 否定伪类，需要额外的选择器参数
-            // 这里简化处理，实际需要解析内部选择器
-            return false;
+            if (m_argument.empty()) {
+                return false;
+            }
+            try {
+                CSSParser inner_parser(m_argument);
+                auto      inner_selector = inner_parser.parse_selector();
+                if (!inner_selector) {
+                    return false;
+                }
+                const auto flag = inner_selector->matches(element);
+                return !flag;
+            } catch (...) {
+                return false;
+            }
         }
 
         // 状态伪类通常需要外部状态信息，这里提供基础实现

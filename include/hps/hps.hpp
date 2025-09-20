@@ -1,7 +1,9 @@
 #pragma once
 
+#include "hps/core/comment_node.hpp"
 #include "hps/core/document.hpp"
 #include "hps/core/element.hpp"
+#include "hps/core/text_node.hpp"
 #include "hps/hps_fwd.hpp"
 #include "hps/parsing/options.hpp"
 #include "hps/query/query.hpp"

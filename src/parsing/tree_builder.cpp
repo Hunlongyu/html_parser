@@ -108,7 +108,7 @@ void TreeBuilder::process_text(const Token& token) const {
 
     switch (m_options.whitespace_mode) {
         case WhitespaceMode::Preserve:
-            insert_comment(processed_text);
+            insert_text(processed_text);
             break;
         case WhitespaceMode::Normalize:
             insert_text(normalize_whitespace(processed_text));

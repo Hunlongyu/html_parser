@@ -11,13 +11,13 @@ int main() {
 #endif
 
     try {
-        const auto res   = parse_file_with_error("./html/crxs.htm");
+        const auto res   = parse_file_with_error("./html/xxbook.htm");
         const auto start = std::chrono::high_resolution_clock::now();
 
-        const auto contents = res.document->css(".fiction-body p").elements();
-
+        const auto contents = res.document->css(".entry-content p").elements();
+        std::cout << res.document->title() << std::endl;
         for (const auto& content : contents) {
-            std::cout << "    " << content->text_content() << std::endl;
+            std::cout << "    " << content->own_text_content() << std::endl;
         }
 
         const auto end      = std::chrono::high_resolution_clock::now();
