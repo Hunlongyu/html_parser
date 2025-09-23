@@ -23,7 +23,7 @@ option(HPS_BUILD_EXAMPLES "Build examples" ON)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/include) 
 
-set(SOURCE 
+set(SOURCE
     "src/core/comment_node.cpp"
     "src/core/document.cpp"
     "src/core/element.cpp"
@@ -37,6 +37,8 @@ set(SOURCE
     "src/query/css/css_selector.cpp"
     "src/query/css/css_parser.cpp"
     "src/query/css/css_matcher.cpp"
+    "src/query/xpath/xpath_ast.cpp"
+    "src/query/xpath/xpath_lexer.cpp"
     "src/query/element_query.cpp"
     "src/query/query.cpp"
     "src/hps.cpp"

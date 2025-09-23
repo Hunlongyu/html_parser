@@ -26,8 +26,8 @@ set(EXAMPLES
     debug_sibling
     debug_not
     novel
-    xpath_example
     xpath_ast
+    xpath_lexer
 )
 
 set(HPS_LIB_TO_LINK "")
