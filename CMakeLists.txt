@@ -39,6 +39,7 @@ set(SOURCE
     "src/query/css/css_matcher.cpp"
     "src/query/xpath/xpath_ast.cpp"
     "src/query/xpath/xpath_lexer.cpp"
+    "src/query/xpath/xpath_parser.cpp"
     "src/query/element_query.cpp"
     "src/query/query.cpp"
     "src/hps.cpp"

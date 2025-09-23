@@ -1,8 +1,13 @@
 #include "hps/query/xpath/xpath_lexer.hpp"
 
-#include "hps/utils/string_utils.hpp"
+#include <cctype>
+#include <unordered_set>
 
 namespace hps {
+
+//==============================================================================
+// XPathLexer Implementation
+//==============================================================================
 
 XPathLexer::XPathLexer(const std::string_view input)
     : m_input(input),
@@ -29,8 +34,23 @@ XPathToken XPathLexer::next_token() {
     }
 
     // 处理数字字面量
-    if (is_digit(ch) || (ch == '.' && m_position + 1 < m_input.length() && is_digit(m_input[m_position + 1]))) {
+    if (std::isdigit(ch) || (ch == '.' && m_position + 1 < m_input.length() && std::isdigit(m_input[m_position + 1]))) {
         return scan_number_literal();
+    }
+
+    // 处理变量引用
+    if (ch == '$') {
+        const size_t start_pos = m_position;
+        advance();  // 跳过 $
+
+        if (m_position < m_input.length() && (std::isalpha(current_char()) || current_char() == '_')) {
+            auto identifier_token = scan_identifier_or_keyword();
+            // 将标识符转换为变量引用
+            return {XPathTokenType::VARIABLE, "$" + identifier_token.value, start_pos};
+        } else {
+            // $ 后面必须跟标识符
+            return {XPathTokenType::ERR, "$", start_pos};
+        }
     }
 
     // 处理操作符
@@ -40,12 +60,12 @@ XPathToken XPathLexer::next_token() {
     }
 
     // 处理标识符或关键字
-    if (is_letter(ch) || ch == '_') {
+    if (std::isalpha(ch) || ch == '_') {
         return scan_identifier_or_keyword();
     }
 
     // 未知字符
-    const size_t error_position = m_position;  // 记录错误位置
+    const size_t error_position = m_position;
     XPathToken   error_token(XPathTokenType::ERR, std::string(1, ch), error_position);
     advance();
     return error_token;
@@ -53,81 +73,117 @@ XPathToken XPathLexer::next_token() {
 
 XPathToken XPathLexer::peek_token() const {
     if (!m_peeked_token) {
-        // 创建一个副本用于预读
-        XPathLexer lexer_copy(m_input);
-        lexer_copy.m_position = m_position;
-        if (m_peeked_token) {
-            lexer_copy.m_peeked_token = std::make_unique<XPathToken>(*m_peeked_token);
-        }
+        // 保存当前状态
+        size_t saved_position = m_position;
 
-        m_peeked_token = std::make_unique<XPathToken>(lexer_copy.next_token());
+        // 创建临时 lexer 来获取下一个 token
+        XPathLexer temp_lexer(m_input);
+        temp_lexer.m_position = m_position;
+
+        m_peeked_token = std::make_unique<XPathToken>(temp_lexer.next_token());
     }
+
     return *m_peeked_token;
 }
 
 void XPathLexer::consume_token() {
-    next_token();
+    if (m_peeked_token) {
+        m_peeked_token.reset();
+    } else {
+        next_token();
+    }
 }
 
 bool XPathLexer::has_next() const {
-    return m_position < m_input.length() || m_peeked_token;
+    return m_position < m_input.length();
 }
 
 size_t XPathLexer::position() const {
     return m_position;
 }
 
+//==============================================================================
+// Character Operations
+//==============================================================================
+
 char XPathLexer::current_char() const {
-    if (m_position < m_input.length()) {
-        return m_input[m_position];
+    if (m_position >= m_input.length()) {
+        return '\0';
     }
-    return '\0';
+    return m_input[m_position];
 }
 
 char XPathLexer::peek_char() const {
-    if (m_position + 1 < m_input.length()) {
-        return m_input[m_position + 1];
+    if (m_position + 1 >= m_input.length()) {
+        return '\0';
     }
-    return '\0';
+    return m_input[m_position + 1];
 }
 
 void XPathLexer::advance() {
     if (m_position < m_input.length()) {
-        m_position++;
+        ++m_position;
     }
 }
 
 void XPathLexer::skip_whitespace() {
-    while (m_position < m_input.length() && is_whitespace(current_char())) {
+    while (m_position < m_input.length() && std::isspace(current_char())) {
         advance();
     }
 }
 
+//==============================================================================
+// Scanning Methods
+//==============================================================================
+
 XPathToken XPathLexer::scan_string_literal() {
+    const size_t start_pos = m_position;
     const char   quote     = current_char();
-    const size_t start_pos = m_position;  // 记录字符串开始位置
-    advance();                            // 跳过开始引号
+
+    advance();  // 跳过开始引号
 
     std::string value;
     while (m_position < m_input.length() && current_char() != quote) {
-        if (current_char() == '\\') {
-            advance();  // 跳过反斜杠
-            if (m_position < m_input.length()) {
-                value += current_char();
-                advance();
+        if (current_char() == '\\' && m_position + 1 < m_input.length()) {
+            // 处理转义字符
+            advance();
+            switch (current_char()) {
+                case 'n':
+                    value += '\n';
+                    break;
+                case 't':
+                    value += '\t';
+                    break;
+                case 'r':
+                    value += '\r';
+                    break;
+                case '\\':
+                    value += '\\';
+                    break;
+                case '"':
+                    value += '"';
+                    break;
+                case '\'':
+                    value += '\'';
+                    break;
+                default:
+                    value += '\\';
+                    value += current_char();
+                    break;
             }
         } else {
             value += current_char();
-            advance();
         }
+        advance();
     }
 
-    if (m_position < m_input.length()) {
-        advance();  // 跳过结束引号
-        return {XPathTokenType::STRING_LITERAL, value, start_pos};
+    if (m_position >= m_input.length()) {
+        // 未闭合的字符串
+        return {XPathTokenType::ERR, "Unterminated string literal", start_pos};
     }
-    // 未闭合的字符串 - 使用开始位置
-    return {XPathTokenType::ERR, "Unclosed string literal", start_pos};
+
+    advance();  // 跳过结束引号
+    return {XPathTokenType::STRING_LITERAL, value, start_pos};
 }
 
 XPathToken XPathLexer::scan_number_literal() {
@@ -135,7 +191,7 @@ XPathToken XPathLexer::scan_number_literal() {
     std::string  value;
 
     // 处理整数部分
-    while (m_position < m_input.length() && is_digit(current_char())) {
+    while (m_position < m_input.length() && std::isdigit(current_char())) {
         value += current_char();
         advance();
     }
@@ -145,7 +201,7 @@ XPathToken XPathLexer::scan_number_literal() {
         value += current_char();
         advance();
 
-        while (m_position < m_input.length() && is_digit(current_char())) {
+        while (m_position < m_input.length() && std::isdigit(current_char())) {
             value += current_char();
             advance();
         }
@@ -158,117 +214,76 @@ XPathToken XPathLexer::scan_identifier_or_keyword() {
     const size_t start_pos = m_position;
     std::string  value;
 
-    while (m_position < m_input.length() && (is_letter(current_char()) || is_digit(current_char()) || current_char() == '_' || current_char() == '-')) {
+    // 扫描标识符字符
+    while (m_position < m_input.length() && (std::isalnum(current_char()) || current_char() == '_' || current_char() == '-')) {
         value += current_char();
         advance();
     }
 
-    // 检查是否为逻辑操作符关键字（优先级最高）
-    if (value == "and") {
-        return {XPathTokenType::AND, value, start_pos};
-    }
-    if (value == "or") {
-        return {XPathTokenType::OR, value, start_pos};
-    }
-    if (value == "div") {
-        return {XPathTokenType::DIV, value, start_pos};
-    }
-    if (value == "mod") {
-        return {XPathTokenType::MOD, value, start_pos};
+    // 检查是否是轴标识符
+    if (m_position < m_input.length() && current_char() == ':' && m_position + 1 < m_input.length() && m_input[m_position + 1] == ':') {
+        // 这是一个轴标识符
+        if (value == "ancestor")
+            return {XPathTokenType::AXIS_ANCESTOR, value + "::", start_pos};
+        if (value == "ancestor-or-self")
+            return {XPathTokenType::AXIS_ANCESTOR_OR_SELF, value + "::", start_pos};
+        if (value == "attribute")
+            return {XPathTokenType::AXIS_ATTRIBUTE, value + "::", start_pos};
+        if (value == "child")
+            return {XPathTokenType::AXIS_CHILD, value + "::", start_pos};
+        if (value == "descendant")
+            return {XPathTokenType::AXIS_DESCENDANT, value + "::", start_pos};
+        if (value == "descendant-or-self")
+            return {XPathTokenType::AXIS_DESCENDANT_OR_SELF, value + "::", start_pos};
+        if (value == "following")
+            return {XPathTokenType::AXIS_FOLLOWING, value + "::", start_pos};
+        if (value == "following-sibling")
+            return {XPathTokenType::AXIS_FOLLOWING_SIBLING, value + "::", start_pos};
+        if (value == "namespace")
+            return {XPathTokenType::AXIS_NAMESPACE, value + "::", start_pos};
+        if (value == "parent")
+            return {XPathTokenType::AXIS_PARENT, value + "::", start_pos};
+        if (value == "preceding")
+            return {XPathTokenType::AXIS_PRECEDING, value + "::", start_pos};
+        if (value == "preceding-sibling")
+            return {XPathTokenType::AXIS_PRECEDING_SIBLING, value + "::", start_pos};
+        if (value == "self")
+            return {XPathTokenType::AXIS_SELF, value + "::", start_pos};
+
+        // 消费 ::
+        advance();
+        advance();
     }
 
-    // 检查是否为轴标识符（优先级次之）
-    if (value == "ancestor") {
-        return {XPathTokenType::AXIS_ANCESTOR, value, start_pos};
-    }
-    if (value == "ancestor-or-self") {
-        return {XPathTokenType::AXIS_ANCESTOR_OR_SELF, value, start_pos};
-    }
-    if (value == "attribute") {
-        return {XPathTokenType::AXIS_ATTRIBUTE, value, start_pos};
-    }
-    if (value == "child") {
-        return {XPathTokenType::AXIS_CHILD, value, start_pos};
-    }
-    if (value == "descendant") {
-        return {XPathTokenType::AXIS_DESCENDANT, value, start_pos};
-    }
-    if (value == "descendant-or-self") {
-        return {XPathTokenType::AXIS_DESCENDANT_OR_SELF, value, start_pos};
-    }
-    if (value == "following") {
-        return {XPathTokenType::AXIS_FOLLOWING, value, start_pos};
-    }
-    if (value == "following-sibling") {
-        return {XPathTokenType::AXIS_FOLLOWING_SIBLING, value, start_pos};
-    }
-    if (value == "namespace") {
-        return {XPathTokenType::AXIS_NAMESPACE, value, start_pos};
-    }
-    if (value == "parent") {
-        return {XPathTokenType::AXIS_PARENT, value, start_pos};
-    }
-    if (value == "preceding") {
-        return {XPathTokenType::AXIS_PRECEDING, value, start_pos};
-    }
-    if (value == "preceding-sibling") {
-        return {XPathTokenType::AXIS_PRECEDING_SIBLING, value, start_pos};
-    }
-    if (value == "self") {
-        return {XPathTokenType::AXIS_SELF, value, start_pos};
-    }
-
-    // 检查是否为节点类型测试
-    if (value == "comment") {
-        return {XPathTokenType::NODE_TYPE_COMMENT, value, start_pos};
-    }
-    if (value == "text") {
-        return {XPathTokenType::NODE_TYPE_TEXT, value, start_pos};
-    }
-    if (value == "processing-instruction") {
-        return {XPathTokenType::NODE_TYPE_PROCESSING_INSTRUCTION, value, start_pos};
-    }
-    if (value == "node") {
-        return {XPathTokenType::NODE_TYPE_NODE, value, start_pos};
-    }
-
-    // 检查是否为XPath内置函数
-    if (is_xpath_function(value)) {
-        return {XPathTokenType::FUNCTION_NAME, value, start_pos};
-    }
-
-    // 检查下一个字符是否为左括号，如果是则可能是函数调用
+    // 检查是否是节点类型测试
     if (m_position < m_input.length() && current_char() == '(') {
-        return {XPathTokenType::FUNCTION_NAME, value, start_pos};
+        if (value == "comment")
+            return {XPathTokenType::NODE_TYPE_COMMENT, value, start_pos};
+        if (value == "text")
+            return {XPathTokenType::NODE_TYPE_TEXT, value, start_pos};
+        if (value == "processing-instruction")
+            return {XPathTokenType::NODE_TYPE_PROCESSING_INSTRUCTION, value, start_pos};
+        if (value == "node")
+            return {XPathTokenType::NODE_TYPE_NODE, value, start_pos};
+
+        // 检查是否是函数调用
+        if (is_xpath_function(value)) {
+            return {XPathTokenType::FUNCTION_NAME, value, start_pos};
+        }
     }
+
+    // 检查是否是关键字
+    if (value == "and")
+        return {XPathTokenType::AND, value, start_pos};
+    if (value == "or")
+        return {XPathTokenType::OR, value, start_pos};
+    if (value == "div")
+        return {XPathTokenType::DIVIDE, value, start_pos};
+    if (value == "mod")
+        return {XPathTokenType::MODULO, value, start_pos};
 
     // 普通标识符
     return {XPathTokenType::IDENTIFIER, value, start_pos};
-}
-
-// 私有辅助函数：检查是否为XPath内置函数
-bool XPathLexer::is_xpath_function(const std::string& name) {
-    // 节点集函数
-    if (name == "last" || name == "position" || name == "count" || name == "id" || name == "local-name" || name == "namespace-uri" || name == "name") {
-        return true;
-    }
-
-    // 字符串函数
-    if (name == "string" || name == "concat" || name == "starts-with" || name == "contains" || name == "substring-before" || name == "substring-after" || name == "substring" || name == "string-length" || name == "normalize-space" || name == "translate") {
-        return true;
-    }
-
-    // 布尔函数
-    if (name == "boolean" || name == "not" || name == "true" || name == "false" || name == "lang") {
-        return true;
-    }
-
-    // 数值函数
-    if (name == "number" || name == "sum" || name == "floor" || name == "ceiling" || name == "round") {
-        return true;
-    }
-
-    return false;
 }
 
 XPathToken XPathLexer::scan_operator() {
@@ -317,7 +332,7 @@ XPathToken XPathLexer::scan_operator() {
 
         case '|':
             advance();
-            return {XPathTokenType::PIPE, "|", start_pos};
+            return {XPathTokenType::UNION, "|", start_pos};
 
         case ':':
             advance();
@@ -372,6 +387,49 @@ XPathToken XPathLexer::scan_operator() {
             // 不是操作符
             return {XPathTokenType::ERR, "", start_pos};
     }
+}
+
+//==============================================================================
+// Helper Functions
+//==============================================================================
+
+bool XPathLexer::is_xpath_function(const std::string& name) {
+    static const std::unordered_set<std::string> xpath_functions = {// 节点集函数
+                                                                    "last",
+                                                                    "position",
+                                                                    "count",
+                                                                    "id",
+                                                                    "local-name",
+                                                                    "namespace-uri",
+                                                                    "name",
+
+                                                                    // 字符串函数
+                                                                    "string",
+                                                                    "concat",
+                                                                    "starts-with",
+                                                                    "contains",
+                                                                    "substring-before",
+                                                                    "substring-after",
+                                                                    "substring",
+                                                                    "string-length",
+                                                                    "normalize-space",
+                                                                    "translate",
+
+                                                                    // 布尔函数
+                                                                    "boolean",
+                                                                    "not",
+                                                                    "true",
+                                                                    "false",
+                                                                    "lang",
+
+                                                                    // 数字函数
+                                                                    "number",
+                                                                    "sum",
+                                                                    "floor",
+                                                                    "ceiling",
+                                                                    "round"};
+
+    return xpath_functions.find(name) != xpath_functions.end();
 }
 
 }  // namespace hps

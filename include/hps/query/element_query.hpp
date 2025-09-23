@@ -175,6 +175,21 @@ class ElementQuery {
      */
     [[nodiscard]] ElementQuery matching_text(const std::function<bool(std::string_view)>& predicate) const;
 
+    /**
+     * @brief 过滤属性值包含指定文本的元素 Filter elements whose attribute value contains specified text
+     * @param name 属性名 Attribute name
+     * @param text 包含的文本 Text to contain
+     * @return 新的 ElementQuery New ElementQuery
+     */
+    [[nodiscard]] ElementQuery has_attribute_contains(std::string_view name, std::string_view text) const;
+
+    /**
+     * @brief 过滤文本内容包含指定文本的元素 Filter elements whose text content contains specified text
+     * @param text 包含的文本 Text to contain
+     * @return 新的 ElementQuery New ElementQuery
+     */
+    [[nodiscard]] ElementQuery has_text_contains(std::string_view text) const;
+
     // 索引和范围操作 Index and range operations
 
     /**
@@ -277,10 +292,10 @@ class ElementQuery {
      */
     [[nodiscard]] ElementQuery siblings() const;
 
-    // CSS 查询方法 CSS query methods
+    // CSS 和 XPath 选择器 CSS and XPath selectors
 
     /**
-     * @brief 使用 CSS 选择器查询元素 Query elements using CSS selector
+     * @brief 使用 CSS 选择器过滤元素 Filter elements using CSS selector
      * @param selector CSS 选择器 CSS selector
      * @return 新的 ElementQuery New ElementQuery
      */

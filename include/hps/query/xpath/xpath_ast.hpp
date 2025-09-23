@@ -219,9 +219,16 @@ class XPathFunctionCall : public XPathExpression {
  */
 class XPathNameTest : public XPathNodeTest {
   public:
+    // 原有构造函数：带前缀和本地名称
     XPathNameTest(std::string prefix, std::string local_name)
         : m_prefix(std::move(prefix)),
           m_local_name(std::move(local_name)) {}
+
+    // 新增便利构造函数：只有本地名称（无前缀）
+    explicit XPathNameTest(std::string name)
+        : m_prefix(""),
+          m_local_name(std::move(name)) {}
+
     [[nodiscard]] std::string       to_string() const override;
     [[nodiscard]] XPathNodeTestType type() const override {
         return XPathNodeTestType::NAME_TEST;

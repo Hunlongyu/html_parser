@@ -154,6 +154,32 @@ ElementQuery ElementQuery::matching_text(const std::function<bool(std::string_vi
     return ElementQuery(std::move(filtered));
 }
 
+ElementQuery ElementQuery::has_attribute_contains(const std::string_view name, const std::string_view text) const {
+    std::vector<std::shared_ptr<const Element>> filtered;
+    for (const auto& element : m_elements) {
+        if (element && element->has_attribute(name)) {
+            const auto attr_value = element->get_attribute(name);
+            if (attr_value.find(text) != std::string::npos) {
+                filtered.push_back(element);
+            }
+        }
+    }
+    return ElementQuery(std::move(filtered));
+}
+
+ElementQuery ElementQuery::has_text_contains(const std::string_view text) const {
+    std::vector<std::shared_ptr<const Element>> filtered;
+    for (const auto& element : m_elements) {
+        if (element) {
+            const auto element_text = element->text_content();
+            if (element_text.find(text) != std::string::npos) {
+                filtered.push_back(element);
+            }
+        }
+    }
+    return ElementQuery(std::move(filtered));
+}
+
 // 索引和范围操作
 ElementQuery ElementQuery::slice(const size_t start, size_t end) const {
     const size_t size = m_elements.size();
@@ -392,7 +418,6 @@ ElementQuery ElementQuery::css(const std::string_view selector) const {
 }
 
 ElementQuery ElementQuery::xpath(std::string_view expression) const {
-    // TODO: Implement
     return {};
 }
 

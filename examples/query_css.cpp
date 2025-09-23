@@ -1,8 +1,4 @@
-#include "hps/core/document.hpp"
-#include "hps/core/element.hpp"
 #include "hps/hps.hpp"
-#include "hps/query/element_query.hpp"
-#include "hps/query/query.hpp"
 
 #include <iostream>
 #include <memory>
