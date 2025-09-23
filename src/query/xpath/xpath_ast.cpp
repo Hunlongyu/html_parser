@@ -9,19 +9,62 @@ namespace hps {
 // 基本表达式类实现 (Basic Expression Classes Implementation)
 //==============================================================================
 
-// XPathLiteral implementation
 std::string XPathLiteral::to_string() const {
-    // 在XPath中，字符串字面量用引号包围
-    return "\"" + m_value + "\"";
+    bool has_single_quote = (m_value.find('\'') != std::string::npos);
+    bool has_double_quote = (m_value.find('"') != std::string::npos);
+
+    // Case 1: 字符串不包含双引号，优先使用双引号包围
+    if (!has_double_quote) {
+        return "\"" + m_value + "\"";
+    }
+
+    // Case 2: 字符串不包含单引号（但肯定包含双引号），使用单引号包围
+    if (!has_single_quote) {
+        return "'" + m_value + "'";
+    }
+
+    // Case 3: 字符串同时包含单引号和双引号，必须使用 concat() 函数
+    // 我们选择将字符串按单引号分割
+    std::ostringstream oss;
+    oss << "concat(";
+    std::string::size_type start = 0;
+    std::string::size_type pos;
+    bool                   first_part = true;
+
+    // 遍历字符串，找到所有的单引号
+    while ((pos = m_value.find('\'', start)) != std::string::npos) {
+        if (!first_part) {
+            oss << ", ";
+        }
+
+        // 1. 添加从上一个单引号到当前单引号之间的子串（用单引号包围）
+        oss << "'" << m_value.substr(start, pos - start) << "'";
+
+        // 2. 添加表示单引号本身的字面量（必须用双引号包围）
+        oss << ", '\"'";
+
+        start      = pos + 1;
+        first_part = false;
+    }
+
+    // 添加最后一个单引号之后剩余的子串
+    if (start < m_value.length()) {
+        if (!first_part) {
+            oss << ", ";
+        }
+        oss << "'" << m_value.substr(start) << "'";
+    }
+
+    oss << ")";
+    return oss.str();
 }
 
-// XPathNumber implementation
 std::string XPathNumber::to_string() const {
-    // 简单实现，实际可能需要更精确的数字到字符串转换
-    return std::to_string(m_value);
+    std::ostringstream oss;
+    oss << m_value;
+    return oss.str();
 }
 
-// XPathVariableReference implementation
 std::string XPathVariableReference::to_string() const {
     return "$" + m_name;
 }
@@ -30,7 +73,6 @@ std::string XPathVariableReference::to_string() const {
 // 运算符表达式类实现 (Operator Expression Classes Implementation)
 //==============================================================================
 
-// XPathUnaryExpression implementation
 std::string XPathUnaryExpression::to_string() const {
     std::ostringstream oss;
     switch (m_operator) {
@@ -42,7 +84,6 @@ std::string XPathUnaryExpression::to_string() const {
     return oss.str();
 }
 
-// XPathBinaryExpression implementation
 std::string XPathBinaryExpression::to_string() const {
     std::ostringstream oss;
     oss << "(" << m_left->to_string() << " ";
@@ -94,7 +135,6 @@ std::string XPathBinaryExpression::to_string() const {
     return oss.str();
 }
 
-// XPathFunctionCall implementation
 std::string XPathFunctionCall::to_string() const {
     std::ostringstream oss;
     oss << m_name << "(";
@@ -112,7 +152,6 @@ std::string XPathFunctionCall::to_string() const {
 // 节点测试类实现 (Node Test Classes Implementation)
 //==============================================================================
 
-// XPathNameTest implementation
 std::string XPathNameTest::to_string() const {
     if (!m_prefix.empty()) {
         return m_prefix + ":" + m_local_name;
@@ -120,43 +159,55 @@ std::string XPathNameTest::to_string() const {
     return m_local_name;
 }
 
-// XPathNodeTypeTest implementation
 std::string XPathNodeTypeTest::to_string() const {
-    std::ostringstream oss;
     switch (m_type) {
         case NodeType::COMMENT:
-            oss << "comment()";
-            break;
+            return "comment()";
         case NodeType::TEXT:
-            oss << "text()";
-            break;
-        case NodeType::PROCESSING_INSTRUCTION:
-            oss << "processing-instruction(";
-            if (!m_pi_name.empty()) {
-                oss << "'" << m_pi_name << "'";
-            }
-            oss << ")";
-            break;
+            return "text()";
         case NodeType::NODE:
-            oss << "node()";
-            break;
+            return "node()";
     }
-    return oss.str();
+    return "";  // Should not happen
+}
+
+// NEW: XPathPITest implementation
+std::string XPathPITest::to_string() const {
+    if (m_target.empty()) {
+        return "processing-instruction()";
+    }
+
+    bool has_single_quote = (m_target.find('\'') != std::string::npos);
+    bool has_double_quote = (m_target.find('"') != std::string::npos);
+
+    // Case 1: 目标字符串不包含单引号，使用单引号包围
+    if (!has_single_quote) {
+        return "processing-instruction('" + m_target + "')";
+    }
+
+    // Case 2: 目标字符串不包含双引号（但肯定包含单引号），使用双引号包围
+    if (!has_double_quote) {
+        return "processing-instruction(\"" + m_target + "\")";
+    }
+
+    // Case 3: 目标字符串同时包含单引号和双引号
+    // 这种情况在 XPath 1.0 中无法表示为一个字面量，因此是不合法的。
+    // 我们应该抛出异常而不是生成一个无效的表达式。
+    throw std::logic_error(
+        "Cannot create a valid processing-instruction() test in XPath 1.0 "
+        "for a target literal that contains both single and double quotes.");
 }
 
 //==============================================================================
 // 路径相关类实现 (Path-related Classes Implementation)
 //==============================================================================
 
-// XPathPredicate implementation
 std::string XPathPredicate::to_string() const {
     return m_expression->to_string();
 }
 
-// XPathStep implementation
 std::string XPathStep::to_string() const {
     std::ostringstream oss;
-    // 输出轴
     switch (m_axis) {
         case XPathAxis::ANCESTOR:
             oss << "ancestor::";
@@ -166,9 +217,6 @@ std::string XPathStep::to_string() const {
             break;
         case XPathAxis::ATTRIBUTE:
             oss << "@";
-            break;
-        case XPathAxis::CHILD:
-            // child轴是默认轴，通常省略
             break;
         case XPathAxis::DESCENDANT:
             oss << "descendant::";
@@ -197,43 +245,68 @@ std::string XPathStep::to_string() const {
         case XPathAxis::SELF:
             oss << "self::";
             break;
+        case XPathAxis::CHILD:
+            // child 轴是默认轴，通常省略
+            break;
     }
-    // 输出节点测试
+
     oss << m_node_test->to_string();
-    // 输出谓词
+
     for (const auto& predicate : m_predicates) {
         oss << "[" << predicate->to_string() << "]";
     }
     return oss.str();
 }
 
-// XPathLocationPath implementation
+// IMPROVED: Simplified XPathLocationPath::to_string implementation
 std::string XPathLocationPath::to_string() const {
     std::ostringstream oss;
-    // 如果是绝对路径，以 "/" 开头
     if (m_is_absolute) {
         oss << "/";
     }
     for (size_t i = 0; i < m_steps.size(); ++i) {
-        if (i > 0 || (!m_is_absolute && i == 0)) {
-            if (i > 0) {
-                oss << "/";
-            }
+        if (i > 0) {
+            oss << "/";
         }
         oss << m_steps[i]->to_string();
     }
     return oss.str();
 }
 
-// XPathPathExpression implementation
-std::string XPathPathExpression::to_string() const {
+std::string XPathFilterExpression::to_string() const {
     std::ostringstream oss;
-    if (m_filter_expr) {
-        oss << m_filter_expr->to_string();
+
+    // 仅当主表达式是二元/一元表达式时加括号，以保持优先级
+    const bool needs_parentheses = dynamic_cast<const XPathBinaryExpression*>(m_primary_expr.get()) != nullptr || dynamic_cast<const XPathUnaryExpression*>(m_primary_expr.get()) != nullptr;
+
+    if (needs_parentheses) {
+        oss << "(";
     }
-    for (const auto& step : m_steps) {
-        oss << "/" << step->to_string();
+    oss << m_primary_expr->to_string();
+    if (needs_parentheses) {
+        oss << ")";
     }
+
+    for (const auto& predicate : m_predicates) {
+        oss << "[" << predicate->to_string() << "]";
+    }
+    return oss.str();
+}
+
+// NEW: XPathChainedPath implementation
+std::string XPathChainedPath::to_string() const {
+    std::ostringstream oss;
+
+    // 过滤表达式通常需要括号来确保求值顺序
+    oss << "(" << m_filter_expr->to_string() << ")";
+
+    if (m_separator == Separator::DOUBLE_SLASH) {
+        oss << "//";
+    } else {
+        oss << "/";
+    }
+
+    oss << m_relative_path->to_string();
     return oss.str();
 }
 

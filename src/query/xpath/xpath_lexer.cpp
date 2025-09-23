@@ -163,7 +163,7 @@ XPathToken XPathLexer::scan_identifier_or_keyword() {
         advance();
     }
 
-    // 检查是否为逻辑操作符关键字
+    // 检查是否为逻辑操作符关键字（优先级最高）
     if (value == "and") {
         return {XPathTokenType::AND, value, start_pos};
     }
@@ -177,7 +177,7 @@ XPathToken XPathLexer::scan_identifier_or_keyword() {
         return {XPathTokenType::MOD, value, start_pos};
     }
 
-    // 检查是否为轴标识符
+    // 检查是否为轴标识符（优先级次之）
     if (value == "ancestor") {
         return {XPathTokenType::AXIS_ANCESTOR, value, start_pos};
     }

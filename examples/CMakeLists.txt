@@ -28,6 +28,7 @@ set(EXAMPLES
     novel
     xpath_ast
     xpath_lexer
+    xpath_parser
 )
 
 set(HPS_LIB_TO_LINK "")

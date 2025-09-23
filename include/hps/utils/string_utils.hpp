@@ -17,6 +17,10 @@
 
 namespace hps {
 
+inline bool is_letter(char c) {
+    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+}
+
 inline bool is_whitespace(const char c) {
     return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f';
 }
@@ -281,12 +285,12 @@ inline std::string decode_html_entities(const std::string& text) {
 inline std::string normalize_whitespace(const std::string& text) {
     std::string result;
     result.reserve(text.length());
-    
+
     bool in_whitespace = false;
     for (char c : text) {
         if (is_whitespace(c)) {
             if (!in_whitespace) {
-                result += ' '; // 用单个空格替换所有空白字符
+                result += ' ';  // 用单个空格替换所有空白字符
                 in_whitespace = true;
             }
             // 跳过连续的空白字符
@@ -295,7 +299,7 @@ inline std::string normalize_whitespace(const std::string& text) {
             in_whitespace = false;
         }
     }
-    
+
     return result;
 }
 }  // namespace hps
