@@ -37,7 +37,7 @@ class XPathEvaluator {
     XPathValue evaluate_literal(const XPathLiteral& expr);
     XPathValue evaluate_number(const XPathNumber& expr);
     XPathValue evaluate_variable_reference(const XPathVariableReference& expr);
-    XPathValue evaluate_path_expression(const XPathPathExpression& expr);
+    XPathValue evaluate_path_expression(const XPathExpression& expr);
     XPathValue evaluate_location_path(const XPathLocationPath& expr);
 
     // 步骤求值

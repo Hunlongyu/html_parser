@@ -3,7 +3,6 @@
 #include "hps/query/css/css_matcher.hpp"
 #include "hps/query/css/css_utils.hpp"
 #include "hps/query/element_query.hpp"
-#include "hps/query/xpath/xpath_query.hpp"
 namespace hps {
 
 ElementQuery Query::css(const Element& element, const std::string_view selector) {
@@ -25,13 +24,15 @@ ElementQuery Query::css(const Document& document, const std::string_view selecto
 }
 
 ElementQuery Query::xpath(const Element& element, const std::string_view expression) {
-    XPathQuery query(expression);
-    return query.select(element);
+    /*XPathQuery query(expression);
+    return query.select(element);*/
+    return {};
 }
 
 ElementQuery Query::xpath(const Document& document, const std::string_view expression) {
-    XPathQuery query(expression);
-    return query.select(document);
+    /*XPathQuery query(expression);
+    return query.select(document);*/
+    return {};
 }
 
 }  // namespace hps
