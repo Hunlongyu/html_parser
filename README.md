@@ -1,7 +1,7 @@
 # HPS HTML 解析库
 
-[![GitHub release](https://img.shields.io/github/v/release/Hunlongyu/html_parser?display_name=tag)](https://github.com/Hunlongyu/html_parser/releases/latest)
-[![C++](https://img.shields.io/badge/C++-20-blue.svg)](https://en.cppreference.com/w/cpp/20)
+![GitHub Release](https://img.shields.io/github/v/release/Hunlongyu/html_parser)
+![C++](https://img.shields.io/badge/C++-20-blue.svg)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 > ⚠️ **开发中 (WIP)** - 这是一个正在积极开发的项目，API 可能会发生变化。不建议在生产环境中使用当前版本。
