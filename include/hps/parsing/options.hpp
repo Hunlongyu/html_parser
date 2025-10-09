@@ -50,6 +50,17 @@ enum class TextProcessingMode {
 };
 
 /**
+ * @brief <br> 处理模式枚举
+ *
+ * 定义如何处理HTML中的<br>元素。
+ */
+enum class BRHandling {
+    Keep,           ///< 保持 <br> 元素，不额外插入文本
+    InsertNewline,  ///< 在 <br> 处插入换行符 "\n"
+    InsertCustom    ///< 在 <br> 处插入自定义文本（由 br_text 指定）
+};
+
+/**
  * @brief HTML解析器配置选项类
  *
  * Options类提供了HTML解析器的各种配置选项，包括错误处理模式、
@@ -214,6 +225,8 @@ class Options {
     CommentMode        comment_mode         = CommentMode::Preserve;       ///< ✅ 注释处理模式，默认保留注释
     WhitespaceMode     whitespace_mode      = WhitespaceMode::Preserve;    ///< ✅ 空白文本处理模式，默认保留空白
     TextProcessingMode text_processing_mode = TextProcessingMode::Decode;  ///< ✅ 文本处理模式，默认保持原始
+    BRHandling         br_handling          = BRHandling::Keep;            ///< <br> 处理策略
+    std::string        br_text              = "\n";                        ///< 自定义文本（InsertCustom 时使用）
 
     // 高级选项
     bool preserve_case = false;  ///< ✅ 是否保持标签和属性名大小写，默认转为小写

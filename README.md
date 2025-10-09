@@ -1,7 +1,7 @@
 # HPS HTML 解析库
 
-[![Version](https://img.shields.io/badge/version-0.0.2-blue.svg)](https://github.com/Hunlongyu/html_parser)
-[![C++](https://img.shields.io/badge/C++-23-blue.svg)](https://en.cppreference.com/w/cpp/23)
+[![GitHub release](https://img.shields.io/github/v/release/Hunlongyu/html_parser?display_name=tag)](https://github.com/Hunlongyu/html_parser/releases/latest)
+[![C++](https://img.shields.io/badge/C++-20-blue.svg)](https://en.cppreference.com/w/cpp/20)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 > ⚠️ **开发中 (WIP)** - 这是一个正在积极开发的项目，API 可能会发生变化。不建议在生产环境中使用当前版本。
@@ -146,7 +146,7 @@ int main() {
 ## 📦 快速安装
 
 ### 系统要求
-- C++23 兼容编译器（MSVC 2022+）
+- C++20 兼容编译器（MSVC 2022+）
 - CMake 3.28+
 
 ### 构建步骤

@@ -65,7 +65,15 @@ const std::vector<HPSError>& TreeBuilder::errors() const noexcept {
 }
 
 void TreeBuilder::process_start_tag(const Token& token) {
-    auto element = create_element(token);
+    if (token.name() == "br") {
+        if (m_options.br_handling == BRHandling::InsertNewline) {
+            insert_text("\n");
+        } else if (m_options.br_handling == BRHandling::InsertCustom) {
+            insert_text(m_options.br_text);
+        }
+    }
+
+    const auto element = create_element(token);
     insert_element(element);
 
     if (!m_options.is_void_element(std::string(token.name())) && token.type() != TokenType::CLOSE_SELF) {

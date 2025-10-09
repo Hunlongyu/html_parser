@@ -1,0 +1,64 @@
+name: Release Source Archive
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  source-archive:
+    name: Build and Upload Source Archives
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout at tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+
+      - name: Prepare version variables
+        shell: bash
+        run: |
+          TAG="${{ github.ref_name }}"
+          VER="${TAG#v}"
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+          echo "VERSION=$VER" >> "$GITHUB_ENV"
+
+      - name: Create tar.gz source archive
+        shell: bash
+        run: |
+          git archive \
+            --format=tar \
+            --prefix="html_parser-${{ env.VERSION }}/" \
+            "${{ env.TAG }}" | gzip > "html_parser-${{ env.VERSION }}.tar.gz"
+
+      - name: Create zip source archive
+        shell: bash
+        run: |
+          git archive \
+            --format=zip \
+            --prefix="html_parser-${{ env.VERSION }}/" \
+            -o "html_parser-${{ env.VERSION }}.zip" \
+            "${{ env.TAG }}"
+
+      - name: Compute checksums
+        shell: bash
+        run: |
+          sha256sum "html_parser-${{ env.VERSION }}.tar.gz" > "html_parser-${{ env.VERSION }}.tar.gz.sha256"
+          sha256sum "html_parser-${{ env.VERSION }}.zip" > "html_parser-${{ env.VERSION }}.zip.sha256"
+
+      - name: Upload archives to release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            html_parser-${{ env.VERSION }}.tar.gz
+            html_parser-${{ env.VERSION }}.zip
+            html_parser-${{ env.VERSION }}.tar.gz.sha256
+            html_parser-${{ env.VERSION }}.zip.sha256
+          tag_name: ${{ env.TAG }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
