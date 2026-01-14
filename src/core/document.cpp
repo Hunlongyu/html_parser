@@ -139,9 +139,7 @@ ElementQuery Document::css(const std::string_view selector) const {
     return Query::css(*this, selector);
 }
 
-ElementQuery Document::xpath(const std::string_view expression) const {
-    return Query::xpath(*this, expression);
-}
+
 
 void Document::add_child(const std::shared_ptr<Node>& child) {
     if (!child) {

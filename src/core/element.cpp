@@ -149,9 +149,7 @@ ElementQuery Element::css(const std::string_view selector) const {
     return Query::css(*this, selector);
 }
 
-ElementQuery Element::xpath(const std::string_view expression) const {
-    return Query::xpath(*this, expression);
-}
+
 
 void Element::add_child(const std::shared_ptr<Node>& child) {
     if (!child) {

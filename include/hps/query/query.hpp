@@ -31,20 +31,6 @@ class Query {
      */
     static ElementQuery css(const Document& document, std::string_view selector);
 
-    /**
-     * @brief 在指定元素中使用 XPath 表达式查询子元素 Query child elements using XPath expression in specified element
-     * @param element 目标元素 Target element
-     * @param expression XPath 表达式 XPath expression
-     * @return 匹配的元素查询对象 ElementQuery object containing matched elements
-     */
-    static ElementQuery xpath(const Element& element, std::string_view expression);
 
-    /**
-     * @brief 在文档中使用 XPath 表达式查询元素 Query elements using XPath expression in document
-     * @param document 目标文档 Target document
-     * @param expression XPath 表达式 XPath expression
-     * @return 匹配的元素查询对象 ElementQuery object containing matched elements
-     */
-    static ElementQuery xpath(const Document& document, std::string_view expression);
 };
 }  // namespace hps

@@ -142,12 +142,7 @@ class Document : public Node {
      */
     [[nodiscard]] ElementQuery css(std::string_view selector) const;
 
-    /**
-     * @brief 创建 XPath 表达式查询对象
-     * @param expression XPath 表达式字符串
-     * @return ElementQuery 对象，用于链式查询操作
-     */
-    [[nodiscard]] ElementQuery xpath(std::string_view expression) const;
+
 
     // Document Modification
     /**

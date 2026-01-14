@@ -23,16 +23,6 @@ ElementQuery Query::css(const Document& document, const std::string_view selecto
     return ElementQuery(std::move(results));
 }
 
-ElementQuery Query::xpath(const Element& element, const std::string_view expression) {
-    /*XPathQuery query(expression);
-    return query.select(element);*/
-    return {};
-}
 
-ElementQuery Query::xpath(const Document& document, const std::string_view expression) {
-    /*XPathQuery query(expression);
-    return query.select(document);*/
-    return {};
-}
 
 }  // namespace hps

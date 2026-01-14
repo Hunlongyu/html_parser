@@ -16,6 +16,7 @@ endif()
 set(EXAMPLES
     complete
     basic
+    br_newline
     tokenizer
     tree_builder
     css_selector
@@ -26,9 +27,7 @@ set(EXAMPLES
     debug_sibling
     debug_not
     novel
-    xpath_ast
-    xpath_lexer
-    xpath_parser
+
 )
 
 set(HPS_LIB_TO_LINK "")

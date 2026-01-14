@@ -417,9 +417,7 @@ ElementQuery ElementQuery::css(const std::string_view selector) const {
     return ElementQuery(std::move(all_results));
 }
 
-ElementQuery ElementQuery::xpath(std::string_view expression) const {
-    return {};
-}
+
 
 // 高级查询方法
 ElementQuery ElementQuery::filter(const std::function<bool(const Element&)>& predicate) const {

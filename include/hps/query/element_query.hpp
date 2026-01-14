@@ -301,14 +301,7 @@ class ElementQuery {
      */
     [[nodiscard]] ElementQuery css(std::string_view selector) const;
 
-    // XPath 查询方法 XPath query methods
 
-    /**
-     * @brief 使用 XPath 表达式查询元素 Query elements using XPath expression
-     * @param expression XPath 表达式 XPath expression
-     * @return 新的 ElementQuery New ElementQuery
-     */
-    [[nodiscard]] ElementQuery xpath(std::string_view expression) const;
 
     // 高级查询方法 Advanced query methods
 
