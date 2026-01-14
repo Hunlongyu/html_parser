@@ -18,7 +18,6 @@ configure_file(
 
 option(HPS_BUILD_SHARED "Build shared library" OFF)
 option(HPS_BUILD_STATIC "Build static library" ON)
-option(HPS_BUILD_EXAMPLES "Build examples" ON)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/include) 
@@ -53,6 +52,7 @@ if (HPS_BUILD_STATIC)
     set_target_properties(hps_static PROPERTIES OUTPUT_NAME "hps_static")
 endif()
 
+option(HPS_BUILD_EXAMPLES "Build examples" ${PROJECT_IS_TOP_LEVEL})
 if(HPS_BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif()
