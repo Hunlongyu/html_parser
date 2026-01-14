@@ -34,7 +34,7 @@ void print_node(const Node* node, int depth = 0) {
 
             // 递归打印子节点
             for (const auto& child : element->children()) {
-                print_node(child.get(), depth + 1);
+                print_node(child, depth + 1);
             }
 
             // 打印结束标签
@@ -63,7 +63,7 @@ void print_node(const Node* node, int depth = 0) {
         case NodeType::Document:
             std::cout << "DOCUMENT" << std::endl;
             for (const auto& child : node->children()) {
-                print_node(child.get(), depth + 1);
+                print_node(child, depth + 1);
             }
             break;
         default:
@@ -174,7 +174,7 @@ int main() {
 
             // 递归查找子节点
             for (const auto& child : node->children()) {
-                find_elements(child.get(), tag_name);
+                find_elements(child, tag_name);
             }
         };
 
@@ -201,7 +201,7 @@ int main() {
             }
 
             for (const auto& child : node->children()) {
-                extract_text(child.get());
+                extract_text(child);
             }
         };
 

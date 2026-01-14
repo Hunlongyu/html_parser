@@ -53,27 +53,27 @@ const Element* ElementQuery::at(const size_t index) const {
 }
 
 // 迭代器支持
-ElementQuery::iterator ElementQuery::begin() {
+ElementQuery::iterator ElementQuery::begin() noexcept {
     return m_elements.begin();
 }
 
-ElementQuery::iterator ElementQuery::end() {
+ElementQuery::iterator ElementQuery::end() noexcept {
     return m_elements.end();
 }
 
-ElementQuery::const_iterator ElementQuery::begin() const {
+ElementQuery::const_iterator ElementQuery::begin() const noexcept {
     return m_elements.begin();
 }
 
-ElementQuery::const_iterator ElementQuery::end() const {
+ElementQuery::const_iterator ElementQuery::end() const noexcept {
     return m_elements.end();
 }
 
-ElementQuery::const_iterator ElementQuery::cbegin() const {
+ElementQuery::const_iterator ElementQuery::cbegin() const noexcept {
     return m_elements.cbegin();
 }
 
-ElementQuery::const_iterator ElementQuery::cend() const {
+ElementQuery::const_iterator ElementQuery::cend() const noexcept {
     return m_elements.cend();
 }
 
@@ -236,7 +236,18 @@ ElementQuery ElementQuery::children(const std::string_view selector) const {
     if (!selector_list) {
         return {};
     }
-    return children().filter([&selector_list](const Element& elem) { return selector_list->matches(elem); });
+    std::vector<const Element*> filtered_children;
+    for (const auto& element : m_elements) {
+        if (!element) {
+            continue;
+        }
+        for (const auto& child : element->children()) {
+            if (auto elem = child->as_element(); elem && selector_list->matches(*elem)) {
+                filtered_children.push_back(elem);
+            }
+        }
+    }
+    return ElementQuery(std::move(filtered_children));
 }
 
 ElementQuery ElementQuery::parent() const {
@@ -309,8 +320,12 @@ ElementQuery ElementQuery::next_sibling() const {
     std::vector<const Element*>        siblings;
     std::unordered_set<const Element*> seen;
     for (const auto& element : m_elements) {
-        if (const auto ele = element->next_sibling(); ele && ele->is_element()) {
-            auto sibling_elem = ele->as_element();
+        const Node* current = element ? element->next_sibling() : nullptr;
+        while (current && !current->is_element()) {
+            current = current->next_sibling();
+        }
+        if (current && current->is_element()) {
+            const auto sibling_elem = current->as_element();
             if (!seen.contains(sibling_elem)) {
                 siblings.push_back(sibling_elem);
                 seen.insert(sibling_elem);
@@ -343,8 +358,12 @@ ElementQuery ElementQuery::prev_sibling() const {
     std::vector<const Element*>        siblings;
     std::unordered_set<const Element*> seen;
     for (const auto& element : m_elements) {
-        if (const auto ele = element->previous_sibling(); ele && ele->is_element()) {
-            auto sibling_elem = ele->as_element();
+        const Node* current = element ? element->previous_sibling() : nullptr;
+        while (current && !current->is_element()) {
+            current = current->previous_sibling();
+        }
+        if (current && current->is_element()) {
+            const auto sibling_elem = current->as_element();
             if (!seen.contains(sibling_elem)) {
                 siblings.push_back(sibling_elem);
                 seen.insert(sibling_elem);
@@ -377,16 +396,22 @@ ElementQuery ElementQuery::siblings() const {
     std::vector<const Element*>        siblings;
     std::unordered_set<const Element*> seen;
     for (const auto& element : m_elements) {
-        if (element && element->parent()) {
-            auto parent_children = element->parent()->children();
-            for (const auto& child : parent_children) {
-                if (child != element) {
-                    if (auto sibling_elem = child->as_element()) {
-                        if (!seen.contains(sibling_elem)) {
-                            siblings.push_back(sibling_elem);
-                            seen.insert(sibling_elem);
-                        }
-                    }
+        if (!element) {
+            continue;
+        }
+        const Node* first = element;
+        while (const auto* prev = first->previous_sibling()) {
+            first = prev;
+        }
+        for (auto current = first; current; current = current->next_sibling()) {
+            if (current == element) {
+                continue;
+            }
+            if (current->is_element()) {
+                const auto sibling_elem = current->as_element();
+                if (!seen.contains(sibling_elem)) {
+                    siblings.push_back(sibling_elem);
+                    seen.insert(sibling_elem);
                 }
             }
         }
@@ -399,15 +424,19 @@ ElementQuery ElementQuery::css(const std::string_view selector) const {
         return {};
     }
     std::vector<const Element*> all_results;
+    std::unordered_set<const Element*> seen;
     for (const auto& element : m_elements) {
         if (element) {
             auto        results         = Query::css(*element, selector);
             const auto& result_elements = results.elements();
-            all_results.insert(all_results.end(), result_elements.begin(), result_elements.end());
+            for (const auto* res : result_elements) {
+                if (!seen.contains(res)) {
+                    all_results.push_back(res);
+                    seen.insert(res);
+                }
+            }
         }
     }
-    std::ranges::sort(all_results);
-    all_results.erase(std::ranges::unique(all_results).begin(), all_results.end());
     return ElementQuery(std::move(all_results));
 }
 

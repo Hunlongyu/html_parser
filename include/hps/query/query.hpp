@@ -6,6 +6,7 @@
 namespace hps {
 class Document;
 class Element;
+class SelectorList;
 
 /**
  * @brief 查询工具类 Query utility class
@@ -24,12 +25,28 @@ class Query {
     static ElementQuery css(const Element& element, std::string_view selector);
 
     /**
+     * @brief 在指定元素中使用已解析的 CSS 选择器查询子元素
+     * @param element 目标元素
+     * @param selector_list 已解析的选择器列表
+     * @return 匹配的元素查询对象
+     */
+    static ElementQuery css(const Element& element, const SelectorList& selector_list);
+
+    /**
      * @brief 在文档中使用 CSS 选择器查询元素 Query elements using CSS selector in document
      * @param document 目标文档 Target document
      * @param selector CSS 选择器 CSS selector
      * @return 匹配的元素查询对象 ElementQuery object containing matched elements
      */
     static ElementQuery css(const Document& document, std::string_view selector);
+
+    /**
+     * @brief 在文档中使用已解析的 CSS 选择器查询元素
+     * @param document 目标文档
+     * @param selector_list 已解析的选择器列表
+     * @return 匹配的元素查询对象
+     */
+    static ElementQuery css(const Document& document, const SelectorList& selector_list);
 
 
 };

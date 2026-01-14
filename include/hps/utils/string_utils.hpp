@@ -21,7 +21,7 @@ inline bool is_letter(char c) {
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
 }
 
-inline bool is_whitespace(const char c) {
+inline bool is_whitespace(const char c) noexcept {
     return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f';
 }
 
@@ -52,27 +52,6 @@ inline char to_upper(const char c) noexcept {
         return static_cast<char>(c - 'a' + 'A');
     }
     return c;
-}
-
-// 添加安全的字符类型检查函数
-inline bool safe_isalnum(const char ch) noexcept {
-    return static_cast<unsigned char>(ch) <= 255 && std::isalnum(static_cast<unsigned char>(ch));
-}
-
-inline bool safe_isalpha(const char ch) noexcept {
-    return static_cast<unsigned char>(ch) <= 255 && std::isalpha(static_cast<unsigned char>(ch));
-}
-
-inline bool safe_isdigit(const char ch) noexcept {
-    return static_cast<unsigned char>(ch) <= 255 && std::isdigit(static_cast<unsigned char>(ch));
-}
-
-inline bool safe_isspace(const char ch) noexcept {
-    return static_cast<unsigned char>(ch) <= 255 && std::isspace(static_cast<unsigned char>(ch));
-}
-
-inline char safe_tolower(const char ch) noexcept {
-    return static_cast<unsigned char>(ch) <= 255 ? std::tolower(static_cast<unsigned char>(ch)) : ch;
 }
 
 inline std::string_view trim_whitespace(std::string_view str) noexcept {
@@ -169,8 +148,8 @@ inline bool is_valid_identifier_start(const std::string& input, const size_t pos
     const unsigned char c = static_cast<unsigned char>(input[pos]);
 
     // ASCII字母、下划线、连字符
-    if (std::isalpha(c) || c == '_' || c == '-') {
-        return true;
+    if (c < 0x80) {
+        return is_alpha(static_cast<char>(c)) || c == '_' || c == '-';
     }
 
     // UTF-8多字节字符（中文等）
@@ -199,8 +178,8 @@ inline bool is_valid_identifier_char(const std::string& input, const size_t pos)
     const unsigned char c = static_cast<unsigned char>(input[pos]);
 
     // ASCII字母、数字、下划线、连字符
-    if (std::isalnum(c) || c == '_' || c == '-') {
-        return true;
+    if (c < 0x80) {
+        return is_alnum(static_cast<char>(c)) || c == '_' || c == '-';
     }
 
     // UTF-8多字节字符

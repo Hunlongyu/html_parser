@@ -43,13 +43,13 @@ inline std::string normalize_selector(const std::string_view selector) {
         } else if (in_string) {
             result += c;
             last_was_space = false;
-        } else if (safe_isspace(c)) {
+        } else if (is_whitespace(c)) {
             if (!last_was_space && !result.empty()) {
                 result += ' ';
                 last_was_space = true;
             }
         } else {
-            result += safe_tolower(c);
+            result += to_lower(c);
             last_was_space = false;
         }
     }

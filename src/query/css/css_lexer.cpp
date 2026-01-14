@@ -92,9 +92,9 @@ CSSLexer::CSSToken CSSLexer::read_next_token() {
     size_t     start_pos = m_position;
 
     // 检查是否是空白字符，如果是则返回Whitespace token
-    if (safe_isspace(c)) {
+    if (is_whitespace(c)) {
         // 跳过连续的空白字符
-        while (m_position < m_processed_input.size() && std::isspace(m_processed_input[m_position])) {
+        while (m_position < m_processed_input.size() && is_whitespace(m_processed_input[m_position])) {
             update_position(m_processed_input[m_position]);
             m_position++;
         }
@@ -222,7 +222,7 @@ CSSLexer::CSSToken CSSLexer::read_next_token() {
         }
 
         default: {
-            if (safe_isdigit(c)) {
+            if (is_digit(c)) {
                 std::string number = read_number();
                 return {CSSTokenType::Number, number, start_pos};
             }
@@ -278,7 +278,7 @@ void CSSLexer::advance() {
 
 bool CSSLexer::skip_whitespace() {
     bool skipped = false;
-    while (m_position < m_processed_input.size() && std::isspace(m_processed_input[m_position])) {
+    while (m_position < m_processed_input.size() && is_whitespace(m_processed_input[m_position])) {
         update_position(m_processed_input[m_position]);
         m_position++;
         skipped = true;
@@ -364,7 +364,7 @@ std::string CSSLexer::read_number() {
 
     while (m_position < m_processed_input.size()) {
         const char c = current_char();
-        if (safe_isdigit(c) || c == '.') {
+        if (is_digit(c) || c == '.') {
             result += c;
             advance();
         } else {

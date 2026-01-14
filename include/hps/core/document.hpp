@@ -3,6 +3,7 @@
 
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace hps {
@@ -59,7 +60,7 @@ class Document : public Node {
      * @brief 获取原始 HTML 源代码
      * @return 构造文档时传入的原始 HTML 字符串
      */
-    [[nodiscard]] std::string source_html() const;
+    [[nodiscard]] std::string_view source_html() const noexcept;
 
     // Meta Information Extraction
     /**

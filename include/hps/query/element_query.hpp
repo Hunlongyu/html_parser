@@ -86,37 +86,37 @@ class ElementQuery {
      * @brief 获取开始迭代器 Get begin iterator
      * @return 开始迭代器 Begin iterator
      */
-    iterator begin();
+    [[nodiscard]] iterator begin() noexcept;
 
     /**
      * @brief 获取结束迭代器 Get end iterator
      * @return 结束迭代器 End iterator
      */
-    iterator end();
+    [[nodiscard]] iterator end() noexcept;
 
     /**
      * @brief 获取常量开始迭代器 Get const begin iterator
      * @return 常量开始迭代器 Const begin iterator
      */
-    [[nodiscard]] const_iterator begin() const;
+    [[nodiscard]] const_iterator begin() const noexcept;
 
     /**
      * @brief 获取常量结束迭代器 Get const end iterator
      * @return 常量结束迭代器 Const end iterator
      */
-    [[nodiscard]] const_iterator end() const;
+    [[nodiscard]] const_iterator end() const noexcept;
 
     /**
      * @brief 获取常量开始迭代器 Get const begin iterator
      * @return 常量开始迭代器 Const begin iterator
      */
-    [[nodiscard]] const_iterator cbegin() const;
+    [[nodiscard]] const_iterator cbegin() const noexcept;
 
     /**
      * @brief 获取常量结束迭代器 Get const end iterator
      * @return 常量结束迭代器 Const end iterator
      */
-    [[nodiscard]] const_iterator cend() const;
+    [[nodiscard]] const_iterator cend() const noexcept;
 
     // 条件过滤方法 (返回新的ElementQuery) Conditional filtering methods (return new ElementQuery)
 

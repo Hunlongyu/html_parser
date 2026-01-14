@@ -613,7 +613,7 @@ bool PseudoClassSelector::matches(const Element& element) const {
                 if (child->type() == NodeType::Text) {
                     auto text_content = child->text_content();
                     // 检查是否只包含空白字符
-                    if (!text_content.empty() && !std::ranges::all_of(text_content, safe_isspace)) {
+                    if (!text_content.empty() && !std::ranges::all_of(text_content, is_whitespace)) {
                         return false;
                     }
                 }
@@ -747,7 +747,7 @@ bool PseudoClassSelector::matches_nth_expression(const std::string& expression, 
     }
 
     // 处理纯数字
-    if (std::ranges::all_of(expression, safe_isdigit)) {
+    if (std::ranges::all_of(expression, is_digit)) {
         return index == std::stoi(expression);
     }
 
@@ -776,7 +776,7 @@ bool PseudoClassSelector::matches_nth_expression(const std::string& expression, 
         std::string b_str = match[2].str();
         if (!b_str.empty()) {
             // 移除空格
-            b_str.erase(std::ranges::remove_if(b_str, ::isspace).begin(), b_str.end());
+            b_str.erase(std::ranges::remove_if(b_str, is_whitespace).begin(), b_str.end());
             b = std::stoi(b_str);
         }
 

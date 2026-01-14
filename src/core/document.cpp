@@ -44,16 +44,26 @@ std::string Document::charset() const {
     const auto meta_elements = get_elements_by_tag_name("meta");
     for (const auto& meta : meta_elements) {
         if (meta->has_attribute("charset")) {
-            m_cached_charset = meta->get_attribute("charset");
+            m_cached_charset = std::string(trim_whitespace(meta->get_attribute("charset")));
             return m_cached_charset.value();
         }
-        if (meta->get_attribute("http-equiv") == "Content-Type") {
-            const std::string content     = meta->get_attribute("content");
-            const size_t      charset_pos = content.find("charset=");
-            if (charset_pos != std::string::npos) {
-                const size_t start = charset_pos + 8;
-                const size_t end   = content.find_first_of("; \t\n\r", start);
-                m_cached_charset   = content.substr(start, end == std::string::npos ? std::string::npos : end - start);
+        const auto http_equiv = trim_whitespace(meta->get_attribute("http-equiv"));
+        if (!http_equiv.empty() && equals_ignore_case(http_equiv, "Content-Type")) {
+            const std::string_view content = trim_whitespace(meta->get_attribute("content"));
+            auto                   pos     = content.find("charset=");
+            if (pos == std::string_view::npos) {
+                for (size_t i = 0; i + 8 <= content.size(); ++i) {
+                    if (starts_with_ignore_case(content.substr(i), "charset=")) {
+                        pos = i;
+                        break;
+                    }
+                }
+            }
+            if (pos != std::string_view::npos) {
+                const size_t start   = pos + 8;
+                const size_t end_pos = content.find_first_of("; \t\n\r", start);
+                const auto   value   = trim_whitespace(content.substr(start, end_pos == std::string_view::npos ? std::string_view::npos : end_pos - start));
+                m_cached_charset     = std::string(value);
                 return m_cached_charset.value();
             }
         }
@@ -62,14 +72,15 @@ std::string Document::charset() const {
     return m_cached_charset.value();
 }
 
-std::string Document::source_html() const {
+std::string_view Document::source_html() const noexcept {
     return m_html_source;
 }
 
 std::string Document::get_meta_content(const std::string_view name) const {
     const auto meta_elements = get_elements_by_tag_name("meta");
     for (const auto& meta : meta_elements) {
-        if (meta->get_attribute("name") == name) {
+        const auto meta_name = trim_whitespace(meta->get_attribute("name"));
+        if (!meta_name.empty() && equals_ignore_case(meta_name, name)) {
             return meta->get_attribute("content");
         }
     }
@@ -79,7 +90,8 @@ std::string Document::get_meta_content(const std::string_view name) const {
 std::string Document::get_meta_property(const std::string_view property) const {
     const auto meta_elements = get_elements_by_tag_name("meta");
     for (const auto& meta : meta_elements) {
-        if (meta->get_attribute("property") == property) {
+        const auto meta_property = trim_whitespace(meta->get_attribute("property"));
+        if (!meta_property.empty() && equals_ignore_case(meta_property, property)) {
             return meta->get_attribute("content");
         }
     }
@@ -95,6 +107,9 @@ std::vector<std::string> Document::get_all_images() const {
 }
 
 const Element* Document::root() const {
+    if (const auto html_element = html()) {
+        return html_element;
+    }
     for (const auto& child : children()) {
         if (child->is_element()) {
             return child->as_element();
@@ -107,7 +122,7 @@ const Element* Document::html() const {
     for (const auto& child : children()) {
         if (child->is_element()) {
             const auto element = child->as_element();
-            if (element->tag_name() == "html") {
+            if (equals_ignore_case(element->tag_name(), "html")) {
                 return element;
             }
         }

@@ -2,3 +2,5 @@
 .vs/
 build/
 enc_temp_folder/
+/build_vs
+/build_x64

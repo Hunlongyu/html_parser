@@ -59,7 +59,7 @@ int main() {
         std::cout << "=== CSS Matcher 功能演示 ===" << std::endl;
 
         // 辅助函数：显示匹配结果
-        auto display_results = [](const std::vector<std::shared_ptr<const hps::Element>>& results, const std::string& selector_desc) {
+        auto display_results = [](const std::vector<const hps::Element*>& results, const std::string& selector_desc) {
             std::cout << "\n" << selector_desc << " (找到 " << results.size() << " 个匹配):" << std::endl;
             for (const auto& element : results) {
                 std::cout << "  - <" << element->tag_name() << ">";
