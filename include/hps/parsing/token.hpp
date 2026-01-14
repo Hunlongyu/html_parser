@@ -4,6 +4,8 @@
 #include "hps/parsing/token_attribute.hpp"
 #include "hps/utils/noncopyable.hpp"
 
+#include <vector>
+
 namespace hps {
 
 /**

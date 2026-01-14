@@ -5,6 +5,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <ranges>
 
 namespace hps {
 

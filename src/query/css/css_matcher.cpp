@@ -9,23 +9,23 @@
 
 namespace hps {
 
-std::vector<std::shared_ptr<const Element>> CSSMatcher::find_all(const Element& element, const CSSSelector& selector) {
-    std::vector<std::shared_ptr<const Element>> results;
+std::vector<const Element*> CSSMatcher::find_all(const Element& element, const CSSSelector& selector) {
+    std::vector<const Element*> results;
     traverse_and_match(element, selector, results);
     return results;
 }
 
-std::vector<std::shared_ptr<const Element>> CSSMatcher::find_all(const Element& element, const SelectorList& selector_list) {
-    std::vector<std::shared_ptr<const Element>> results;
+std::vector<const Element*> CSSMatcher::find_all(const Element& element, const SelectorList& selector_list) {
+    std::vector<const Element*> results;
     traverse_and_match(element, selector_list, results);
     std::unordered_set<const Element*> seen;
-    const auto                         it = std::ranges::remove_if(results, [&seen](const std::shared_ptr<const Element>& elem) { return !seen.insert(elem.get()).second; }).begin();
+    const auto                         it = std::ranges::remove_if(results, [&seen](const Element* elem) { return !seen.insert(elem).second; }).begin();
     results.erase(it, results.end());
 
     return results;
 }
 
-std::vector<std::shared_ptr<const Element>> CSSMatcher::find_all(const Document& document, const CSSSelector& selector) {
+std::vector<const Element*> CSSMatcher::find_all(const Document& document, const CSSSelector& selector) {
     const auto root = document.root();
     if (!root) {
         return {};
@@ -33,7 +33,7 @@ std::vector<std::shared_ptr<const Element>> CSSMatcher::find_all(const Document&
     return find_all(*root, selector);
 }
 
-std::vector<std::shared_ptr<const Element>> CSSMatcher::find_all(const Document& document, const SelectorList& selector_list) {
+std::vector<const Element*> CSSMatcher::find_all(const Document& document, const SelectorList& selector_list) {
     const auto root = document.root();
     if (!root) {
         return {};
@@ -41,10 +41,10 @@ std::vector<std::shared_ptr<const Element>> CSSMatcher::find_all(const Document&
     return find_all(*root, selector_list);
 }
 
-std::shared_ptr<const Element> CSSMatcher::find_first(const Element& element, const CSSSelector& selector) {
+const Element* CSSMatcher::find_first(const Element& element, const CSSSelector& selector) {
     // 检查根元素本身
     if (selector.matches(element)) {
-        return element.shared_from_this()->as_element();
+        return &element;
     }
     // 深度优先搜索子元素
     for (const auto& child : element.children()) {
@@ -58,10 +58,10 @@ std::shared_ptr<const Element> CSSMatcher::find_first(const Element& element, co
     return nullptr;
 }
 
-std::shared_ptr<const Element> CSSMatcher::find_first(const Element& element, const SelectorList& selector_list) {
+const Element* CSSMatcher::find_first(const Element& element, const SelectorList& selector_list) {
     // 检查根元素本身
     if (selector_list.matches(element)) {
-        return element.shared_from_this()->as_element();
+        return &element;
     }
     // 深度优先搜索子元素
     for (const auto& child : element.children()) {
@@ -75,7 +75,7 @@ std::shared_ptr<const Element> CSSMatcher::find_first(const Element& element, co
     return nullptr;
 }
 
-std::shared_ptr<const Element> CSSMatcher::find_first(const Document& document, const CSSSelector& selector) {
+const Element* CSSMatcher::find_first(const Document& document, const CSSSelector& selector) {
     const auto root = document.root();
     if (!root) {
         return nullptr;
@@ -83,7 +83,7 @@ std::shared_ptr<const Element> CSSMatcher::find_first(const Document& document, 
     return find_first(*root, selector);
 }
 
-std::shared_ptr<const Element> CSSMatcher::find_first(const Document& document, const SelectorList& selector_list) {
+const Element* CSSMatcher::find_first(const Document& document, const SelectorList& selector_list) {
     const auto root = document.root();
     if (!root) {
         return nullptr;
@@ -93,10 +93,10 @@ std::shared_ptr<const Element> CSSMatcher::find_first(const Document& document, 
 
 // ==================== DOM树遍历实现 ====================
 
-void CSSMatcher::traverse_and_match(const Element& element, const CSSSelector& selector, std::vector<std::shared_ptr<const Element>>& results) {
+void CSSMatcher::traverse_and_match(const Element& element, const CSSSelector& selector, std::vector<const Element*>& results) {
     // 检查当前元素
     if (selector.matches(element)) {
-        results.push_back(element.shared_from_this()->as_element());
+        results.push_back(&element);
     }
     // 递归遍历子元素
     for (const auto& child : element.children()) {
@@ -106,10 +106,10 @@ void CSSMatcher::traverse_and_match(const Element& element, const CSSSelector& s
     }
 }
 
-void CSSMatcher::traverse_and_match(const Element& element, const SelectorList& selector_list, std::vector<std::shared_ptr<const Element>>& results) {
+void CSSMatcher::traverse_and_match(const Element& element, const SelectorList& selector_list, std::vector<const Element*>& results) {
     // 检查当前元素
     if (selector_list.matches(element)) {
-        results.push_back(element.shared_from_this()->as_element());
+        results.push_back(&element);
     }
     // 递归遍历子元素
     for (const auto& child : element.children()) {

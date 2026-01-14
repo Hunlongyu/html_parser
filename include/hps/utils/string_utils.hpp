@@ -97,6 +97,18 @@ inline bool starts_with_ignore_case(std::string_view str, std::string_view prefi
     return true;
 }
 
+inline bool equals_ignore_case(std::string_view a, std::string_view b) noexcept {
+    if (a.length() != b.length()) {
+        return false;
+    }
+    for (size_t i = 0; i < a.length(); ++i) {
+        if (to_lower(a[i]) != to_lower(b[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+
 inline const std::unordered_set<std::string_view>& get_raw_text_elements() {
     static const std::unordered_set<std::string_view> raw_text_elements = {"script", "style", "textarea", "title"};
     return raw_text_elements;

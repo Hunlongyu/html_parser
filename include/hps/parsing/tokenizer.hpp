@@ -5,6 +5,8 @@
 #include "hps/parsing/token_builder.hpp"
 #include "hps/utils/exception.hpp"
 
+#include <optional>
+
 namespace hps {
 
 /**

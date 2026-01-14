@@ -69,6 +69,36 @@ bool AttributeSelector::matches(const Element& element) const {
     return matches_attribute_value(attr_value);
 }
 
+std::string AttributeSelector::to_string() const {
+    std::string result = "[" + m_attr_name;
+
+    switch (m_operator) {
+        case AttributeOperator::Exists:
+            break;
+        case AttributeOperator::Equals:
+            result += "=\"" + m_value + "\"";
+            break;
+        case AttributeOperator::Contains:
+            result += "*=\"" + m_value + "\"";
+            break;
+        case AttributeOperator::StartsWith:
+            result += "^=\"" + m_value + "\"";
+            break;
+        case AttributeOperator::EndsWith:
+            result += "$=\"" + m_value + "\"";
+            break;
+        case AttributeOperator::WordMatch:
+            result += "~=\"" + m_value + "\"";
+            break;
+        case AttributeOperator::LangMatch:
+            result += "|=\"" + m_value + "\"";
+            break;
+    }
+
+    result += "]";
+    return result;
+}
+
 bool AttributeSelector::matches_attribute_value(const std::string_view attr_value) const {
     switch (m_operator) {
         case AttributeOperator::Exists:
@@ -103,36 +133,6 @@ bool AttributeSelector::matches_attribute_value(const std::string_view attr_valu
             return attr_value == m_value || (attr_value.length() > m_value.length() && attr_value.starts_with(m_value) && attr_value[m_value.length()] == '-');
     }
     return false;
-}
-
-std::string AttributeSelector::to_string() const {
-    std::string result = "[" + m_attr_name;
-
-    switch (m_operator) {
-        case AttributeOperator::Exists:
-            break;
-        case AttributeOperator::Equals:
-            result += "=\"" + m_value + "\"";
-            break;
-        case AttributeOperator::Contains:
-            result += "*=\"" + m_value + "\"";
-            break;
-        case AttributeOperator::StartsWith:
-            result += "^=\"" + m_value + "\"";
-            break;
-        case AttributeOperator::EndsWith:
-            result += "$=\"" + m_value + "\"";
-            break;
-        case AttributeOperator::WordMatch:
-            result += "~=\"" + m_value + "\"";
-            break;
-        case AttributeOperator::LangMatch:
-            result += "|=\"" + m_value + "\"";
-            break;
-    }
-
-    result += "]";
-    return result;
 }
 
 // ==================== DescendantSelector Implementation ====================
@@ -235,7 +235,7 @@ bool AdjacentSiblingSelector::matches(const Element& element) const {
     const auto& siblings = parent->children();
 
     // 找到当前元素在兄弟列表中的位置
-    auto current_it = std::ranges::find_if(siblings, [&element](const std::shared_ptr<const Node>& node) { return node.get() == &element; });
+    auto current_it = std::ranges::find_if(siblings, [&element](const Node* node) { return node == &element; });
 
     if (current_it == siblings.begin()) {
         return false;  // 当前元素是第一个，没有前一个兄弟
@@ -297,7 +297,7 @@ bool GeneralSiblingSelector::matches(const Element& element) const {
     const auto& siblings = parent->children();
 
     // 找到当前元素在兄弟列表中的位置
-    auto current_it = std::ranges::find_if(siblings, [&element](const std::shared_ptr<const Node>& node) { return node.get() == &element; });
+    auto current_it = std::ranges::find_if(siblings, [&element](const Node* node) { return node == &element; });
 
     if (current_it == siblings.begin()) {
         return false;  // 当前元素是第一个，没有前面的兄弟

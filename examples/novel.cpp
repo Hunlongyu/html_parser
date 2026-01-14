@@ -17,7 +17,7 @@ int main() {
         const auto contents = res.document->css(".entry-content p").elements();
         std::cout << res.document->title() << std::endl;
         for (const auto& content : contents) {
-            std::cout << "    " << content->own_text_content() << std::endl;
+            std::cout << "    " << content->own_text() << std::endl;
         }
 
         const auto end      = std::chrono::high_resolution_clock::now();

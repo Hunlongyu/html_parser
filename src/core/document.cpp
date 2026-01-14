@@ -94,7 +94,7 @@ std::vector<std::string> Document::get_all_images() const {
     return Query::css(*this, "img[src]").extract_attributes("src");
 }
 
-std::shared_ptr<const Element> Document::root() const {
+const Element* Document::root() const {
     for (const auto& child : children()) {
         if (child->is_element()) {
             return child->as_element();
@@ -103,7 +103,7 @@ std::shared_ptr<const Element> Document::root() const {
     return nullptr;
 }
 
-std::shared_ptr<const Element> Document::html() const {
+const Element* Document::html() const {
     for (const auto& child : children()) {
         if (child->is_element()) {
             const auto element = child->as_element();
@@ -115,23 +115,23 @@ std::shared_ptr<const Element> Document::html() const {
     return nullptr;
 }
 
-std::shared_ptr<const Element> Document::querySelector(const std::string_view selector) const {
+const Element* Document::querySelector(const std::string_view selector) const {
     return Query::css(*this, selector).first_element();
 }
 
-std::vector<std::shared_ptr<const Element>> Document::querySelectorAll(const std::string_view selector) const {
+std::vector<const Element*> Document::querySelectorAll(const std::string_view selector) const {
     return Query::css(*this, selector).elements();
 }
 
-std::shared_ptr<const Element> Document::get_element_by_id(const std::string_view id) const {
+const Element* Document::get_element_by_id(const std::string_view id) const {
     return Query::css(*this, "#" + std::string(id)).first_element();
 }
 
-std::vector<std::shared_ptr<const Element>> Document::get_elements_by_tag_name(const std::string_view tag_name) const {
+std::vector<const Element*> Document::get_elements_by_tag_name(const std::string_view tag_name) const {
     return Query::css(*this, std::string(tag_name)).elements();
 }
 
-std::vector<std::shared_ptr<const Element>> Document::get_elements_by_class_name(const std::string_view class_name) const {
+std::vector<const Element*> Document::get_elements_by_class_name(const std::string_view class_name) const {
     return Query::css(*this, "." + std::string(class_name)).elements();
 }
 
@@ -139,12 +139,10 @@ ElementQuery Document::css(const std::string_view selector) const {
     return Query::css(*this, selector);
 }
 
-
-
-void Document::add_child(const std::shared_ptr<Node>& child) {
+void Document::add_child(std::unique_ptr<Node> child) {
     if (!child) {
         return;
     }
-    append_child(child);
+    append_child(std::move(child));
 }
 }  // namespace hps

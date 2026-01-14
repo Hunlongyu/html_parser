@@ -47,12 +47,12 @@ bool Token::is_close_self() const noexcept {
     return m_type == TokenType::CLOSE_SELF;
 }
 
-bool Token::is_force_quirks() const noexcept {
-    return m_type == TokenType::FORCE_QUIRKS;
-}
-
 bool Token::is_done() const noexcept {
     return m_type == TokenType::DONE;
+}
+
+bool Token::is_force_quirks() const noexcept {
+    return m_type == TokenType::FORCE_QUIRKS;
 }
 
 bool Token::is_text() const noexcept {

@@ -272,11 +272,11 @@ std::unique_ptr<CSSSelector> CSSParser::parse_pseudo_class() {
 
         // 改进的参数解析
         std::string argument_parts;
-        int paren_depth = 0;
-        
+        int         paren_depth = 0;
+
         while (has_more_tokens()) {
             const auto token = m_lexer.peek_token();
-            
+
             if (token.type == CSSLexer::CSSTokenType::LeftParen) {
                 paren_depth++;
                 m_lexer.next_token();
@@ -300,7 +300,7 @@ std::unique_ptr<CSSSelector> CSSParser::parse_pseudo_class() {
                 }
             }
         }
-        
+
         argument = argument_parts;
         consume_token(CSSLexer::CSSTokenType::RightParen);
     }
@@ -501,7 +501,7 @@ bool PseudoClassSelector::matches(const Element& element) const {
             auto siblings = parent->children();
             for (const auto& child : siblings) {
                 if (child->type() == NodeType::Element) {
-                    return child.get() == &element;
+                    return child == &element;
                 }
             }
             return false;
@@ -517,7 +517,7 @@ bool PseudoClassSelector::matches(const Element& element) const {
             auto siblings = parent->children();
             for (auto& sibling : std::ranges::reverse_view(siblings)) {
                 if (sibling->type() == NodeType::Element) {
-                    return sibling.get() == &element;
+                    return sibling == &element;
                 }
             }
             return false;
@@ -534,7 +534,7 @@ bool PseudoClassSelector::matches(const Element& element) const {
             auto siblings = parent->children();
             for (const auto& child : siblings) {
                 if (child->type() == NodeType::Element) {
-                    if (child.get() == &element) {
+                    if (child == &element) {
                         return matches_nth_expression(m_argument, index);
                     }
                     index++;
@@ -554,7 +554,7 @@ bool PseudoClassSelector::matches(const Element& element) const {
             std::vector<const Node*> element_children;
             for (auto siblings = parent->children(); const auto& child : siblings) {
                 if (child->type() == NodeType::Element) {
-                    element_children.push_back(child.get());
+                    element_children.push_back(child);
                 }
             }
 
@@ -833,7 +833,7 @@ int PseudoClassSelector::get_type_index(const Element& element, const bool from_
         if (child->type() == NodeType::Element) {
             auto child_element = child->as_element();
             if (child_element && child_element->tag_name() == tag_name) {
-                same_type_elements.push_back(child_element.get());
+                same_type_elements.push_back(child_element);
             }
         }
     }

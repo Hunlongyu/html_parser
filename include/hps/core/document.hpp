@@ -1,6 +1,10 @@
 #pragma once
 #include "hps/core/node.hpp"
 
+#include <optional>
+#include <string>
+#include <vector>
+
 namespace hps {
 
 class ElementQuery;
@@ -90,13 +94,13 @@ class Document : public Node {
      * @brief 获取文档根元素
      * @return 文档的根元素（通常是 html 元素），如果不存在则返回 nullptr
      */
-    [[nodiscard]] std::shared_ptr<const Element> root() const;
+    [[nodiscard]] const Element* root() const;
 
     /**
      * @brief 获取 HTML 元素
      * @return 文档的 html 元素，如果不存在则返回 nullptr
      */
-    [[nodiscard]] std::shared_ptr<const Element> html() const;
+    [[nodiscard]] const Element* html() const;
 
     // Element Query Methods
     /**
@@ -104,35 +108,35 @@ class Document : public Node {
      * @param selector CSS 选择器字符串（例如 "#id", ".class", "tag"）
      * @return 第一个匹配的元素，如果没有找到则返回 nullptr
      */
-    [[nodiscard]] std::shared_ptr<const Element> querySelector(std::string_view selector) const;
+    [[nodiscard]] const Element* querySelector(std::string_view selector) const;
 
     /**
      * @brief 使用 CSS 选择器查找所有匹配的元素
      * @param selector CSS 选择器字符串
      * @return 包含所有匹配元素的向量，如果没有找到则返回空向量
      */
-    [[nodiscard]] std::vector<std::shared_ptr<const Element>> querySelectorAll(std::string_view selector) const;
+    [[nodiscard]] std::vector<const Element*> querySelectorAll(std::string_view selector) const;
 
     /**
      * @brief 根据 ID 查找元素
      * @param id 元素的 id 属性值
      * @return 具有指定 ID 的元素，如果不存在则返回 nullptr
      */
-    [[nodiscard]] std::shared_ptr<const Element> get_element_by_id(std::string_view id) const;
+    [[nodiscard]] const Element* get_element_by_id(std::string_view id) const;
 
     /**
      * @brief 根据标签名查找所有元素
      * @param tag_name 标签名（例如 "div", "p", "a"）
      * @return 包含所有指定标签名元素的向量，如果没有找到则返回空向量
      */
-    [[nodiscard]] std::vector<std::shared_ptr<const Element>> get_elements_by_tag_name(std::string_view tag_name) const;
+    [[nodiscard]] std::vector<const Element*> get_elements_by_tag_name(std::string_view tag_name) const;
 
     /**
      * @brief 根据 CSS 类名查找所有元素
      * @param class_name CSS 类名
      * @return 包含所有具有指定类名元素的向量，如果没有找到则返回空向量
      */
-    [[nodiscard]] std::vector<std::shared_ptr<const Element>> get_elements_by_class_name(std::string_view class_name) const;
+    [[nodiscard]] std::vector<const Element*> get_elements_by_class_name(std::string_view class_name) const;
 
     // Advanced Query Methods
     /**
@@ -142,8 +146,6 @@ class Document : public Node {
      */
     [[nodiscard]] ElementQuery css(std::string_view selector) const;
 
-
-
     // Document Modification
     /**
      * @brief 向文档添加子节点
@@ -152,7 +154,7 @@ class Document : public Node {
      * 将指定的节点添加为文档的子节点。通常用于添加根元素（如 html 元素）。
      * 如果传入的节点为 nullptr，则不执行任何操作。
      */
-    void add_child(const std::shared_ptr<Node>& child);
+    void add_child(std::unique_ptr<Node> child);
 
   private:
     std::string m_html_source; /**< 原始 HTML 源代码 */

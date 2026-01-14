@@ -106,7 +106,7 @@ class TreeBuilder : public NonCopyable {
      *
      * 静态方法，根据Token中的标签名和属性创建相应的Element对象。
      */
-    [[nodiscard]] static std::shared_ptr<Element> create_element(const Token& token);
+    [[nodiscard]] static std::unique_ptr<Element> create_element(const Token& token);
 
     /**
      * @brief 将元素插入到DOM树中
@@ -114,7 +114,7 @@ class TreeBuilder : public NonCopyable {
      *
      * 将元素作为当前元素的子节点插入到DOM树的适当位置。
      */
-    void insert_element(const std::shared_ptr<Element>& element) const;
+    void insert_element(std::unique_ptr<Element> element) const;
 
     /**
      * @brief 插入文本节点
@@ -140,15 +140,15 @@ class TreeBuilder : public NonCopyable {
      *
      * 将元素添加到栈顶，成为新的当前元素。
      */
-    void push_element(const std::shared_ptr<Element>& element);
+    void push_element(Element* element);
 
     /**
      * @brief 获取当前元素（栈顶元素）
-     * @return 当前元素的智能指针，如果栈为空则返回nullptr
+     * @return 当前元素的原始指针，如果栈为空则返回nullptr
      *
      * 返回栈顶元素但不移除它，用于确定新节点的插入位置。
      */
-    [[nodiscard]] std::shared_ptr<Element> current_element() const;
+    [[nodiscard]] Element* current_element() const;
 
     /**
      * @brief 关闭元素直到遇到指定标签
@@ -171,10 +171,10 @@ class TreeBuilder : public NonCopyable {
     void parse_error(ErrorCode code, const std::string& message);
 
   private:
-    std::shared_ptr<Document>             m_document;       ///< 目标文档对象，存储构建的DOM树
-    std::vector<std::shared_ptr<Element>> m_element_stack;  ///< 元素栈，跟踪当前的嵌套结构
-    std::vector<HPSError>                 m_errors;         ///< 解析错误列表，收集处理过程中的错误
-    const Options&                        m_options;        ///< 解析选项
+    std::shared_ptr<Document> m_document;       ///< 目标文档对象，存储构建的DOM树
+    std::vector<Element*>     m_element_stack;  ///< 元素栈，跟踪当前的嵌套结构
+    std::vector<HPSError>     m_errors;         ///< 解析错误列表，收集处理过程中的错误
+    const Options&            m_options;        ///< 解析选项
 };
 
 }  // namespace hps

@@ -4,6 +4,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <string_view>
 
 namespace hps {
 class Element;
@@ -19,25 +20,19 @@ class ElementQuery {
      * @brief 从单个元素构造 ElementQuery Construct ElementQuery from a single element
      * @param element 元素引用 Element reference
      */
-    explicit ElementQuery(const Element& element);
-
-    /**
-     * @brief 从共享指针元素构造 ElementQuery Construct ElementQuery from shared_ptr element
-     * @param element 元素共享指针 Element shared pointer
-     */
-    explicit ElementQuery(const std::shared_ptr<const Element>& element);
+    explicit ElementQuery(const Element* element);
 
     /**
      * @brief 从元素向量构造 ElementQuery（移动语义）Construct ElementQuery from element vector (move semantics)
      * @param elements 元素向量 Element vector
      */
-    explicit ElementQuery(std::vector<std::shared_ptr<const Element>>&& elements);
+    explicit ElementQuery(std::vector<const Element*>&& elements);
 
     /**
      * @brief 从元素向量构造 ElementQuery（拷贝语义）Construct ElementQuery from element vector (copy semantics)
      * @param elements 元素向量 Element vector
      */
-    explicit ElementQuery(const std::vector<std::shared_ptr<const Element>>& elements);
+    explicit ElementQuery(const std::vector<const Element*>& elements);
 
     /**
      * @brief 容量查询
@@ -55,37 +50,37 @@ class ElementQuery {
      * @brief 元素访问
      * @return 所有元素
      */
-    [[nodiscard]] const std::vector<std::shared_ptr<const Element>>& elements() const;
+    [[nodiscard]] const std::vector<const Element*>& elements() const;
 
     /**
      * @brief 元素访问
      * @return 第一个元素
      */
-    [[nodiscard]] std::shared_ptr<const Element> first_element() const;
+    [[nodiscard]] const Element* first_element() const;
 
     /**
      * @brief 元素访问
      * @return 最后一个元素
      */
-    [[nodiscard]] std::shared_ptr<const Element> last_element() const;
+    [[nodiscard]] const Element* last_element() const;
 
     /**
      * @brief 元素访问
      * @param index 索引
      * @return 指定索引的元素
      */
-    [[nodiscard]] std::shared_ptr<const Element> operator[](size_t index) const;
+    [[nodiscard]] const Element* operator[](size_t index) const;
 
     /**
      * @brief 元素访问
      * @param index 索引
      * @return 指定索引的元素
      */
-    [[nodiscard]] std::shared_ptr<const Element> at(size_t index) const;
+    [[nodiscard]] const Element* at(size_t index) const;
 
     // 迭代器支持 Iterator support
-    using iterator       = std::vector<std::shared_ptr<const Element>>::iterator;
-    using const_iterator = std::vector<std::shared_ptr<const Element>>::const_iterator;
+    using iterator       = std::vector<const Element*>::iterator;
+    using const_iterator = std::vector<const Element*>::const_iterator;
 
     /**
      * @brief 获取开始迭代器 Get begin iterator
@@ -301,8 +296,6 @@ class ElementQuery {
      */
     [[nodiscard]] ElementQuery css(std::string_view selector) const;
 
-
-
     // 高级查询方法 Advanced query methods
 
     /**
@@ -422,7 +415,7 @@ class ElementQuery {
     [[nodiscard]] bool contains(std::string_view text) const;
 
   private:
-    std::vector<std::shared_ptr<const Element>> m_elements;
+    std::vector<const Element*> m_elements;
 };
 
 // 模板方法实现 Template method implementation

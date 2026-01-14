@@ -6,25 +6,19 @@
 #include "hps/query/query.hpp"
 
 #include <algorithm>
-#include <span>
+#include <span >
 
 namespace hps {
-ElementQuery::ElementQuery(const Element& element) {
-    if (const auto shared_element = element.shared_from_this()->as_element()) {
-        m_elements.push_back(shared_element);
-    }
-}
-
-ElementQuery::ElementQuery(const std::shared_ptr<const Element>& element) {
+ElementQuery::ElementQuery(const Element* element) {
     if (element) {
         m_elements.push_back(element);
     }
 }
 
-ElementQuery::ElementQuery(std::vector<std::shared_ptr<const Element>>&& elements)
+ElementQuery::ElementQuery(std::vector<const Element*>&& elements)
     : m_elements(std::move(elements)) {}
 
-ElementQuery::ElementQuery(const std::vector<std::shared_ptr<const Element>>& elements)
+ElementQuery::ElementQuery(const std::vector<const Element*>& elements)
     : m_elements(elements) {}
 
 size_t ElementQuery::size() const noexcept {
@@ -35,23 +29,23 @@ bool ElementQuery::empty() const noexcept {
     return m_elements.empty();
 }
 
-const std::vector<std::shared_ptr<const Element>>& ElementQuery::elements() const {
+const std::vector<const Element*>& ElementQuery::elements() const {
     return m_elements;
 }
 
-std::shared_ptr<const Element> ElementQuery::first_element() const {
+const Element* ElementQuery::first_element() const {
     return empty() ? nullptr : m_elements[0];
 }
 
-std::shared_ptr<const Element> ElementQuery::last_element() const {
+const Element* ElementQuery::last_element() const {
     return empty() ? nullptr : m_elements.back();
 }
 
-std::shared_ptr<const Element> ElementQuery::operator[](const size_t index) const {
+const Element* ElementQuery::operator[](const size_t index) const {
     return at(index);
 }
 
-std::shared_ptr<const Element> ElementQuery::at(const size_t index) const {
+const Element* ElementQuery::at(const size_t index) const {
     if (index >= m_elements.size()) {
         return nullptr;
     }
@@ -85,7 +79,7 @@ ElementQuery::const_iterator ElementQuery::cend() const {
 
 // 条件过滤方法
 ElementQuery ElementQuery::has_attribute(const std::string_view name) const {
-    std::vector<std::shared_ptr<const Element>> filtered;
+    std::vector<const Element*> filtered;
     for (const auto& element : m_elements) {
         if (element && element->has_attribute(name)) {
             filtered.push_back(element);
@@ -95,7 +89,7 @@ ElementQuery ElementQuery::has_attribute(const std::string_view name) const {
 }
 
 ElementQuery ElementQuery::has_attribute(const std::string_view name, const std::string_view value) const {
-    std::vector<std::shared_ptr<const Element>> filtered;
+    std::vector<const Element*> filtered;
     for (const auto& element : m_elements) {
         if (element && element->has_attribute(name) && element->get_attribute(name) == value) {
             filtered.push_back(element);
@@ -105,7 +99,7 @@ ElementQuery ElementQuery::has_attribute(const std::string_view name, const std:
 }
 
 ElementQuery ElementQuery::has_class(const std::string_view class_name) const {
-    std::vector<std::shared_ptr<const Element>> filtered;
+    std::vector<const Element*> filtered;
     for (const auto& element : m_elements) {
         if (element && element->has_class(class_name)) {
             filtered.push_back(element);
@@ -115,7 +109,7 @@ ElementQuery ElementQuery::has_class(const std::string_view class_name) const {
 }
 
 ElementQuery ElementQuery::has_tag(const std::string_view tag_name) const {
-    std::vector<std::shared_ptr<const Element>> filtered;
+    std::vector<const Element*> filtered;
     for (const auto& element : m_elements) {
         if (element && element->tag_name() == tag_name) {
             filtered.push_back(element);
@@ -125,7 +119,7 @@ ElementQuery ElementQuery::has_tag(const std::string_view tag_name) const {
 }
 
 ElementQuery ElementQuery::has_text(const std::string_view text) const {
-    std::vector<std::shared_ptr<const Element>> filtered;
+    std::vector<const Element*> filtered;
     for (const auto& element : m_elements) {
         if (element && element->text_content() == text) {
             filtered.push_back(element);
@@ -135,7 +129,7 @@ ElementQuery ElementQuery::has_text(const std::string_view text) const {
 }
 
 ElementQuery ElementQuery::containing_text(const std::string_view text) const {
-    std::vector<std::shared_ptr<const Element>> filtered;
+    std::vector<const Element*> filtered;
     for (const auto& element : m_elements) {
         if (element && element->text_content().find(text) != std::string::npos) {
             filtered.push_back(element);
@@ -145,7 +139,7 @@ ElementQuery ElementQuery::containing_text(const std::string_view text) const {
 }
 
 ElementQuery ElementQuery::matching_text(const std::function<bool(std::string_view)>& predicate) const {
-    std::vector<std::shared_ptr<const Element>> filtered;
+    std::vector<const Element*> filtered;
     for (const auto& element : m_elements) {
         if (element && predicate(element->text_content())) {
             filtered.push_back(element);
@@ -155,7 +149,7 @@ ElementQuery ElementQuery::matching_text(const std::function<bool(std::string_vi
 }
 
 ElementQuery ElementQuery::has_attribute_contains(const std::string_view name, const std::string_view text) const {
-    std::vector<std::shared_ptr<const Element>> filtered;
+    std::vector<const Element*> filtered;
     for (const auto& element : m_elements) {
         if (element && element->has_attribute(name)) {
             const auto attr_value = element->get_attribute(name);
@@ -168,7 +162,7 @@ ElementQuery ElementQuery::has_attribute_contains(const std::string_view name, c
 }
 
 ElementQuery ElementQuery::has_text_contains(const std::string_view text) const {
-    std::vector<std::shared_ptr<const Element>> filtered;
+    std::vector<const Element*> filtered;
     for (const auto& element : m_elements) {
         if (element) {
             const auto element_text = element->text_content();
@@ -219,7 +213,7 @@ ElementQuery ElementQuery::limit(const size_t n) const {
 
 // 导航方法
 ElementQuery ElementQuery::children() const {
-    std::vector<std::shared_ptr<const Element>> all_children;
+    std::vector<const Element*> all_children;
     for (const auto& element : m_elements) {
         if (element) {
             auto children = element->children();
@@ -246,7 +240,7 @@ ElementQuery ElementQuery::children(const std::string_view selector) const {
 }
 
 ElementQuery ElementQuery::parent() const {
-    std::vector<std::shared_ptr<const Element>> parents;
+    std::vector<const Element*> parents;
     for (const auto& element : m_elements) {
         if (element && element->parent()) {
             if (auto parent_elem = element->parent()->as_element()) {
@@ -258,8 +252,8 @@ ElementQuery ElementQuery::parent() const {
 }
 
 ElementQuery ElementQuery::parents() const {
-    std::vector<std::shared_ptr<const Element>>        all_parents;
-    std::unordered_set<std::shared_ptr<const Element>> seen;
+    std::vector<const Element*>        all_parents;
+    std::unordered_set<const Element*> seen;
     for (const auto& element : m_elements) {
         if (element) {
             auto current = element->parent();
@@ -286,8 +280,8 @@ ElementQuery ElementQuery::closest(const std::string_view selector) const {
         return {};
     }
 
-    std::vector<std::shared_ptr<const Element>>        closest_elements;
-    std::unordered_set<std::shared_ptr<const Element>> seen;
+    std::vector<const Element*>        closest_elements;
+    std::unordered_set<const Element*> seen;
     for (const auto& element : m_elements) {
         if (element) {
             auto current = element;
@@ -312,8 +306,8 @@ ElementQuery ElementQuery::closest(const std::string_view selector) const {
 }
 
 ElementQuery ElementQuery::next_sibling() const {
-    std::vector<std::shared_ptr<const Element>>        siblings;
-    std::unordered_set<std::shared_ptr<const Element>> seen;
+    std::vector<const Element*>        siblings;
+    std::unordered_set<const Element*> seen;
     for (const auto& element : m_elements) {
         if (const auto ele = element->next_sibling(); ele && ele->is_element()) {
             auto sibling_elem = ele->as_element();
@@ -327,8 +321,8 @@ ElementQuery ElementQuery::next_sibling() const {
 }
 
 ElementQuery ElementQuery::next_siblings() const {
-    std::vector<std::shared_ptr<const Element>>        siblings;
-    std::unordered_set<std::shared_ptr<const Element>> seen;
+    std::vector<const Element*>        siblings;
+    std::unordered_set<const Element*> seen;
     for (const auto& element : m_elements) {
         auto current = element->next_sibling();
         while (current) {
@@ -346,8 +340,8 @@ ElementQuery ElementQuery::next_siblings() const {
 }
 
 ElementQuery ElementQuery::prev_sibling() const {
-    std::vector<std::shared_ptr<const Element>>        siblings;
-    std::unordered_set<std::shared_ptr<const Element>> seen;
+    std::vector<const Element*>        siblings;
+    std::unordered_set<const Element*> seen;
     for (const auto& element : m_elements) {
         if (const auto ele = element->previous_sibling(); ele && ele->is_element()) {
             auto sibling_elem = ele->as_element();
@@ -361,8 +355,8 @@ ElementQuery ElementQuery::prev_sibling() const {
 }
 
 ElementQuery ElementQuery::prev_siblings() const {
-    std::vector<std::shared_ptr<const Element>>        siblings;
-    std::unordered_set<std::shared_ptr<const Element>> seen;
+    std::vector<const Element*>        siblings;
+    std::unordered_set<const Element*> seen;
     for (const auto& element : m_elements) {
         auto current = element->previous_sibling();
         while (current) {
@@ -380,14 +374,14 @@ ElementQuery ElementQuery::prev_siblings() const {
 }
 
 ElementQuery ElementQuery::siblings() const {
-    std::vector<std::shared_ptr<const Element>>        siblings;
-    std::unordered_set<std::shared_ptr<const Element>> seen;
+    std::vector<const Element*>        siblings;
+    std::unordered_set<const Element*> seen;
     for (const auto& element : m_elements) {
         if (element && element->parent()) {
             auto parent_children = element->parent()->children();
             for (const auto& child : parent_children) {
                 if (child != element) {
-                    if (auto sibling_elem = std::dynamic_pointer_cast<const Element>(child)) {
+                    if (auto sibling_elem = child->as_element()) {
                         if (!seen.contains(sibling_elem)) {
                             siblings.push_back(sibling_elem);
                             seen.insert(sibling_elem);
@@ -404,7 +398,7 @@ ElementQuery ElementQuery::css(const std::string_view selector) const {
     if (selector.empty()) {
         return {};
     }
-    std::vector<std::shared_ptr<const Element>> all_results;
+    std::vector<const Element*> all_results;
     for (const auto& element : m_elements) {
         if (element) {
             auto        results         = Query::css(*element, selector);
@@ -417,11 +411,9 @@ ElementQuery ElementQuery::css(const std::string_view selector) const {
     return ElementQuery(std::move(all_results));
 }
 
-
-
 // 高级查询方法
 ElementQuery ElementQuery::filter(const std::function<bool(const Element&)>& predicate) const {
-    std::vector<std::shared_ptr<const Element>> filtered;
+    std::vector<const Element*> filtered;
     for (const auto& element : m_elements) {
         if (element && predicate(*element)) {
             filtered.push_back(element);
@@ -442,7 +434,7 @@ ElementQuery ElementQuery::not_(const std::string_view selector) const {
 }
 
 ElementQuery ElementQuery::even() const {
-    std::vector<std::shared_ptr<const Element>> filtered;
+    std::vector<const Element*> filtered;
     for (size_t i = 0; i < m_elements.size(); i += 2) {
         filtered.push_back(m_elements[i]);
     }
@@ -450,7 +442,7 @@ ElementQuery ElementQuery::even() const {
 }
 
 ElementQuery ElementQuery::odd() const {
-    std::vector<std::shared_ptr<const Element>> filtered;
+    std::vector<const Element*> filtered;
     for (size_t i = 1; i < m_elements.size(); i += 2) {
         filtered.push_back(m_elements[i]);
     }
@@ -459,7 +451,7 @@ ElementQuery ElementQuery::odd() const {
 
 ElementQuery ElementQuery::eq(const size_t index) const {
     if (index < m_elements.size()) {
-        std::vector<std::shared_ptr<const Element>> single = {m_elements[index]};
+        std::vector<const Element*> single = {m_elements[index]};
         return ElementQuery(std::move(single));
     }
     return {};
@@ -501,7 +493,7 @@ std::vector<std::string> ElementQuery::extract_own_texts() const {
     std::vector<std::string> texts;
     for (const auto& element : m_elements) {
         if (element) {
-            texts.push_back(element->own_text_content());
+            texts.push_back(element->own_text());
         }
     }
     return texts;
@@ -538,7 +530,7 @@ bool ElementQuery::is(const std::string_view selector) const {
 
 bool ElementQuery::contains(const Element& element) const {
     for (const auto& elem : m_elements) {
-        if (elem.get() == &element) {
+        if (elem == &element) {
             return true;
         }
     }
@@ -546,7 +538,7 @@ bool ElementQuery::contains(const Element& element) const {
 }
 
 bool ElementQuery::contains(const std::string_view text) const {
-    auto has_text = [&text](const std::shared_ptr<const Element>& element) { return element && element->text_content().find(text) != std::string::npos; };
+    auto has_text = [&text](const Element* element) { return element && element->text_content().find(text) != std::string::npos; };
 
     return std::ranges::any_of(m_elements, has_text);
 }

@@ -5,7 +5,6 @@
 #include <iostream>
 using namespace hps;
 
-
 int main() {
 #ifdef _WIN32
     system("chcp 65001 > nul");
@@ -22,7 +21,7 @@ int main() {
         auto titles = doc->css(".grid .odd a").elements();
         std::cout << "titles: " << titles.size() << std::endl;
         for (const auto& title : titles) {
-            const auto tl = title->text_content();
+            const auto tl  = title->text_content();
             const auto res = gbk_to_utf8(tl);
             std::cout << "title: " << res << std::endl;
         }

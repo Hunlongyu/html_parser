@@ -15,7 +15,7 @@ NodeType TextNode::type() const noexcept {
 std::string TextNode::name() const {
     auto parent_node = parent();
     if (parent_node && parent_node->is_element()) {
-        const auto parent_element = std::static_pointer_cast<const Element>(parent_node);
+        const auto parent_element = parent_node->as_element();
         return parent_element->tag_name();
     }
     return {};

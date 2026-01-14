@@ -3,6 +3,8 @@
 #include "hps/core/attribute.hpp"
 #include "hps/core/node.hpp"
 
+#include <unordered_set>
+
 namespace hps {
 
 class ElementQuery;
@@ -37,7 +39,7 @@ class Element : public Node {
      * @brief 获取元素自身的文本内容
      * @return 元素自身的文本内容
      */
-    [[nodiscard]] std::string own_text_content() const;
+    [[nodiscard]] std::string own_text() const;
 
     // Element Specific Properties
     /**
@@ -59,7 +61,7 @@ class Element : public Node {
      * @param name 属性名（忽略大小写）
      * @return 属性值，如果属性不存在则返回空字符串
      */
-    [[nodiscard]] std::string get_attribute(std::string_view name) const noexcept;
+    [[nodiscard]] const std::string& get_attribute(std::string_view name) const noexcept;
 
     /**
      * @brief 获取所有属性
@@ -102,37 +104,37 @@ class Element : public Node {
     /**
      * @brief 使用 CSS 选择器查询第一个匹配的子元素
      * @param selector CSS 选择器字符串
-     * @return 第一个匹配的子元素的共享指针，如果没有匹配则返回 nullptr
+     * @return 第一个匹配的子元素的原始指针，如果没有匹配则返回 nullptr
      */
-    [[nodiscard]] std::shared_ptr<const Element> querySelector(std::string_view selector) const;
+    [[nodiscard]] const Element* querySelector(std::string_view selector) const;
 
     /**
      * @brief 使用 CSS 选择器查询所有匹配的子元素
      * @param selector CSS 选择器字符串
-     * @return 所有匹配的子元素的共享指针列表
+     * @return 所有匹配的子元素的原始指针列表
      */
-    [[nodiscard]] std::vector<std::shared_ptr<const Element>> querySelectorAll(std::string_view selector) const;
+    [[nodiscard]] std::vector<const Element*> querySelectorAll(std::string_view selector) const;
 
     /**
      * @brief 按 ID 获取子元素
      * @param id 要查找的 ID 值
-     * @return 匹配的子元素的共享指针，如果没有匹配则返回 nullptr
+     * @return 匹配的子元素的原始指针，如果没有匹配则返回 nullptr
      */
-    [[nodiscard]] std::shared_ptr<const Element> get_element_by_id(std::string_view id) const;
+    [[nodiscard]] const Element* get_element_by_id(std::string_view id) const;
 
     /**
      * @brief 按标签名获取直接子元素
      * @param tag_name 要查找的标签名
      * @return 匹配的直接子元素列表
      */
-    [[nodiscard]] std::vector<std::shared_ptr<const Element>> get_elements_by_tag_name(std::string_view tag_name) const;
+    [[nodiscard]] std::vector<const Element*> get_elements_by_tag_name(std::string_view tag_name) const;
 
     /**
      * @brief 按类名获取直接子元素
      * @param class_name 要查找的类名
      * @return 匹配的直接子元素列表
      */
-    [[nodiscard]] std::vector<std::shared_ptr<const Element>> get_elements_by_class_name(std::string_view class_name) const;
+    [[nodiscard]] std::vector<const Element*> get_elements_by_class_name(std::string_view class_name) const;
 
     /**
      * @brief 创建一个 ElementQuery 对象，用于链式 CSS 选择器查询
@@ -141,14 +143,12 @@ class Element : public Node {
      */
     [[nodiscard]] ElementQuery css(std::string_view selector) const;
 
-
-
     // Tree Modification
     /**
      * @brief 添加子节点
      * @param child 要添加的子节点的唯一指针
      */
-    void add_child(const std::shared_ptr<Node>& child);
+    void add_child(std::unique_ptr<Node> child);
 
     /**
      * @brief 添加或更新属性
