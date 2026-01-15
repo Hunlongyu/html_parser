@@ -101,6 +101,14 @@ class Attribute {
     }
 
     /**
+     * @brief 设置属性名（string 右值引用版本）
+     * @param name 新的属性名
+     */
+    void set_name(std::string&& name) noexcept {
+        m_name = std::move(name);
+    }
+
+    /**
      * @brief 设置属性名（string_view 版本）
      * @param name 新的属性名
      */
@@ -118,6 +126,16 @@ class Attribute {
      */
     void set_value(const std::string& value, const bool has_value = true) noexcept {
         m_value     = value;
+        m_has_value = has_value;
+    }
+
+    /**
+     * @brief 设置属性值（string 右值引用版本）
+     * @param value 新的属性值
+     * @param has_value 是否有值标志，默认为 true
+     */
+    void set_value(std::string&& value, const bool has_value = true) noexcept {
+        m_value     = std::move(value);
         m_has_value = has_value;
     }
 

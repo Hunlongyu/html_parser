@@ -79,13 +79,13 @@ class Element : public Node {
      * @brief 获取 ID 属性值
      * @return ID 值，如果元素没有 ID 属性则返回空字符串
      */
-    [[nodiscard]] std::string id() const noexcept;
+    [[nodiscard]] const std::string& id() const noexcept;
 
     /**
      * @brief 获取 class 属性的原始值
      * @return class 属性值，如果元素没有 class 属性则返回空字符串
      */
-    [[nodiscard]] std::string class_name() const noexcept;
+    [[nodiscard]] const std::string& class_name() const noexcept;
 
     /**
      * @brief 获取所有 CSS 类名

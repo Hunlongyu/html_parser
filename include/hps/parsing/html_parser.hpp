@@ -1,5 +1,6 @@
 #pragma once
 
+#include "hps/parsing/options.hpp"
 #include "hps/parsing/tokenizer.hpp"
 #include "hps/parsing/tree_builder.hpp"
 
@@ -25,36 +26,29 @@ class HTMLParser : public NonCopyable {
 
     // 核心解析功能（最重要的基础功能）
     /**
-     * @brief 解析HTML字符串（使用默认宽松模式）
+     * @brief 解析HTML字符串
      * @param html HTML字符串视图
+     * @param options 解析选项（可选，默认为宽松模式）
      * @return 解析后的文档对象智能指针
      */
-    [[nodiscard]] std::shared_ptr<Document> parse(std::string_view html);
+    [[nodiscard]] std::shared_ptr<Document> parse(std::string_view html, const Options& options = {});
 
     /**
-     * @brief 解析HTML字符串（自定义解析选项）
-     * @param html HTML字符串视图
-     * @param options 解析选项
+     * @brief 解析HTML字符串（右值引用优化）
+     * @param html HTML字符串（右值）
+     * @param options 解析选项（可选，默认为宽松模式）
      * @return 解析后的文档对象智能指针
      */
-    [[nodiscard]] std::shared_ptr<Document> parse(std::string_view html, const Options& options);
+    [[nodiscard]] std::shared_ptr<Document> parse(std::string&& html, const Options& options = {});
 
     // 文件解析功能（扩展功能）
     /**
-     * @brief 解析HTML文件（使用默认宽松模式）
+     * @brief 解析HTML文件
      * @param filePath HTML文件路径
+     * @param options 解析选项（可选，默认为宽松模式）
      * @return 解析后的文档对象智能指针
      */
-    [[nodiscard]] std::shared_ptr<Document> parse_file(std::string_view filePath);
-
-    // 文件解析功能（自定义解析选项）
-    /**
-     * @brief 解析HTML文件（使用默认宽松模式）
-     * @param filePath HTML文件路径
-     * @param options 解析选项
-     * @return 解析后的文档对象智能指针
-     */
-    [[nodiscard]] std::shared_ptr<Document> parse_file(std::string_view filePath, const Options& options);
+    [[nodiscard]] std::shared_ptr<Document> parse_file(std::string_view filePath, const Options& options = {});
 
     // 错误信息访问（诊断功能）
     /**
@@ -65,6 +59,8 @@ class HTMLParser : public NonCopyable {
 
   private:
     std::vector<HPSError> m_errors;  ///< 解析错误列表
+
+    [[nodiscard]] std::shared_ptr<Document> parse_owned(std::string html, const Options& options);
 };
 
 }  // namespace hps

@@ -94,6 +94,14 @@ class Token : public NonCopyable {
     void add_attr(const TokenAttribute& attr);
 
     /**
+     * @brief 添加完整属性对象（移动语义）
+     * @param attr 完整的TokenAttribute对象（右值）
+     *
+     * 高效添加属性，避免拷贝。
+     */
+    void add_attr(TokenAttribute&& attr);
+
+    /**
      * @brief 添加属性（便捷方法）
      * @param name 属性名
      * @param value 属性值

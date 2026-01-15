@@ -22,7 +22,7 @@ class CommentNode : public Node {
      * @brief 注释内容
      * @return 注释内容
      */
-    [[nodiscard]] std::string value() const;
+    [[nodiscard]] const std::string& value() const;
 
     /**
      * @brief 递归所有的注释内容
@@ -34,7 +34,7 @@ class CommentNode : public Node {
      * @brief 获取注释内容
      * @return 注释内容
      */
-    [[nodiscard]] std::string comment() const;
+    [[nodiscard]] const std::string& comment() const;
 
     /**
      * @brief 获取注释内容 移除两端空白字符

@@ -22,7 +22,7 @@ std::string TextNode::name() const {
     return {};
 }
 
-std::string TextNode::value() const {
+const std::string& TextNode::value() const {
     return m_text;
 }
 
@@ -30,7 +30,7 @@ std::string TextNode::text_content() const {
     return m_text;
 }
 
-std::string TextNode::text() const {
+const std::string& TextNode::text() const {
     return m_text;
 }
 

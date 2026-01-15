@@ -12,7 +12,7 @@ NodeType CommentNode::type() const noexcept {
     return NodeType::Comment;
 }
 
-std::string CommentNode::value() const {
+const std::string& CommentNode::value() const {
     return m_comment;
 }
 
@@ -20,7 +20,7 @@ std::string CommentNode::text_content() const {
     return m_comment;
 }
 
-std::string CommentNode::comment() const {
+const std::string& CommentNode::comment() const {
     return m_comment;
 }
 

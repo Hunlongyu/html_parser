@@ -95,6 +95,15 @@ class Tokenizer : public NonCopyable {
      */
     [[nodiscard]] const std::vector<HPSError>& get_errors() const noexcept;
 
+    /**
+     * @brief 获取并消耗解析过程中收集的所有错误（移动语义）
+     * @return 包含所有ParseError对象的向量
+     *
+     * 调用此方法后，Tokenizer内部的错误列表将被清空。
+     * 适用于需要将错误信息转移到其他地方（如HTMLParser）的场景。
+     */
+    [[nodiscard]] std::vector<HPSError> consume_errors();
+
   private:
     // ==================== 状态处理方法 ====================
 

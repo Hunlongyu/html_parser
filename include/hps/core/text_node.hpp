@@ -25,7 +25,7 @@ class TextNode : public Node {
      * @brief 文本内容
      * @return 文本内容
      */
-    [[nodiscard]] std::string value() const;
+    [[nodiscard]] const std::string& value() const;
 
     /**
      * @brief 递归所有的文本内容
@@ -37,7 +37,7 @@ class TextNode : public Node {
      * @brief 获取文本内容
      * @return 文本内容
      */
-    [[nodiscard]] std::string text() const;
+    [[nodiscard]] const std::string& text() const;
 
     /**
      * @brief 获取文本内容 移除两端空白字符

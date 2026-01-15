@@ -1,5 +1,7 @@
 #pragma once
 
+#include <algorithm>
+#include <array>
 #include <string>
 #include <unordered_set>
 
@@ -171,11 +173,15 @@ class Options {
      * @param tag_name 标签名称
      * @return 如果是void元素返回true，否则返回false
      */
-    [[nodiscard]] bool is_void_element(const std::string& tag_name) const {
+    [[nodiscard]] bool is_void_element(std::string_view tag_name) const {
         if (!void_elements.empty()) {
-            return void_elements.contains(tag_name);
+            return void_elements.contains(std::string(tag_name));
         }
-        return get_default_void_elements().contains(tag_name);
+
+        // 优化的二分查找，避免构建 set
+        static constexpr std::array<std::string_view, 20> default_void_tags = {"area", "base", "basefont", "br", "col", "command", "embed", "frame", "hr", "img", "input", "isindex", "keygen", "link", "menuitem", "meta", "param", "source", "track", "wbr"};
+
+        return std::ranges::binary_search(default_void_tags, tag_name);
     }
 
     /**
@@ -222,11 +228,11 @@ class Options {
     ErrorHandlingMode error_handling = ErrorHandlingMode::Lenient;  ///< ✅ 错误处理模式，默认宽松模式
 
     // 内容处理选项
-    CommentMode        comment_mode         = CommentMode::Preserve;       ///< ✅ 注释处理模式，默认保留注释
-    WhitespaceMode     whitespace_mode      = WhitespaceMode::Preserve;    ///< ✅ 空白文本处理模式，默认保留空白
-    TextProcessingMode text_processing_mode = TextProcessingMode::Raw;  ///< ✅ 文本处理模式，默认保持原始
-    BRHandling         br_handling          = BRHandling::Keep;            ///< <br> 处理策略
-    std::string        br_text              = "\n";                        ///< 自定义文本（InsertCustom 时使用）
+    CommentMode        comment_mode         = CommentMode::Preserve;     ///< ✅ 注释处理模式，默认保留注释
+    WhitespaceMode     whitespace_mode      = WhitespaceMode::Preserve;  ///< ✅ 空白文本处理模式，默认保留空白
+    TextProcessingMode text_processing_mode = TextProcessingMode::Raw;   ///< ✅ 文本处理模式，默认保持原始
+    BRHandling         br_handling          = BRHandling::Keep;          ///< <br> 处理策略
+    std::string        br_text              = "\n";                      ///< 自定义文本（InsertCustom 时使用）
 
     // 高级选项
     bool preserve_case = false;  ///< ✅ 是否保持标签和属性名大小写，默认转为小写

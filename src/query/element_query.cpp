@@ -180,7 +180,7 @@ ElementQuery ElementQuery::slice(const size_t start, size_t end) const {
     if (start >= size) {
         return {};
     }
-    end = std::min(end, size);
+    end = std::ranges::min({end, size});
     if (start >= end) {
         return {};
     }

@@ -27,6 +27,10 @@ void Token::add_attr(const TokenAttribute& attr) {
     m_attrs.push_back(attr);
 }
 
+void Token::add_attr(TokenAttribute&& attr) {
+    m_attrs.push_back(std::move(attr));
+}
+
 void Token::add_attr(std::string_view name, std::string_view value, bool has_value) {
     m_attrs.emplace_back(name, value, has_value);
 }

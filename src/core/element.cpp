@@ -57,11 +57,11 @@ size_t Element::attribute_count() const noexcept {
     return m_attributes.size();
 }
 
-std::string Element::id() const noexcept {
+const std::string& Element::id() const noexcept {
     return get_attribute("id");
 }
 
-std::string Element::class_name() const noexcept {
+const std::string& Element::class_name() const noexcept {
     return get_attribute("class");
 }
 

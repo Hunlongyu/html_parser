@@ -62,6 +62,15 @@ class TreeBuilder : public NonCopyable {
      */
     [[nodiscard]] const std::vector<HPSError>& errors() const noexcept;
 
+    /**
+     * @brief 获取并消耗解析过程中的错误列表（移动语义）
+     * @return 解析错误列表
+     *
+     * 调用此方法后，TreeBuilder内部的错误列表将被清空。
+     * 适用于需要将错误信息转移到其他地方（如HTMLParser）的场景。
+     */
+    [[nodiscard]] std::vector<HPSError> consume_errors();
+
   private:
     // === Token处理方法 ===
 

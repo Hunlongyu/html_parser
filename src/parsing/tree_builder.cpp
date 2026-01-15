@@ -64,6 +64,10 @@ const std::vector<HPSError>& TreeBuilder::errors() const noexcept {
     return m_errors;
 }
 
+std::vector<HPSError> TreeBuilder::consume_errors() {
+    return std::move(m_errors);
+}
+
 void TreeBuilder::process_start_tag(const Token& token) {
     if (token.name() == "br") {
         if (m_options.br_handling == BRHandling::InsertNewline) {

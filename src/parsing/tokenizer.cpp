@@ -118,6 +118,10 @@ const std::vector<HPSError>& Tokenizer::get_errors() const noexcept {
     return m_errors;
 }
 
+std::vector<HPSError> Tokenizer::consume_errors() {
+    return std::move(m_errors);
+}
+
 std::optional<Token> Tokenizer::consume_data_state() {
     if (current_char() == '<') {
         advance();
@@ -131,13 +135,8 @@ std::optional<Token> Tokenizer::consume_data_state() {
     }
     if (start < m_pos) {
         const std::string_view data              = m_source.substr(start, m_pos - start);
-        bool                   is_all_whitespace = true;
-        for (const char c : data) {
-            if (c != ' ' && c != '\t' && c != '\n' && c != '\r' && c != '\f') {
-                is_all_whitespace = false;
-                break;
-            }
-        }
+        const bool             is_all_whitespace = std::ranges::all_of(data, [](char c) { return is_whitespace(c); });
+
         if (!is_all_whitespace) {
             return create_text_token(data);
         }
@@ -195,14 +194,23 @@ std::optional<Token> Tokenizer::consume_tag_open_state() {
 }
 
 std::optional<Token> Tokenizer::consume_tag_name_state() {
-    while (has_more() && is_alnum(current_char())) {
-        if (m_options.preserve_case) {
-            m_token_builder.tag_name += current_char();
-        } else {
-            m_token_builder.tag_name += to_lower(current_char());
-        }
-        advance();
+    const size_t start = m_pos;
+    while (m_pos < m_source.length() && is_alnum(m_source[m_pos])) {
+        m_pos++;
     }
+
+    if (m_pos > start) {
+        std::string_view raw_name = m_source.substr(start, m_pos - start);
+        if (m_options.preserve_case) {
+            m_token_builder.tag_name += raw_name;
+        } else {
+            m_token_builder.tag_name.reserve(m_token_builder.tag_name.size() + raw_name.size());
+            for (char c : raw_name) {
+                m_token_builder.tag_name += to_lower(c);
+            }
+        }
+    }
+
     if (is_whitespace(current_char())) {
         skip_whitespace();
         m_state = TokenizerState::BeforeAttributeName;
@@ -304,13 +312,26 @@ std::optional<Token> Tokenizer::consume_before_attribute_name_state() {
 }
 
 std::optional<Token> Tokenizer::consume_attribute_name_state() {
-    while (has_more() && (is_alnum(current_char()) || current_char() == '-' || current_char() == '_' || current_char() == ':')) {
-        if (m_options.preserve_case) {
-            m_token_builder.attr_name += current_char();
+    const size_t start = m_pos;
+    while (m_pos < m_source.length()) {
+        const char c = m_source[m_pos];
+        if (is_alnum(c) || c == '-' || c == '_' || c == ':') {
+            m_pos++;
         } else {
-            m_token_builder.attr_name += to_lower(current_char());
+            break;
         }
-        advance();
+    }
+
+    if (m_pos > start) {
+        std::string_view raw_name = m_source.substr(start, m_pos - start);
+        if (m_options.preserve_case) {
+            m_token_builder.attr_name += raw_name;
+        } else {
+            m_token_builder.attr_name.reserve(m_token_builder.attr_name.size() + raw_name.size());
+            for (char c : raw_name) {
+                m_token_builder.attr_name += to_lower(c);
+            }
+        }
     }
 
     if (is_whitespace(current_char())) {
@@ -665,8 +686,8 @@ bool Tokenizer::starts_with(std::string_view s) const noexcept {
 
 Token Tokenizer::create_start_tag_token() {
     Token token(TokenType::OPEN, m_token_builder.tag_name, "");
-    for (const auto& attr : m_token_builder.attrs) {
-        token.add_attr(attr);
+    for (auto& attr : m_token_builder.attrs) {
+        token.add_attr(std::move(attr));
     }
 
     if (m_options.is_void_element(m_token_builder.tag_name)) {
@@ -705,8 +726,8 @@ Token Tokenizer::create_doctype_token() {
 
 Token Tokenizer::create_close_self_token() {
     Token token(TokenType::CLOSE_SELF, m_token_builder.tag_name, "");
-    for (const auto& attr : m_token_builder.attrs) {
-        token.add_attr(attr);
+    for (auto& attr : m_token_builder.attrs) {
+        token.add_attr(std::move(attr));
     }
     m_token_builder.reset();
     return token;
