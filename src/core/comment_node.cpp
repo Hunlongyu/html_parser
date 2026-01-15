@@ -1,10 +1,10 @@
 #include "hps/core/comment_node.hpp"
 
-#include <ranges>
+#include "hps/utils/string_utils.hpp"
 
 namespace hps {
 
-CommentNode::CommentNode(const std::string_view comment) noexcept
+CommentNode::CommentNode(const std::string_view comment)
     : Node(NodeType::Comment),
       m_comment(comment) {}
 
@@ -25,21 +25,8 @@ std::string CommentNode::comment() const {
 }
 
 std::string CommentNode::trim() const {
-    if (m_comment.empty()) {
-        return m_comment;
-    }
-    size_t start = 0;
-    while (start < m_comment.size() && std::isspace(static_cast<unsigned char>(m_comment[start]))) {
-        ++start;
-    }
-    if (start == m_comment.size()) {
-        return {};
-    }
-    size_t end = m_comment.size() - 1;
-    while (end > start && std::isspace(static_cast<unsigned char>(m_comment[end]))) {
-        --end;
-    }
-    return {m_comment.data() + start, end - start + 1};
+    const auto trimmed = trim_whitespace(m_comment);
+    return std::string(trimmed);
 }
 
 bool CommentNode::empty() const noexcept {

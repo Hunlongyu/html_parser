@@ -224,7 +224,7 @@ class Options {
     // 内容处理选项
     CommentMode        comment_mode         = CommentMode::Preserve;       ///< ✅ 注释处理模式，默认保留注释
     WhitespaceMode     whitespace_mode      = WhitespaceMode::Preserve;    ///< ✅ 空白文本处理模式，默认保留空白
-    TextProcessingMode text_processing_mode = TextProcessingMode::Decode;  ///< ✅ 文本处理模式，默认保持原始
+    TextProcessingMode text_processing_mode = TextProcessingMode::Raw;  ///< ✅ 文本处理模式，默认保持原始
     BRHandling         br_handling          = BRHandling::Keep;            ///< <br> 处理策略
     std::string        br_text              = "\n";                        ///< 自定义文本（InsertCustom 时使用）
 

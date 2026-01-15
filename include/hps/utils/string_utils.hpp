@@ -250,22 +250,22 @@ inline std::string gbk_to_utf8(std::string_view gbk_str) {
  * @return 解码后的文本
  */
 inline std::string decode_html_entities(const std::string& text) {
-    static const std::unordered_map<std::string, std::string> entity_map = {{"&amp;", "&"},
-                                                                            {"&lt;", "<"},
-                                                                            {"&gt;", ">"},
-                                                                            {"&quot;", "\""},
-                                                                            {"&apos;", "'"},
-                                                                            // 空白字符（最常用）
-                                                                            {"&nbsp;", " "}};
-    std::string                                               result     = text;
-    for (const auto& [entity, replacement] : entity_map) {
-        size_t pos = 0;
-        while ((pos = result.find(entity, pos)) != std::string::npos) {
-            result.replace(pos, entity.length(), replacement);
-            pos += replacement.length();
+    const std::string_view input(text);
+    std::string            out;
+    out.reserve(text.size());
+
+    size_t i = 0;
+    while (i < input.size()) {
+        if (input[i] == '&' && input.substr(i).starts_with("&nbsp;")) {
+            out.push_back(' ');
+            i += 6;
+            continue;
         }
+        out.push_back(input[i]);
+        ++i;
     }
-    return result;
+
+    return out;
 }
 
 /**

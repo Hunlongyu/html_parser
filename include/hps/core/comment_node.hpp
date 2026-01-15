@@ -2,11 +2,14 @@
 
 #include "hps/core/node.hpp"
 
+#include <string>
+#include <string_view>
+
 namespace hps {
 
 class CommentNode : public Node {
   public:
-    explicit CommentNode(std::string_view comment) noexcept;
+    explicit CommentNode(std::string_view comment);
     ~CommentNode() override = default;
 
     /**
