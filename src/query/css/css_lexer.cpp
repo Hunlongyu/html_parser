@@ -176,7 +176,11 @@ CSSLexer::CSSToken CSSLexer::read_next_token() {
                 advance();
                 return {CSSTokenType::LangMatch, "|=", start_pos};
             }
-            return create_error_token("Unexpected character '|'");
+            if (current_char() == '|') {
+                advance();
+                return {CSSTokenType::Column, "||", start_pos};
+            }
+            return {CSSTokenType::Pipe, "|", start_pos};
         }
 
         case '>': {

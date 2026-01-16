@@ -27,32 +27,45 @@ class CSSLexer {
      * 定义了CSS选择器中所有可能的标记类型
      */
     enum class CSSTokenType : std::uint8_t {
-        Identifier,    ///< 标识符：div, class-name, attr-name
-        Hash,          ///< 哈希标记：#id (ID选择器)
-        Dot,           ///< 点标记：. (类选择器前缀)
-        Star,          ///< 星号：* (通用选择器)
-        LeftBracket,   ///< 左方括号：[ (属性选择器开始)
-        RightBracket,  ///< 右方括号：] (属性选择器结束)
-        Equals,        ///< 等号：= (属性值精确匹配)
-        Contains,      ///< 包含操作符：*= (属性值包含匹配)
-        StartsWith,    ///< 开始操作符：^= (属性值前缀匹配)
-        EndsWith,      ///< 结束操作符：$= (属性值后缀匹配)
-        WordMatch,     ///< 单词匹配：~= (属性值单词匹配)
-        LangMatch,     ///< 语言匹配：|= (属性值语言匹配)
-        String,        ///< 字符串字面量："value" 或 'value'
-        Number,        ///< 数字：123, 3.14 (用于nth-child表达式)
-        Greater,       ///< 大于号：> (子选择器组合器)
-        Plus,          ///< 加号：+ (相邻兄弟选择器组合器)
-        Minus,         ///< 减号：- (用于nth-child表达式)
-        Tilde,         ///< 波浪号：~ (一般兄弟选择器组合器)
-        Comma,         ///< 逗号：, (选择器列表分隔符)
-        Whitespace,    ///< 空白字符：空格、制表符、换行符 (后代选择器组合器)
-        Colon,         ///< 冒号：: (伪类选择器前缀)
-        DoubleColon,   ///< 双冒号：:: (伪元素选择器前缀)
-        LeftParen,     ///< 左圆括号：( (函数式伪类参数开始)
-        RightParen,    ///< 右圆括号：) (函数式伪类参数结束)
-        EndOfFile,     ///< 文件结束标记
-        Error          ///< 错误标记
+        // --- 基础值类型 (Values) ---
+        Identifier,  ///< 标识符：div, class-name
+        String,      ///< 字符串："foo", 'bar'
+        Number,      ///< 数字：123, 3.14
+
+        // --- 简单选择器前缀 (Simple Selectors) ---
+        Hash,         ///< ID选择器：#id
+        Dot,          ///< 类选择器：.class
+        Star,         ///< 通用选择器：*
+        Colon,        ///< 伪类前缀：:hover
+        DoubleColon,  ///< 伪元素前缀：::before
+        Pipe,         ///< 命名空间分隔符：| (ns|tag)
+
+        // --- 组合器 (Combinators) ---
+        Whitespace,  ///< 后代组合器：(空格)
+        Greater,     ///< 子元素组合器：>
+        Plus,        ///< 相邻兄弟组合器：+
+        Tilde,       ///< 一般兄弟组合器：~
+        Column,      ///< 列组合器：||
+
+        // --- 属性选择器操作符 (Attribute Matchers) ---
+        LeftBracket,   ///< 属性开始：[
+        RightBracket,  ///< 属性结束：]
+        Equals,        ///< 精确匹配：=
+        Contains,      ///< 包含匹配：*=
+        StartsWith,    ///< 前缀匹配：^=
+        EndsWith,      ///< 后缀匹配：$=
+        WordMatch,     ///< 单词匹配：~=
+        LangMatch,     ///< 语言匹配：|=
+
+        // --- 函数与表达式 (Functions & Expressions) ---
+        LeftParen,   ///< 函数开始：(
+        RightParen,  ///< 函数结束：)
+        Comma,       ///< 列表分隔符：,
+        Minus,       ///< 减号：- (nth-child)
+
+        // --- 控制标记 (Control) ---
+        EndOfFile,  ///< 文件结束
+        Error       ///< 错误
     };
 
     /**
@@ -61,10 +74,10 @@ class CSSLexer {
      * 表示词法分析过程中识别出的单个标记
      */
     struct CSSToken {
-        CSSTokenType type;      ///< 标记类型
+        CSSTokenType     type;      ///< 标记类型
         std::string_view value;     ///< 标记值（指向 StringPool 中的视图）
-        size_t       position;  ///< 标记在输入字符串中的起始位置
-        size_t       length;    ///< 标记长度
+        size_t           position;  ///< 标记在输入字符串中的起始位置
+        size_t           length;    ///< 标记长度
 
         /**
          * @brief 构造函数

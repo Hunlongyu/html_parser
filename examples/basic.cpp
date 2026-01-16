@@ -1,4 +1,7 @@
+#include "hps/core/element.hpp"
+#include "hps/core/text_node.hpp"
 #include "hps/hps.hpp"
+#include "hps/parsing/options.hpp"
 #include "hps/utils/string_utils.hpp"
 
 #include <chrono>
@@ -21,7 +24,7 @@ int main() {
         auto titles = doc->css(".grid .odd a").elements();
         std::cout << "titles: " << titles.size() << std::endl;
         for (const auto& title : titles) {
-            const auto tl  = title->text_content();
+            const auto tl  = title->as_text()->text_content();
             const auto res = gbk_to_utf8(tl);
             std::cout << "title: " << res << std::endl;
         }

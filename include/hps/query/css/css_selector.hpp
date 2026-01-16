@@ -363,8 +363,6 @@ class CompoundSelector : public CSSSelector {
     std::vector<std::unique_ptr<CSSSelector>> m_selectors;
 };
 
-#include "hps/utils/string_pool.hpp"
-
 // 选择器列表 - 用于逗号分隔的选择器组 (如 div, p, .class)
 class SelectorList {
   public:
