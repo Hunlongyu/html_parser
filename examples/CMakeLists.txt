@@ -14,20 +14,10 @@ if(NOT DEFINED HPS_BUILD_STATIC)
 endif()
 
 set(EXAMPLES
-    complete
-    basic
-    br_newline
-    tokenizer
-    tree_builder
-    css_selector
-    css_parser
-    css_matcher
-    query_css
-
-    debug_sibling
-    debug_not
-    novel
-
+    01_basic_parsing
+    02_dom_manipulation
+    03_css_selectors
+    04_advanced_features
 )
 
 set(HPS_LIB_TO_LINK "")
@@ -45,9 +35,10 @@ foreach(example ${EXAMPLES})
     target_include_directories(${example} PRIVATE
         ${CMAKE_SOURCE_DIR}/include
     )
-    add_dependencies(${example} copy_html_files)
+    # add_dependencies(${example} copy_html_files) # Uncomment if html files are needed
 endforeach()
 
+# Optional: keep copy_html_files if you still want to copy the html folder
 add_custom_target(copy_html_files ALL
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         ${CMAKE_CURRENT_SOURCE_DIR}/html
