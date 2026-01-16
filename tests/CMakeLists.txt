@@ -27,4 +27,6 @@ add_hps_test(parsing_entity_tests parsing/entity_test.cpp)
 add_hps_test(parsing_html_parser_tests parsing/html_parser_test.cpp)
 add_hps_test(parsing_tokenizer_tests parsing/tokenizer_test.cpp)
 add_hps_test(query_css_selector_tests query/css_selector_test.cpp)
+add_hps_test(query_nth_of_type_tests query/nth_of_type_test.cpp)
+add_hps_test(query_advanced_pseudo_tests query/advanced_pseudo_test.cpp)
 

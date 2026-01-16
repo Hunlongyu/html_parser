@@ -6,7 +6,7 @@
 #include "hps/query/query.hpp"
 
 #include <algorithm>
-#include <span >
+#include <span>
 
 namespace hps {
 ElementQuery::ElementQuery(const Element* element) {
@@ -152,7 +152,7 @@ ElementQuery ElementQuery::has_attribute_contains(const std::string_view name, c
     std::vector<const Element*> filtered;
     for (const auto& element : m_elements) {
         if (element && element->has_attribute(name)) {
-            const auto attr_value = element->get_attribute(name);
+            const auto& attr_value = element->get_attribute(name);
             if (attr_value.find(text) != std::string::npos) {
                 filtered.push_back(element);
             }
@@ -423,7 +423,7 @@ ElementQuery ElementQuery::css(const std::string_view selector) const {
     if (selector.empty()) {
         return {};
     }
-    std::vector<const Element*> all_results;
+    std::vector<const Element*>        all_results;
     std::unordered_set<const Element*> seen;
     for (const auto& element : m_elements) {
         if (element) {

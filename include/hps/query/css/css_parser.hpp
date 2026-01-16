@@ -236,11 +236,16 @@ class PseudoClassSelector : public CSSSelector {
         NthLastChild,  ///< :nth-last-child(n) - 倒数第n个子元素
         FirstOfType,   ///< :first-of-type - 同类型中的第一个元素
         LastOfType,    ///< :last-of-type - 同类型中的最后一个元素
+        NthOfType,     ///< :nth-of-type(n) - 同类型中的第n个元素
+        NthLastOfType, ///< :nth-last-of-type(n) - 同类型中的倒数第n个元素
         OnlyChild,     ///< :only-child - 唯一子元素
         OnlyOfType,    ///< :only-of-type - 同类型中的唯一元素
         Empty,         ///< :empty - 空元素（无子元素和文本内容）
         Root,          ///< :root - 根元素
         Not,           ///< :not(selector) - 否定伪类
+        Is,            ///< :is(selector-list) - 匹配列表中的任意一个选择器
+        Where,         ///< :where(selector-list) - 同:is()，但优先级为0
+        Has,           ///< :has(selector) - 父级选择器
         Hover,         ///< :hover - 鼠标悬停状态
         Active,        ///< :active - 激活状态
         Focus,         ///< :focus - 焦点状态
@@ -255,11 +260,13 @@ class PseudoClassSelector : public CSSSelector {
      * @brief 构造函数
      * @param type 伪类类型
      * @param argument 伪类参数（如nth-child的公式）
+     * @param sub_selectors 子选择器列表（用于:is, :where, :has, :not等）
      */
-    explicit PseudoClassSelector(const PseudoType type, std::string_view argument = "")
+    explicit PseudoClassSelector(const PseudoType type, std::string_view argument = "", std::unique_ptr<SelectorList> sub_selectors = nullptr)
         : CSSSelector(SelectorType::PseudoClass),
           m_pseudo_type(type),
-          m_argument(argument) {}
+          m_argument(argument),
+          m_sub_selectors(std::move(sub_selectors)) {}
 
     /**
      * @brief 检查元素是否匹配该伪类选择器
@@ -278,11 +285,7 @@ class PseudoClassSelector : public CSSSelector {
      * @brief 计算伪类选择器的特异性
      * @return 选择器特异性值
      */
-    [[nodiscard]] SelectorSpecificity calculate_specificity() const override {
-        SelectorSpecificity spec{};
-        spec.classes = 1;  // 伪类选择器增加类选择器计数
-        return spec;
-    }
+    [[nodiscard]] SelectorSpecificity calculate_specificity() const override;
 
     /**
      * @brief 获取伪类类型
@@ -300,9 +303,18 @@ class PseudoClassSelector : public CSSSelector {
         return m_argument;
     }
 
+    /**
+     * @brief 获取子选择器列表
+     * @return 子选择器列表指针
+     */
+    [[nodiscard]] const SelectorList* sub_selectors() const noexcept {
+        return m_sub_selectors.get();
+    }
+
   private:
-    PseudoType       m_pseudo_type;  ///< 伪类类型
-    std::string_view m_argument;     ///< 伪类参数（用于nth-child(n)等带参数的伪类）
+    PseudoType                    m_pseudo_type;    ///< 伪类类型
+    std::string_view              m_argument;       ///< 伪类参数（用于nth-child(n)等带参数的伪类）
+    std::unique_ptr<SelectorList> m_sub_selectors;  ///< 子选择器列表（用于:is, :where, :has, :not等）
 
     /**
      * @brief 解析nth-child表达式

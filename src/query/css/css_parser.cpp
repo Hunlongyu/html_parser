@@ -1,3 +1,4 @@
+#include "hps/query/css/css_matcher.hpp"
 #include "hps/query/css/css_parser.hpp"
 
 #include "hps/core/element.hpp"
@@ -335,12 +336,22 @@ std::unique_ptr<CSSSelector> CSSParser::parse_pseudo_class() {
         type = PseudoClassSelector::PseudoType::FirstOfType;
     } else if (name == "last-of-type") {
         type = PseudoClassSelector::PseudoType::LastOfType;
+    } else if (name == "nth-of-type") {
+        type = PseudoClassSelector::PseudoType::NthOfType;
+    } else if (name == "nth-last-of-type") {
+        type = PseudoClassSelector::PseudoType::NthLastOfType;
     } else if (name == "only-child") {
         type = PseudoClassSelector::PseudoType::OnlyChild;
     } else if (name == "only-of-type") {
         type = PseudoClassSelector::PseudoType::OnlyOfType;
     } else if (name == "not") {
         type = PseudoClassSelector::PseudoType::Not;
+    } else if (name == "is") {
+        type = PseudoClassSelector::PseudoType::Is;
+    } else if (name == "where") {
+        type = PseudoClassSelector::PseudoType::Where;
+    } else if (name == "has") {
+        type = PseudoClassSelector::PseudoType::Has;
     } else if (name == "empty") {
         type = PseudoClassSelector::PseudoType::Empty;
     } else if (name == "root") {
@@ -371,7 +382,31 @@ std::unique_ptr<CSSSelector> CSSParser::parse_pseudo_class() {
         argument_view = m_pool->add(argument_str);
     }
 
-    return std::make_unique<PseudoClassSelector>(type, argument_view);
+    std::unique_ptr<SelectorList> sub_selectors = nullptr;
+
+    // 对于需要子选择器列表的伪类，解析参数
+    if (type == PseudoClassSelector::PseudoType::Not || type == PseudoClassSelector::PseudoType::Is || type == PseudoClassSelector::PseudoType::Where || type == PseudoClassSelector::PseudoType::Has) {
+        if (!argument_str.empty()) {
+            // 使用临时解析器解析参数中的选择器列表
+            // 注意：我们需要一个新的StringPool来管理子选择器的字符串，或者共享当前的
+            // 为了简单起见，这里创建新的解析器，但理想情况下应该复用StringPool
+            // 修正：m_pool是shared_ptr，可以共享
+            
+            // 我们不能直接传递当前的m_pool，因为CSSParser构造函数会创建新的
+            // 这里我们只能创建一个新的解析器，它会有自己的StringPool
+            // 这可能会导致字符串重复存储，但逻辑是正确的
+            try {
+                CSSParser inner_parser(argument_view);
+                // 对于 :not, :is, :where, :has，参数是一个选择器列表
+                sub_selectors = inner_parser.parse_selector_list();
+            } catch (const HPSException& e) {
+                 add_error("Invalid selector in pseudo-class argument: " + std::string(e.what()));
+                 return nullptr;
+            }
+        }
+    }
+
+    return std::make_unique<PseudoClassSelector>(type, argument_view, std::move(sub_selectors));
 }
 
 std::unique_ptr<CSSSelector> CSSParser::parse_pseudo_element() {
@@ -589,6 +624,18 @@ bool PseudoClassSelector::matches(const Element& element) const {
             return false;
         }
 
+        case PseudoType::NthOfType: {
+            // :nth-of-type(n) - 检查是否为同类型中的第n个元素
+            int index = get_type_index(element, false);
+            return matches_nth_expression(m_argument, index);
+        }
+
+        case PseudoType::NthLastOfType: {
+            // :nth-last-of-type(n) - 检查是否为同类型中的倒数第n个元素
+            int index = get_type_index(element, true);
+            return matches_nth_expression(m_argument, index);
+        }
+
         case PseudoType::FirstOfType: {
             // :first-of-type - 检查是否为同标签名的第一个元素
             return get_type_index(element) == 1;
@@ -649,20 +696,40 @@ bool PseudoClassSelector::matches(const Element& element) const {
         }
 
         case PseudoType::Not: {
-            if (m_argument.empty()) {
+            if (!m_sub_selectors) {
+                return false; // :not() 必须有参数
+            }
+            // :not(selector-list) 只要有一个匹配就返回false
+            return !m_sub_selectors->matches(element);
+        }
+
+        case PseudoType::Is:
+        case PseudoType::Where: {
+            if (!m_sub_selectors) {
                 return false;
             }
-            try {
-                CSSParser inner_parser(m_argument);
-                auto      inner_selector = inner_parser.parse_selector();
-                if (!inner_selector) {
-                    return false;
-                }
-                const auto flag = inner_selector->matches(element);
-                return !flag;
-            } catch (...) {
+            // :is/:where 只要有一个匹配就返回true
+            return m_sub_selectors->matches(element);
+        }
+
+        case PseudoType::Has: {
+             if (!m_sub_selectors) {
                 return false;
             }
+            
+            // :has(selector) 检查是否有后代匹配选择器
+            // 这里我们使用 CSSMatcher 来查找匹配的元素
+            // 由于 CSSMatcher::find_first 会搜索所有后代，这正是我们需要的功能
+            
+            // 注意：标准的 :has() 可以包含相对选择器（如 > .child），
+            // 但目前的 parser 实现可能将它们解析为普通的后代选择器或者解析失败。
+            // 假设这里的 selector 是标准的后代选择器。
+            
+            // 我们需要在当前元素的上下文中查找
+            // CSSMatcher::find_first(element, selector) 会在 element 的后代中查找
+            
+            auto result = CSSMatcher::find_first(element, *m_sub_selectors);
+            return result != nullptr;
         }
 
         // 状态伪类通常需要外部状态信息，这里提供基础实现
@@ -720,6 +787,10 @@ std::string PseudoClassSelector::to_string() const {
             return ":nth-child(" + std::string(m_argument) + ")";
         case PseudoType::NthLastChild:
             return ":nth-last-child(" + std::string(m_argument) + ")";
+        case PseudoType::NthOfType:
+            return ":nth-of-type(" + std::string(m_argument) + ")";
+        case PseudoType::NthLastOfType:
+            return ":nth-last-of-type(" + std::string(m_argument) + ")";
         case PseudoType::FirstOfType:
             return ":first-of-type";
         case PseudoType::LastOfType:
@@ -734,6 +805,12 @@ std::string PseudoClassSelector::to_string() const {
             return ":root";
         case PseudoType::Not:
             return ":not(" + std::string(m_argument) + ")";
+        case PseudoType::Is:
+            return ":is(" + std::string(m_argument) + ")";
+        case PseudoType::Where:
+            return ":where(" + std::string(m_argument) + ")";
+        case PseudoType::Has:
+            return ":has(" + std::string(m_argument) + ")";
         case PseudoType::Hover:
             return ":hover";
         case PseudoType::Active:
@@ -752,6 +829,24 @@ std::string PseudoClassSelector::to_string() const {
             return ":checked";
     }
     return ":unknown";
+}
+
+SelectorSpecificity PseudoClassSelector::calculate_specificity() const {
+    if (m_pseudo_type == PseudoType::Where) {
+        return SelectorSpecificity{}; // :where() 优先级总是0
+    }
+
+    if (m_pseudo_type == PseudoType::Is || m_pseudo_type == PseudoType::Not || m_pseudo_type == PseudoType::Has) {
+        // :is(), :not(), :has() 优先级是其参数列表中优先级最高的选择器的优先级
+        if (m_sub_selectors) {
+            return m_sub_selectors->get_max_specificity();
+        }
+        return SelectorSpecificity{};
+    }
+
+    SelectorSpecificity spec{};
+    spec.classes = 1;  // 其他伪类选择器增加类选择器计数
+    return spec;
 }
 
 bool PseudoClassSelector::matches_nth_expression(std::string_view expression, const int index) {

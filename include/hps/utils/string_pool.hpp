@@ -1,22 +1,21 @@
 #pragma once
 
-#include <vector>
-#include <string_view>
 #include <memory>
-#include <cstring>
 #include <string>
+#include <string_view>
+#include <vector>
 
 namespace hps {
 
 /**
  * @brief A memory pool for efficient string storage.
- * 
+ *
  * Manages a collection of memory blocks to store strings.
  * Provides stable string_views to the stored data.
  * Reduces memory fragmentation and allocation overhead compared to many small std::strings.
  */
 class StringPool {
-public:
+  public:
     // Default block size: 4KB
     static constexpr size_t DEFAULT_BLOCK_SIZE = 4096;
 
@@ -26,11 +25,11 @@ public:
     }
 
     // Disable copy
-    StringPool(const StringPool&) = delete;
+    StringPool(const StringPool&)            = delete;
     StringPool& operator=(const StringPool&) = delete;
-    
+
     // Allow move
-    StringPool(StringPool&&) = default;
+    StringPool(StringPool&&)            = default;
     StringPool& operator=(StringPool&&) = default;
 
     /**
@@ -69,11 +68,11 @@ public:
 
         return {dest, str.size()};
     }
-    
+
     std::string_view add(const std::string& str) {
         return add(std::string_view(str));
     }
-    
+
     std::string_view add(const char* str) {
         return add(std::string_view(str));
     }
@@ -83,23 +82,23 @@ public:
      */
     void clear() {
         m_blocks.clear();
-        m_current_block = nullptr;
+        m_current_block  = nullptr;
         m_current_offset = 0;
         allocate_new_block();
     }
 
-private:
+  private:
     void allocate_new_block() {
-        auto new_block = std::make_unique<char[]>(m_block_size);
-        m_current_block = new_block.get();
+        auto new_block   = std::make_unique<char[]>(m_block_size);
+        m_current_block  = new_block.get();
         m_current_offset = 0;
         m_blocks.push_back(std::move(new_block));
     }
 
-    size_t m_block_size;
+    size_t                               m_block_size;
     std::vector<std::unique_ptr<char[]>> m_blocks;
-    char* m_current_block = nullptr;
-    size_t m_current_offset = 0;
+    char*                                m_current_block  = nullptr;
+    size_t                               m_current_offset = 0;
 };
 
-} // namespace hps
+}  // namespace hps

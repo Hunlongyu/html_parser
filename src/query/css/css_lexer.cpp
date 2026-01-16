@@ -1,6 +1,5 @@
 #include "hps/query/css/css_lexer.hpp"
 
-#include "hps/utils/exception.hpp"
 #include "hps/utils/string_utils.hpp"
 
 namespace hps {
@@ -53,7 +52,7 @@ void CSSLexer::preprocess() {
 
         temp_processed += c;
     }
-    
+
     // Store in pool
     m_processed_input = m_pool.add(temp_processed);
 }
@@ -253,7 +252,7 @@ CSSLexer::CSSToken CSSLexer::read_next_token() {
                 error_msg += ", char code: " + std::to_string(static_cast<unsigned char>(c));
             }
 
-            advance(); // Avoid infinite loop
+            advance();  // Avoid infinite loop
             return create_error_token(error_msg);
         }
     }
