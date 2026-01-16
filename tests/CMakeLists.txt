@@ -25,3 +25,6 @@ add_hps_test(core_text_node_tests core/text_node_test.cpp)
 add_hps_test(core_comment_node_tests core/comment_node_test.cpp)
 add_hps_test(parsing_entity_tests parsing/entity_test.cpp)
 add_hps_test(parsing_html_parser_tests parsing/html_parser_test.cpp)
+add_hps_test(parsing_tokenizer_tests parsing/tokenizer_test.cpp)
+add_hps_test(query_css_selector_tests query/css_selector_test.cpp)
+

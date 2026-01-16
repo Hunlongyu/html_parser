@@ -57,6 +57,12 @@ class TextNode : public Node {
      */
     [[nodiscard]] size_t length() const noexcept;
 
+    /**
+     * @brief 追加文本内容
+     * @param text 要追加的文本
+     */
+    void append_text(std::string_view text);
+
   private:
     std::string m_text;
 };

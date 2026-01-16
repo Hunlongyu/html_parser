@@ -1,5 +1,5 @@
 #pragma once
-#include "string_view"
+#include <string_view>
 
 #include <regex>
 
@@ -141,7 +141,7 @@ inline int utf8_char_length(const unsigned char c) {
     return 1;      // 无效字节，按1字节处理
 }
 
-inline bool is_valid_identifier_start(const std::string& input, const size_t pos) {
+inline bool is_valid_identifier_start(std::string_view input, const size_t pos) {
     if (pos >= input.size())
         return false;
 
@@ -171,7 +171,7 @@ inline bool is_valid_identifier_start(const std::string& input, const size_t pos
     return false;
 }
 
-inline bool is_valid_identifier_char(const std::string& input, const size_t pos) {
+inline bool is_valid_identifier_char(std::string_view input, const size_t pos) {
     if (pos >= input.size())
         return false;
 

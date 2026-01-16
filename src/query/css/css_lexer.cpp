@@ -6,8 +6,9 @@
 namespace hps {
 // ==================== CSSLexer Implementation ====================
 
-CSSLexer::CSSLexer(const std::string_view input)
+CSSLexer::CSSLexer(const std::string_view input, StringPool& pool)
     : m_input(input),
+      m_pool(pool),
       m_position(0),
       m_line(1),
       m_column(1) {
@@ -16,8 +17,8 @@ CSSLexer::CSSLexer(const std::string_view input)
 
 void CSSLexer::preprocess() {
     // 移除CSS注释并规范化空白字符
-    m_processed_input.clear();
-    m_processed_input.reserve(m_input.size());
+    std::string temp_processed;
+    temp_processed.reserve(m_input.size());
 
     bool in_comment   = false;
     bool in_string    = false;
@@ -50,8 +51,11 @@ void CSSLexer::preprocess() {
             string_quote = '\0';
         }
 
-        m_processed_input += c;
+        temp_processed += c;
     }
+    
+    // Store in pool
+    m_processed_input = m_pool.add(temp_processed);
 }
 
 CSSLexer::CSSToken CSSLexer::next_token() {
@@ -105,10 +109,10 @@ CSSLexer::CSSToken CSSLexer::read_next_token() {
         case '#': {
             advance();
             if (is_valid_identifier_start(m_processed_input, m_position)) {
-                std::string id = read_identifier();
+                std::string_view id = read_identifier();
                 return {CSSTokenType::Hash, id, start_pos};
             }
-            throw_lexer_error("Invalid hash token");
+            return create_error_token("Invalid hash token");
         }
 
         case '.': {
@@ -146,7 +150,7 @@ CSSLexer::CSSToken CSSLexer::read_next_token() {
                 advance();
                 return {CSSTokenType::StartsWith, "^=", start_pos};
             }
-            throw_lexer_error("Unexpected character '^'");
+            return create_error_token("Unexpected character '^'");
         }
 
         case '$': {
@@ -155,7 +159,7 @@ CSSLexer::CSSToken CSSLexer::read_next_token() {
                 advance();
                 return {CSSTokenType::EndsWith, "$=", start_pos};
             }
-            throw_lexer_error("Unexpected character '$'");
+            return create_error_token("Unexpected character '$'");
         }
 
         case '~': {
@@ -173,7 +177,7 @@ CSSLexer::CSSToken CSSLexer::read_next_token() {
                 advance();
                 return {CSSTokenType::LangMatch, "|=", start_pos};
             }
-            throw_lexer_error("Unexpected character '|'");
+            return create_error_token("Unexpected character '|'");
         }
 
         case '>': {
@@ -217,18 +221,18 @@ CSSLexer::CSSToken CSSLexer::read_next_token() {
 
         case '"':
         case '\'': {
-            std::string str = read_string(c);
+            std::string_view str = read_string(c);
             return {CSSTokenType::String, str, start_pos};
         }
 
         default: {
             if (is_digit(c)) {
-                std::string number = read_number();
+                std::string_view number = read_number();
                 return {CSSTokenType::Number, number, start_pos};
             }
 
             if (is_valid_identifier_start(m_processed_input, m_position)) {
-                std::string identifier = read_identifier();
+                std::string_view identifier = read_identifier();
                 return {CSSTokenType::Identifier, identifier, start_pos};
             }
 
@@ -249,7 +253,8 @@ CSSLexer::CSSToken CSSLexer::read_next_token() {
                 error_msg += ", char code: " + std::to_string(static_cast<unsigned char>(c));
             }
 
-            throw_lexer_error(error_msg);
+            advance(); // Avoid infinite loop
+            return create_error_token(error_msg);
         }
     }
 }
@@ -286,8 +291,8 @@ bool CSSLexer::skip_whitespace() {
     return skipped;
 }
 
-std::string CSSLexer::read_identifier() {
-    std::string result;
+std::string_view CSSLexer::read_identifier() {
+    size_t start = m_position;
 
     while (m_position < m_processed_input.size()) {
         if (is_valid_identifier_char(m_processed_input, m_position)) {
@@ -295,13 +300,11 @@ std::string CSSLexer::read_identifier() {
 
             if (c < 0x80) {
                 // ASCII字符
-                result += static_cast<char>(c);
                 advance();
             } else {
                 // UTF-8多字节字符
                 const int len = utf8_char_length(c);
                 for (int i = 0; i < len && m_position < m_processed_input.size(); ++i) {
-                    result += m_processed_input[m_position];
                     advance();
                 }
             }
@@ -309,10 +312,10 @@ std::string CSSLexer::read_identifier() {
             break;
         }
     }
-    return result;
+    return m_processed_input.substr(start, m_position - start);
 }
 
-std::string CSSLexer::read_string(const char quote) {
+std::string_view CSSLexer::read_string(const char quote) {
     advance();  // 跳过开始引号
     std::string result;
 
@@ -356,22 +359,21 @@ std::string CSSLexer::read_string(const char quote) {
         }
     }
 
-    return result;
+    return m_pool.add(result);
 }
 
-std::string CSSLexer::read_number() {
-    std::string result;
+std::string_view CSSLexer::read_number() {
+    size_t start = m_position;
 
     while (m_position < m_processed_input.size()) {
         const char c = current_char();
         if (is_digit(c) || c == '.') {
-            result += c;
             advance();
         } else {
             break;
         }
     }
-    return result;
+    return m_processed_input.substr(start, m_position - start);
 }
 
 void CSSLexer::update_position(const char c) {
@@ -383,7 +385,7 @@ void CSSLexer::update_position(const char c) {
     }
 }
 
-void CSSLexer::throw_lexer_error(const std::string& message) const {
-    throw HPSException(ErrorCode::InvalidSelector, "CSS Lexer Error at line " + std::to_string(m_line) + ", column " + std::to_string(m_column) + ": " + message, Location(m_position, m_line, m_column));
+hps::CSSLexer::CSSToken CSSLexer::create_error_token(const std::string& message) {
+    return {CSSTokenType::Error, m_pool.add(message), m_position};
 }
 }  // namespace hps

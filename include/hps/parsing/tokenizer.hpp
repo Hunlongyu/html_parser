@@ -273,6 +273,8 @@ class Tokenizer : public NonCopyable {
      * @return 包含指定文本的 Token
      */
     static Token create_text_token(std::string_view data = "");
+    static Token create_text_token(std::string&&) = delete;  // Prevent dangling references
+    static Token create_owned_text_token(std::string&& data);
 
     /**
      * @brief 创建注释 Token
@@ -280,6 +282,8 @@ class Tokenizer : public NonCopyable {
      * @return 包含注释内容的 Token
      */
     static Token create_comment_token(std::string_view comment);
+    static Token create_comment_token(std::string&&) = delete;  // Prevent dangling references
+    static Token create_owned_comment_token(std::string&& comment);
 
     /**
      * @brief 创建 DOCTYPE Token
@@ -330,10 +334,11 @@ class Tokenizer : public NonCopyable {
 
     // ==================== 解析辅助成员变量 ====================
 
-    TokenBuilder          m_token_builder;    ///< Token构造器，用于逐步构建复杂的Token对象
-    std::string           m_end_tag;          ///< 当前正在解析的结束标签名称缓存
-    std::vector<HPSError> m_errors;           ///< 解析过程中收集的所有错误信息列表
-    std::string           m_char_ref_buffer;  ///< 字符引用解析缓冲区，用于处理HTML实体
+    TokenBuilder          m_token_builder;     ///< Token构造器，用于逐步构建复杂的Token对象
+    std::string           m_end_tag;           ///< 当前正在解析的结束标签名称缓存
+    std::vector<HPSError> m_errors;            ///< 解析过程中收集的所有错误信息列表
+    std::string           m_char_ref_buffer;   ///< 字符引用解析缓冲区，用于处理HTML实体
+    size_t                m_attr_value_start;  ///< 属性值起始位置（Zero-Copy优化）
 };
 
 }  // namespace hps

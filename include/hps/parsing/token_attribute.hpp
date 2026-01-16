@@ -16,7 +16,7 @@ namespace hps {
  */
 struct TokenAttribute {
     std::string name;              ///< 属性名称
-    std::string value;             ///< 属性值
+    std::string_view value;             ///< 属性值
     bool        has_value = true;  ///< 是否有值标志，区分 <input disabled> 和 <input disabled="true">
 
     /**
@@ -27,20 +27,17 @@ struct TokenAttribute {
     TokenAttribute() = default;
 
     /**
-     * @brief 参数化构造函数
-     * @param n 属性名
+     * @brief 构造函数（按值传递优化）
+     * @param n 属性名（支持左值拷贝或右值移动）
      * @param v 属性值，默认为空字符串
      * @param hv 是否有值标志，默认为true
      *
-     * 创建一个具有指定名称和值的属性。
-     * 对于无值属性（如disabled），应将hv设置为false。
-     *
-     * 示例：
-     * - TokenAttribute("id", "myId") - 有值属性
-     * - TokenAttribute("disabled", "", false) - 无值属性
+     * 使用按值传递（Pass-by-Value）惯用语，结合 std::move，
+     * 既能处理左值也能处理右值，同时避免了重载带来的歧义。
+     * 字符串字面量（const char*）会隐式转换为 std::string。
      */
-    explicit TokenAttribute(const std::string_view n, const std::string_view v = {}, const bool hv = true)
-        : name(n),
+    explicit TokenAttribute(std::string n, const std::string_view v = {}, const bool hv = true)
+        : name(std::move(n)),
           value(v),
           has_value(hv) {}
 };

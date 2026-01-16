@@ -1,0 +1,8 @@
+add_executable(tokenizer_bench tokenizer_bench.cpp)
+target_link_libraries(tokenizer_bench PRIVATE hps_static)
+
+add_executable(css_selector_bench css_selector_bench.cpp)
+target_link_libraries(css_selector_bench PRIVATE hps_static)
+
+add_executable(parser_bench parser_bench.cpp)
+target_link_libraries(parser_bench PRIVATE hps_static)

@@ -17,8 +17,7 @@ struct TokenBuilder {
     std::string tag_name;  ///< 当前标签名称
 
     // === 属性构建状态 ===
-    std::string attr_name;   ///< 当前正在构建的属性名
-    std::string attr_value;  ///< 当前正在构建的属性值
+    std::string attr_name;  ///< 当前正在构建的属性名
 
     // === 标签类型标志 ===
     bool is_void_element = false;  ///< 是否为空元素（如<br>, <img>等）
@@ -40,16 +39,16 @@ struct TokenBuilder {
     }
 
     /**
-     * @brief 添加属性（通过参数构建）
-     * @param name 属性名
+     * @brief 添加属性（通用）
+     * @param name 属性名（按值传递）
      * @param value 属性值
      * @param has_value 是否有值，默认为true
      *
-     * 通过提供的参数直接构建并添加属性到列表中。
-     * 对于无值属性（如disabled），应将has_value设为false。
+     * 统一处理所有类型的属性名（左值string、右值string、C风格字符串）。
+     * 内部使用移动语义优化性能。
      */
-    void add_attr(std::string_view name, std::string_view value, bool has_value = true) {
-        attrs.emplace_back(name, value, has_value);
+    void add_attr(std::string name, std::string_view value, bool has_value = true) {
+        attrs.emplace_back(std::move(name), value, has_value);
     }
 
     // === 状态管理方法 ===
@@ -63,23 +62,29 @@ struct TokenBuilder {
     void reset() {
         tag_name.clear();
         attr_name.clear();
-        attr_value.clear();
         is_void_element = false;
         is_self_closing = false;
         attrs.clear();
     }
 
     /**
-     * @brief 完成当前属性的构建
-     *
-     * 将当前正在构建的属性（attr_name和attr_value）添加到属性列表中，
-     * 然后清空临时属性构建状态。如果当前没有正在构建的属性则不执行任何操作。
+     * @brief 完成当前无值属性（Boolean Attribute）
      */
-    void finish_current_attribute() {
+    void finish_boolean_attribute() {
         if (!attr_name.empty()) {
-            add_attr(attr_name, attr_value);
+            add_attr(std::move(attr_name), "", false);
             attr_name.clear();
-            attr_value.clear();
+        }
+    }
+
+    /**
+     * @brief 完成当前有值属性
+     * @param value 属性值视图
+     */
+    void finish_attribute(std::string_view value) {
+        if (!attr_name.empty()) {
+            add_attr(std::move(attr_name), value, true);
+            attr_name.clear();
         }
     }
 };

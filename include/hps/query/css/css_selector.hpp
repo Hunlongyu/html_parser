@@ -1,11 +1,12 @@
 #pragma once
 
+#include "hps/utils/string_pool.hpp"
+
 #include <algorithm>
-#include <cctype>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
-#include <ranges>
 
 namespace hps {
 
@@ -113,20 +114,17 @@ class UniversalSelector : public CSSSelector {
 // 类型选择器 div, p, span
 class TypeSelector : public CSSSelector {
   public:
-    explicit TypeSelector(std::string tag_name)
+    explicit TypeSelector(std::string_view tag_name)
         : CSSSelector(SelectorType::Type),
-          m_tag_name(std::move(tag_name)) {
-        // 转换为小写以支持大小写不敏感匹配
-        std::ranges::transform(m_tag_name, m_tag_name.begin(), [](const char c) { return std::tolower(c); });
-    }
+          m_tag_name(tag_name) {}
 
     [[nodiscard]] bool matches(const Element& element) const override;
 
     [[nodiscard]] std::string to_string() const override {
-        return m_tag_name;
+        return std::string(m_tag_name);
     }
 
-    [[nodiscard]] const std::string& tag_name() const noexcept {
+    [[nodiscard]] std::string_view tag_name() const noexcept {
         return m_tag_name;
     }
 
@@ -137,23 +135,23 @@ class TypeSelector : public CSSSelector {
     [[nodiscard]] bool can_quick_reject(const Element& element) const override;
 
   private:
-    std::string m_tag_name;
+    std::string_view m_tag_name;
 };
 
 // 类选择器 .class-name
 class ClassSelector : public CSSSelector {
   public:
-    explicit ClassSelector(std::string class_name)
+    explicit ClassSelector(std::string_view class_name)
         : CSSSelector(SelectorType::Class),
-          m_class_name(std::move(class_name)) {}
+          m_class_name(class_name) {}
 
     [[nodiscard]] bool matches(const Element& element) const override;
 
     [[nodiscard]] std::string to_string() const override {
-        return "." + m_class_name;
+        return "." + std::string(m_class_name);
     }
 
-    [[nodiscard]] const std::string& class_name() const noexcept {
+    [[nodiscard]] std::string_view class_name() const noexcept {
         return m_class_name;
     }
 
@@ -164,23 +162,23 @@ class ClassSelector : public CSSSelector {
     [[nodiscard]] bool can_quick_reject(const Element& element) const override;
 
   private:
-    std::string m_class_name;
+    std::string_view m_class_name;
 };
 
 // ID选择器 #id-name
 class IdSelector : public CSSSelector {
   public:
-    explicit IdSelector(std::string id_name)
+    explicit IdSelector(std::string_view id_name)
         : CSSSelector(SelectorType::Id),
-          m_id_name(std::move(id_name)) {}
+          m_id_name(id_name) {}
 
     [[nodiscard]] bool matches(const Element& element) const override;
 
     [[nodiscard]] std::string to_string() const override {
-        return "#" + m_id_name;
+        return "#" + std::string(m_id_name);
     }
 
-    [[nodiscard]] const std::string& id_name() const noexcept {
+    [[nodiscard]] std::string_view id_name() const noexcept {
         return m_id_name;
     }
 
@@ -191,25 +189,22 @@ class IdSelector : public CSSSelector {
     [[nodiscard]] bool can_quick_reject(const Element& element) const override;
 
   private:
-    std::string m_id_name;
+    std::string_view m_id_name;
 };
 
 // 属性选择器 [attr], [attr=value]
 class AttributeSelector : public CSSSelector {
   public:
-    AttributeSelector(std::string attr_name, AttributeOperator op, std::string value = "")
+    AttributeSelector(std::string_view attr_name, AttributeOperator op, std::string_view value = "")
         : CSSSelector(SelectorType::Attribute),
-          m_attr_name(std::move(attr_name)),
+          m_attr_name(attr_name),
           m_operator(op),
-          m_value(std::move(value)) {
-        // 属性名转换为小写
-        std::ranges::transform(m_attr_name, m_attr_name.begin(), [](const char c) { return std::tolower(c); });
-    }
+          m_value(value) {}
 
     [[nodiscard]] bool        matches(const Element& element) const override;
     [[nodiscard]] std::string to_string() const override;
 
-    [[nodiscard]] const std::string& attr_name() const noexcept {
+    [[nodiscard]] std::string_view attr_name() const noexcept {
         return m_attr_name;
     }
 
@@ -217,7 +212,7 @@ class AttributeSelector : public CSSSelector {
         return m_operator;
     }
 
-    [[nodiscard]] const std::string& value() const noexcept {
+    [[nodiscard]] std::string_view value() const noexcept {
         return m_value;
     }
 
@@ -226,9 +221,9 @@ class AttributeSelector : public CSSSelector {
     }
 
   private:
-    std::string       m_attr_name;
+    std::string_view  m_attr_name;
     AttributeOperator m_operator;
-    std::string       m_value;
+    std::string_view  m_value;
 
     [[nodiscard]] bool matches_attribute_value(std::string_view attr_value) const;
 };
@@ -368,6 +363,8 @@ class CompoundSelector : public CSSSelector {
     std::vector<std::unique_ptr<CSSSelector>> m_selectors;
 };
 
+#include "hps/utils/string_pool.hpp"
+
 // 选择器列表 - 用于逗号分隔的选择器组 (如 div, p, .class)
 class SelectorList {
   public:
@@ -398,7 +395,12 @@ class SelectorList {
         return m_selectors.size();
     }
 
+    void set_pool(std::shared_ptr<StringPool> pool) {
+        m_pool = std::move(pool);
+    }
+
   private:
     std::vector<std::unique_ptr<CSSSelector>> m_selectors;
+    std::shared_ptr<StringPool>               m_pool;
 };
 }  // namespace hps

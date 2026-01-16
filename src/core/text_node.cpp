@@ -46,4 +46,8 @@ bool TextNode::empty() const noexcept {
 size_t TextNode::length() const noexcept {
     return m_text.length();
 }
+
+void TextNode::append_text(const std::string_view text) {
+    m_text.append(text);
+}
 }  // namespace hps

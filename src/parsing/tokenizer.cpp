@@ -9,7 +9,8 @@ Tokenizer::Tokenizer(const std::string_view source, const Options& options)
     : m_source(source),
       m_pos(0),
       m_state(TokenizerState::Data),
-      m_options(options) {}
+      m_options(options),
+      m_attr_value_start(0) {}
 
 std::optional<Token> Tokenizer::next_token() {
     while (has_more()) {
@@ -167,7 +168,7 @@ std::optional<Token> Tokenizer::consume_tag_open_state() {
                 advance();
             }
             m_state = TokenizerState::Data;
-            return create_text_token(cdata_content);
+            return create_owned_text_token(std::move(cdata_content));
         } else {
             m_state = TokenizerState::Comment;
         }
@@ -188,7 +189,7 @@ std::optional<Token> Tokenizer::consume_tag_open_state() {
         m_state = TokenizerState::Data;
     } else {
         m_state = TokenizerState::Data;
-        return create_text_token("<");
+        return create_text_token(std::string_view("<"));
     }
     return {};
 }
@@ -200,12 +201,12 @@ std::optional<Token> Tokenizer::consume_tag_name_state() {
     }
 
     if (m_pos > start) {
-        std::string_view raw_name = m_source.substr(start, m_pos - start);
+        const std::string_view raw_name = m_source.substr(start, m_pos - start);
         if (m_options.preserve_case) {
             m_token_builder.tag_name += raw_name;
         } else {
             m_token_builder.tag_name.reserve(m_token_builder.tag_name.size() + raw_name.size());
-            for (char c : raw_name) {
+            for (const char c : raw_name) {
                 m_token_builder.tag_name += to_lower(c);
             }
         }
@@ -306,7 +307,6 @@ std::optional<Token> Tokenizer::consume_before_attribute_name_state() {
         return {};
     }
     m_token_builder.attr_name.clear();
-    m_token_builder.attr_value.clear();
     m_state = TokenizerState::AttributeName;
     return {};
 }
@@ -323,12 +323,12 @@ std::optional<Token> Tokenizer::consume_attribute_name_state() {
     }
 
     if (m_pos > start) {
-        std::string_view raw_name = m_source.substr(start, m_pos - start);
+        const std::string_view raw_name = m_source.substr(start, m_pos - start);
         if (m_options.preserve_case) {
             m_token_builder.attr_name += raw_name;
         } else {
             m_token_builder.attr_name.reserve(m_token_builder.attr_name.size() + raw_name.size());
-            for (char c : raw_name) {
+            for (const char c : raw_name) {
                 m_token_builder.attr_name += to_lower(c);
             }
         }
@@ -341,19 +341,19 @@ std::optional<Token> Tokenizer::consume_attribute_name_state() {
         advance();
         m_state = TokenizerState::BeforeAttributeValue;
     } else if (current_char() == '>') {
-        m_token_builder.finish_current_attribute();
+        m_token_builder.finish_boolean_attribute();
         advance();
         m_state = TokenizerState::Data;
         return create_start_tag_token();
     } else if (current_char() == '/') {
-        m_token_builder.finish_current_attribute();
+        m_token_builder.finish_boolean_attribute();
         advance();
         m_state = TokenizerState::SelfClosingStartTag;
     } else if (current_char() == '\0') {
         handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in attribute name");
         return {};
     } else {
-        m_token_builder.finish_current_attribute();
+        m_token_builder.finish_boolean_attribute();
         m_state = TokenizerState::BeforeAttributeName;
     }
     return {};
@@ -366,20 +366,19 @@ std::optional<Token> Tokenizer::consume_after_attribute_name_state() {
         advance();
         m_state = TokenizerState::BeforeAttributeValue;
     } else if (current_char() == '>') {
-        m_token_builder.finish_current_attribute();
+        m_token_builder.finish_boolean_attribute();
         advance();
         m_state = TokenizerState::Data;
         return create_start_tag_token();
     } else if (current_char() == '/') {
-        m_token_builder.finish_current_attribute();
+        m_token_builder.finish_boolean_attribute();
         advance();
         m_state = TokenizerState::SelfClosingStartTag;
     } else if (current_char() == '\0') {
         handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF after attribute name");
         return {};
     } else {
-        m_token_builder.finish_current_attribute();
-        m_token_builder.attr_name.clear();
+        m_token_builder.finish_boolean_attribute();
         m_state = TokenizerState::AttributeName;
     }
     return {};
@@ -390,18 +389,20 @@ std::optional<Token> Tokenizer::consume_before_attribute_value_state() {
         skip_whitespace();
     } else if (current_char() == '"') {
         advance();
-        m_state = TokenizerState::AttributeValueDoubleQuoted;
+        m_attr_value_start = m_pos;
+        m_state            = TokenizerState::AttributeValueDoubleQuoted;
     } else if (current_char() == '\'') {
         advance();
-        m_state = TokenizerState::AttributeValueSingleQuoted;
+        m_attr_value_start = m_pos;
+        m_state            = TokenizerState::AttributeValueSingleQuoted;
     } else if (current_char() == '>') {
         handle_parse_error(ErrorCode::InvalidToken, "Missing attribute value");
-        m_token_builder.finish_current_attribute();
+        m_token_builder.finish_boolean_attribute();
         advance();
         m_state = TokenizerState::Data;
         return create_start_tag_token();
     } else {
-        m_token_builder.attr_value += current_char();
+        m_attr_value_start = m_pos;
         advance();
         m_state = TokenizerState::AttributeValueUnquoted;
     }
@@ -409,55 +410,58 @@ std::optional<Token> Tokenizer::consume_before_attribute_value_state() {
 }
 
 std::optional<Token> Tokenizer::consume_attribute_value_double_quoted_state() {
-    if (current_char() == '"') {
-        m_token_builder.finish_current_attribute();
-        advance();
-        m_state = TokenizerState::BeforeAttributeName;
-    } else if (current_char() == '\0') {
-        handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in attribute value");
-        return {};
-    } else {
-        m_token_builder.attr_value += current_char();
+    const size_t start = m_attr_value_start;
+    while (has_more()) {
+        if (current_char() == '"') {
+            const std::string_view value = m_source.substr(start, m_pos - start);
+            m_token_builder.finish_attribute(value);
+            advance();
+            m_state = TokenizerState::BeforeAttributeName;
+            return {};
+        }
         advance();
     }
+    handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in attribute value");
     return {};
 }
 
 std::optional<Token> Tokenizer::consume_attribute_value_single_quoted_state() {
-    if (current_char() == '\'') {
-        m_token_builder.finish_current_attribute();
-        advance();
-        m_state = TokenizerState::BeforeAttributeName;
-    } else if (current_char() == '\0') {
-        handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in attribute value");
-        return {};
-    } else {
-        m_token_builder.attr_value += current_char();
+    const size_t start = m_attr_value_start;
+    while (has_more()) {
+        if (current_char() == '\'') {
+            const std::string_view value = m_source.substr(start, m_pos - start);
+            m_token_builder.finish_attribute(value);
+            advance();
+            m_state = TokenizerState::BeforeAttributeName;
+            return {};
+        }
         advance();
     }
+    handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in attribute value");
     return {};
 }
 
 std::optional<Token> Tokenizer::consume_attribute_value_unquoted_state() {
-    if (is_whitespace(current_char())) {
-        m_token_builder.finish_current_attribute();
-        m_state = TokenizerState::BeforeAttributeName;
-    } else if (current_char() == '>') {
-        m_token_builder.finish_current_attribute();
-        advance();
-        m_state = TokenizerState::Data;
-        return create_start_tag_token();
-    } else if (current_char() == '\0') {
-        handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in attribute value");
-        return {};
-    } else if (current_char() == '"' || current_char() == '\'' || current_char() == '=') {
-        handle_parse_error(ErrorCode::InvalidToken, "Unexpected quote or equal sign in unquoted attribute value");
-        m_token_builder.attr_value += current_char();
-        advance();
-    } else {
-        m_token_builder.attr_value += current_char();
+    const size_t start = m_attr_value_start;
+    while (has_more()) {
+        const char c = current_char();
+        if (is_whitespace(c)) {
+            const std::string_view value = m_source.substr(start, m_pos - start);
+            m_token_builder.finish_attribute(value);
+            m_state = TokenizerState::BeforeAttributeName;
+            return {};
+        } else if (c == '>') {
+            const std::string_view value = m_source.substr(start, m_pos - start);
+            m_token_builder.finish_attribute(value);
+            advance();
+            m_state = TokenizerState::Data;
+            return create_start_tag_token();
+        } else if (c == '"' || c == '\'' || c == '=' || c == '`' || c == '<') {
+            handle_parse_error(ErrorCode::InvalidToken, "Unexpected character in unquoted attribute value");
+        }
         advance();
     }
+    handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in attribute value");
     return {};
 }
 
@@ -486,10 +490,10 @@ std::optional<Token> Tokenizer::consume_comment_state() {
         if (current_char() == '-' && peek_char() == '-') {
             if (peek_char(2) == '>') {
                 m_pos += 3;
-                m_state                    = TokenizerState::Data;
-                const auto comment_content = m_char_ref_buffer;
+                m_state              = TokenizerState::Data;
+                auto comment_content = std::move(m_char_ref_buffer);
                 m_char_ref_buffer.clear();
-                return create_comment_token(comment_content);
+                return create_owned_comment_token(std::move(comment_content));
             }
             m_char_ref_buffer += current_char();
             advance();
@@ -499,10 +503,10 @@ std::optional<Token> Tokenizer::consume_comment_state() {
         }
     }
     handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in comment");
-    m_state                    = TokenizerState::Data;
-    const auto comment_content = m_char_ref_buffer;
+    m_state              = TokenizerState::Data;
+    auto comment_content = std::move(m_char_ref_buffer);
     m_char_ref_buffer.clear();
-    return create_comment_token(comment_content);
+    return create_owned_comment_token(std::move(comment_content));
 }
 
 std::optional<Token> Tokenizer::consume_doctype_state() {
@@ -547,8 +551,8 @@ std::optional<Token> Tokenizer::consume_script_data_state() {
             skip_whitespace();
             if (current_char() == '>') {
                 if (start < saved_pos) {
-                    m_pos                    = saved_pos;
-                    std::string_view content = m_source.substr(start, saved_pos - start);
+                    m_pos                          = saved_pos;
+                    const std::string_view content = m_source.substr(start, saved_pos - start);
                     return create_text_token(content);
                 }
                 advance();
@@ -623,8 +627,8 @@ std::optional<Token> Tokenizer::consume_rcdata_state() {
             skip_whitespace();
             if (current_char() == '>') {
                 if (start < saved_pos) {
-                    m_pos                    = saved_pos;
-                    std::string_view content = m_source.substr(start, saved_pos - start);
+                    m_pos                          = saved_pos;
+                    const std::string_view content = m_source.substr(start, saved_pos - start);
                     return create_text_token(content);
                 }
                 advance();
@@ -694,9 +698,7 @@ Token Tokenizer::create_start_tag_token() {
         token.set_type(TokenType::CLOSE_SELF);
     }
 
-    if (m_token_builder.tag_name == "script") {
-        m_state = TokenizerState::ScriptData;
-    } else if (m_token_builder.tag_name == "svg") {
+    if (m_token_builder.tag_name == "script" || m_token_builder.tag_name == "svg") {
         m_state = TokenizerState::ScriptData;
     }
 
@@ -714,8 +716,20 @@ Token Tokenizer::create_text_token(std::string_view data) {
     return {TokenType::TEXT, "", data};
 }
 
+Token Tokenizer::create_owned_text_token(std::string&& data) {
+    Token token(TokenType::TEXT, "", "");
+    token.set_owned_value(std::move(data));
+    return token;
+}
+
 Token Tokenizer::create_comment_token(std::string_view comment) {
     return {TokenType::COMMENT, "", comment};
+}
+
+Token Tokenizer::create_owned_comment_token(std::string&& comment) {
+    Token token(TokenType::COMMENT, "", "");
+    token.set_owned_value(std::move(comment));
+    return token;
 }
 
 Token Tokenizer::create_doctype_token() {

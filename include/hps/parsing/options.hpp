@@ -236,6 +236,7 @@ class Options {
 
     // 高级选项
     bool preserve_case = false;  ///< ✅ 是否保持标签和属性名大小写，默认转为小写
+    bool decode_entities = false; ///< ✅ 是否解码HTML实体，默认不解码（Zero-Copy优化）
 
     // 性能和安全限制
     size_t max_tokens                 = 1000000;  ///< 最大Token数量限制

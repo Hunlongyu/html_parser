@@ -70,28 +70,41 @@ bool AttributeSelector::matches(const Element& element) const {
 }
 
 std::string AttributeSelector::to_string() const {
-    std::string result = "[" + m_attr_name;
+    std::string result = "[";
+    result += m_attr_name;
 
     switch (m_operator) {
         case AttributeOperator::Exists:
             break;
         case AttributeOperator::Equals:
-            result += "=\"" + m_value + "\"";
+            result += "=\"";
+            result += m_value;
+            result += "\"";
             break;
         case AttributeOperator::Contains:
-            result += "*=\"" + m_value + "\"";
+            result += "*=\"";
+            result += m_value;
+            result += "\"";
             break;
         case AttributeOperator::StartsWith:
-            result += "^=\"" + m_value + "\"";
+            result += "^=\"";
+            result += m_value;
+            result += "\"";
             break;
         case AttributeOperator::EndsWith:
-            result += "$=\"" + m_value + "\"";
+            result += "$=\"";
+            result += m_value;
+            result += "\"";
             break;
         case AttributeOperator::WordMatch:
-            result += "~=\"" + m_value + "\"";
+            result += "~=\"";
+            result += m_value;
+            result += "\"";
             break;
         case AttributeOperator::LangMatch:
-            result += "|=\"" + m_value + "\"";
+            result += "|=\"";
+            result += m_value;
+            result += "\"";
             break;
     }
 

@@ -69,10 +69,17 @@ class CSSParser {
         m_errors.clear();
     }
 
+    /**
+     * @brief 检查选择器语法是否正确（不抛出异常）
+     * @return 如果语法正确返回 true，否则返回 false
+     */
+    bool validate();
+
   private:
-    CSSLexer              m_lexer;    ///< 词法分析器实例
-    Options               m_options;  ///< 解析选项配置
-    std::vector<HPSError> m_errors;   ///< 收集的解析错误列表
+    std::shared_ptr<StringPool> m_pool;      ///< 字符串池，用于管理解析出的字符串
+    CSSLexer                    m_lexer;     ///< 词法分析器实例
+    Options                     m_options;   ///< 解析选项配置
+    std::vector<HPSError>       m_errors;    ///< 收集的解析错误列表
 
     // 核心解析方法
 
@@ -249,10 +256,10 @@ class PseudoClassSelector : public CSSSelector {
      * @param type 伪类类型
      * @param argument 伪类参数（如nth-child的公式）
      */
-    explicit PseudoClassSelector(const PseudoType type, std::string argument = "")
+    explicit PseudoClassSelector(const PseudoType type, std::string_view argument = "")
         : CSSSelector(SelectorType::PseudoClass),
           m_pseudo_type(type),
-          m_argument(std::move(argument)) {}
+          m_argument(argument) {}
 
     /**
      * @brief 检查元素是否匹配该伪类选择器
@@ -289,13 +296,13 @@ class PseudoClassSelector : public CSSSelector {
      * @brief 获取伪类参数
      * @return 伪类参数字符串
      */
-    [[nodiscard]] const std::string& argument() const noexcept {
+    [[nodiscard]] std::string_view argument() const noexcept {
         return m_argument;
     }
 
   private:
-    PseudoType  m_pseudo_type;  ///< 伪类类型
-    std::string m_argument;     ///< 伪类参数（用于nth-child(n)等带参数的伪类）
+    PseudoType       m_pseudo_type;  ///< 伪类类型
+    std::string_view m_argument;     ///< 伪类参数（用于nth-child(n)等带参数的伪类）
 
     /**
      * @brief 解析nth-child表达式
@@ -303,7 +310,7 @@ class PseudoClassSelector : public CSSSelector {
      * @param index 当前元素的索引（从1开始）
      * @return 是否匹配
      */
-    [[nodiscard]] static bool matches_nth_expression(const std::string& expression, int index);
+    [[nodiscard]] static bool matches_nth_expression(std::string_view expression, int index);
 
     /**
      * @brief 获取同类型兄弟元素的数量

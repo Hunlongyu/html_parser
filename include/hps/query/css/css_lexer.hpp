@@ -1,6 +1,11 @@
 #pragma once
+#include "hps/utils/string_pool.hpp"
+
+#include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
+#include <vector>
 
 namespace hps {
 
@@ -46,7 +51,8 @@ class CSSLexer {
         DoubleColon,   ///< 双冒号：:: (伪元素选择器前缀)
         LeftParen,     ///< 左圆括号：( (函数式伪类参数开始)
         RightParen,    ///< 右圆括号：) (函数式伪类参数结束)
-        EndOfFile      ///< 文件结束标记
+        EndOfFile,     ///< 文件结束标记
+        Error          ///< 错误标记
     };
 
     /**
@@ -56,7 +62,7 @@ class CSSLexer {
      */
     struct CSSToken {
         CSSTokenType type;      ///< 标记类型
-        std::string  value;     ///< 标记值（指向原始输入字符串的视图）
+        std::string_view value;     ///< 标记值（指向 StringPool 中的视图）
         size_t       position;  ///< 标记在输入字符串中的起始位置
         size_t       length;    ///< 标记长度
 
@@ -77,8 +83,9 @@ class CSSLexer {
     /**
      * @brief 构造函数
      * @param input CSS选择器字符串
+     * @param pool 字符串池，用于存储处理后的字符串
      */
-    explicit CSSLexer(std::string_view input);
+    explicit CSSLexer(std::string_view input, StringPool& pool);
 
     /**
      * @brief 获取下一个标记
@@ -133,7 +140,8 @@ class CSSLexer {
 
   private:
     std::string_view        m_input;            ///< 原始输入字符串
-    std::string             m_processed_input;  ///< 预处理后的输入字符串（移除注释等）
+    std::string_view        m_processed_input;  ///< 预处理后的输入字符串（存储在 StringPool 中）
+    StringPool&             m_pool;             ///< 字符串池引用
     size_t                  m_position;         ///< 当前字符位置
     size_t                  m_line;             ///< 当前行号
     size_t                  m_column;           ///< 当前列号
@@ -186,7 +194,7 @@ class CSSLexer {
      * @return 标识符的字符串视图
      * @note 标识符可以包含字母、数字、下划线和连字符
      */
-    std::string read_identifier();
+    std::string_view read_identifier();
 
     /**
      * @brief 读取字符串字面量
@@ -194,14 +202,14 @@ class CSSLexer {
      * @return 字符串内容的视图（不包含引号）
      * @note 支持转义字符处理
      */
-    std::string read_string(char quote);
+    std::string_view read_string(char quote);
 
     /**
      * @brief 读取数字
      * @return 数字的字符串视图
      * @note 用于解析nth-child等函数式伪类的参数
      */
-    std::string read_number();
+    std::string_view read_number();
 
     /**
      * @brief 更新位置信息
@@ -211,10 +219,10 @@ class CSSLexer {
     void update_position(char c);
 
     /**
-     * @brief 抛出词法分析错误
+     * @brief 创建错误标记
      * @param message 错误消息
-     * @throws HPSException 包含详细错误信息的异常
+     * @return 错误标记
      */
-    [[noreturn]] void throw_lexer_error(const std::string& message) const;
+    CSSToken create_error_token(const std::string& message);
 };
 }  // namespace hps

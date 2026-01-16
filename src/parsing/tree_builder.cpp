@@ -7,6 +7,7 @@
 #include "hps/utils/string_utils.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <ranges>
 
@@ -77,10 +78,12 @@ void TreeBuilder::process_start_tag(const Token& token) {
         }
     }
 
+    check_implicit_close(token.name());
+
     auto element = create_element(token);
     // 保存原始指针用于栈操作
     Element* element_ptr = element.get();
-    
+
     // 将所有权移交给 DOM 树
     insert_element(std::move(element));
 
@@ -92,7 +95,6 @@ void TreeBuilder::process_start_tag(const Token& token) {
 void TreeBuilder::process_end_tag(const Token& token) {
     std::string_view tag_name = token.name();
     if (m_options.is_void_element(std::string(token.name()))) {
-        parse_error(ErrorCode::VoidElementClose, "Void element should not have closing tag: " + std::string(tag_name));
         return;
     }
     if (m_element_stack.empty()) {
@@ -171,12 +173,28 @@ void TreeBuilder::insert_element(std::unique_ptr<Element> element) const {
 }
 
 void TreeBuilder::insert_text(std::string_view text) const {
+    Node* parent;
+    if (m_element_stack.empty()) {
+        parent = m_document.get();
+    } else {
+        parent = current_element();
+    }
+
+    if (parent) {
+        if (Node* last = parent->last_child_mut()) {
+            if (last->type() == NodeType::Text) {
+                dynamic_cast<TextNode*>(last)->append_text(text);
+                return;
+            }
+        }
+    }
+
     auto text_node = std::make_unique<TextNode>(text);
     if (m_element_stack.empty()) {
         m_document->add_child(std::move(text_node));
     } else {
-        const auto parent = current_element();
-        parent->add_child(std::move(text_node));
+        const auto element = current_element();
+        element->add_child(std::move(text_node));
     }
 }
 
@@ -215,6 +233,26 @@ void TreeBuilder::close_elements_until(const std::string_view tag_name) {
 void TreeBuilder::parse_error(const ErrorCode code, const std::string& message) {
     HPSError error(code, message, 0);
     m_errors.push_back(std::move(error));
+}
+
+void TreeBuilder::check_implicit_close(const std::string_view tag_name) {
+    if (m_element_stack.empty()) {
+        return;
+    }
+
+    const auto             current     = current_element();
+    const std::string_view current_tag = current->tag_name();
+
+    // <p> implies closing by block elements
+    if (current_tag == "p") {
+        static constexpr std::array<std::string_view, 26> p_closers = {"address", "article", "aside", "blockquote", "div", "dl", "fieldset", "footer", "form", "h1", "h2", "h3", "h4", "h5", "h6", "header", "hgroup", "hr", "main", "nav", "ol", "p", "pre", "section", "table", "ul"};
+        // Use binary_search since the array is sorted
+        if (std::ranges::binary_search(p_closers, tag_name)) {
+            m_element_stack.pop_back();
+        }
+    } else if ((current_tag == "li" && tag_name == "li") || ((current_tag == "dd" || current_tag == "dt") && (tag_name == "dd" || tag_name == "dt"))) {
+        m_element_stack.pop_back();
+    }
 }
 
 }  // namespace hps

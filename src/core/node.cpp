@@ -38,6 +38,13 @@ const Node* Node::last_child() const noexcept {
     return m_children.back().get();
 }
 
+Node* Node::last_child_mut() noexcept {
+    if (m_children.empty()) {
+        return nullptr;
+    }
+    return m_children.back().get();
+}
+
 const Node* Node::previous_sibling() const noexcept {
     return m_prev_sibling;
 }

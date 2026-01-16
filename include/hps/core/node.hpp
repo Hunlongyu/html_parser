@@ -110,6 +110,12 @@ class Node {
     [[nodiscard]] const Node* last_child() const noexcept;
 
     /**
+     * @brief 获取最后一个子节点（可变）
+     * @return 最后一个子节点的原始指针，如果不存在则为 nullptr
+     */
+    [[nodiscard]] Node* last_child_mut() noexcept;
+
+    /**
      * @brief 获取前一个兄弟节点
      * @return 前一个兄弟节点的原始指针，如果不存在则为 nullptr
      */

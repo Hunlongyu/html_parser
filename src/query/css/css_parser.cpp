@@ -13,11 +13,19 @@ namespace hps {
 // ==================== CSSParser Implementation ====================
 
 CSSParser::CSSParser(const std::string_view selector, Options options)
-    : m_lexer(selector),
+    : m_pool(std::make_shared<StringPool>()),
+      m_lexer(selector, *m_pool),
       m_options(std::move(options)) {}
+
+bool CSSParser::validate() {
+    m_options.error_handling = ErrorHandlingMode::Lenient;
+    parse_selector_list();
+    return !has_errors();
+}
 
 std::unique_ptr<SelectorList> CSSParser::parse_selector_list() {
     auto selector_list = std::make_unique<SelectorList>();
+    selector_list->set_pool(m_pool);
 
     do {
         skip_whitespace();
@@ -54,7 +62,7 @@ std::unique_ptr<CSSSelector> CSSParser::parse_selector() {
         // 检查是否有空白字符
         bool has_whitespace = false;
         while (match_token(CSSLexer::CSSTokenType::Whitespace)) {
-            m_lexer.next_token();  // 消费空白字符
+            m_lexer.next_token();  // 消费空白字符token
             has_whitespace = true;
         }
 
@@ -184,7 +192,12 @@ std::unique_ptr<TypeSelector> CSSParser::parse_type_selector() {
         add_error("Expected identifier for type selector");
         return nullptr;
     }
-    return std::make_unique<TypeSelector>(token.value);
+    
+    // Normalize to lowercase and store in pool
+    std::string tag(token.value);
+    std::ranges::transform(tag, tag.begin(), [](unsigned char c){ return std::tolower(c); });
+    
+    return std::make_unique<TypeSelector>(m_pool->add(tag));
 }
 
 std::unique_ptr<ClassSelector> CSSParser::parse_class_selector() {
@@ -196,6 +209,8 @@ std::unique_ptr<ClassSelector> CSSParser::parse_class_selector() {
         return nullptr;
     }
 
+    // Class names are case-sensitive in CSS, but check HTML spec?
+    // Generally treated as case-sensitive.
     return std::make_unique<ClassSelector>(token.value);
 }
 
@@ -218,9 +233,13 @@ std::unique_ptr<AttributeSelector> CSSParser::parse_attribute_selector() {
         return nullptr;
     }
 
-    std::string       attr_name = attr_token.value;
-    AttributeOperator op        = AttributeOperator::Exists;
-    std::string       value;
+    // Normalize attribute name to lowercase
+    std::string attr_name(attr_token.value);
+    std::ranges::transform(attr_name, attr_name.begin(), [](unsigned char c){ return std::tolower(c); });
+    std::string_view attr_name_view = m_pool->add(attr_name);
+
+    AttributeOperator op = AttributeOperator::Exists;
+    std::string_view value;
 
     // 检查是否有操作符
     const auto next_token = m_lexer.peek_token();
@@ -238,7 +257,7 @@ std::unique_ptr<AttributeSelector> CSSParser::parse_attribute_selector() {
 
     consume_token(CSSLexer::CSSTokenType::RightBracket);
 
-    return std::make_unique<AttributeSelector>(attr_name, op, value);
+    return std::make_unique<AttributeSelector>(attr_name_view, op, value);
 }
 
 std::unique_ptr<CSSSelector> CSSParser::parse_pseudo_selector() {
@@ -263,16 +282,15 @@ std::unique_ptr<CSSSelector> CSSParser::parse_pseudo_class() {
         return nullptr;
     }
 
-    const std::string name = name_token.value;
-    std::string       argument;
+    const std::string_view name = name_token.value;
+    std::string argument_str; // Temp string to build argument
 
     // 检查是否有参数
     if (match_token(CSSLexer::CSSTokenType::LeftParen)) {
         consume_token(CSSLexer::CSSTokenType::LeftParen);
 
         // 改进的参数解析
-        std::string argument_parts;
-        int         paren_depth = 0;
+        int paren_depth = 0;
 
         while (has_more_tokens()) {
             const auto token = m_lexer.peek_token();
@@ -280,7 +298,7 @@ std::unique_ptr<CSSSelector> CSSParser::parse_pseudo_class() {
             if (token.type == CSSLexer::CSSTokenType::LeftParen) {
                 paren_depth++;
                 m_lexer.next_token();
-                argument_parts += token.value;
+                argument_str += token.value;
             } else if (token.type == CSSLexer::CSSTokenType::RightParen) {
                 if (paren_depth == 0) {
                     // 这是结束的右括号
@@ -288,20 +306,18 @@ std::unique_ptr<CSSSelector> CSSParser::parse_pseudo_class() {
                 }
                 paren_depth--;
                 m_lexer.next_token();
-                argument_parts += token.value;
+                argument_str += token.value;
             } else if (token.type == CSSLexer::CSSTokenType::EndOfFile) {
                 add_error("Unexpected end of input in pseudo-class arguments");
                 return nullptr;
             } else {
                 // 消费其他类型的 token
                 m_lexer.next_token();
-                if (token.type != CSSLexer::CSSTokenType::Whitespace || !argument_parts.empty()) {
-                    argument_parts += token.value;
+                if (token.type != CSSLexer::CSSTokenType::Whitespace || !argument_str.empty()) {
+                    argument_str += token.value;
                 }
             }
         }
-
-        argument = argument_parts;
         consume_token(CSSLexer::CSSTokenType::RightParen);
     }
 
@@ -346,11 +362,16 @@ std::unique_ptr<CSSSelector> CSSParser::parse_pseudo_class() {
     } else if (name == "link") {
         type = PseudoClassSelector::PseudoType::Link;
     } else {
-        add_error("Unsupported pseudo-class: " + name);
+        add_error("Unsupported pseudo-class: " + std::string(name));
         return nullptr;
     }
 
-    return std::make_unique<PseudoClassSelector>(type, argument);
+    std::string_view argument_view;
+    if (!argument_str.empty()) {
+        argument_view = m_pool->add(argument_str);
+    }
+
+    return std::make_unique<PseudoClassSelector>(type, argument_view);
 }
 
 std::unique_ptr<CSSSelector> CSSParser::parse_pseudo_element() {
@@ -362,7 +383,7 @@ std::unique_ptr<CSSSelector> CSSParser::parse_pseudo_element() {
         return nullptr;
     }
 
-    const std::string name = name_token.value;
+    const std::string_view name = name_token.value;
 
     // 映射伪元素名称到类型
     PseudoElementSelector::ElementType type;
@@ -375,7 +396,7 @@ std::unique_ptr<CSSSelector> CSSParser::parse_pseudo_element() {
     } else if (name == "first-letter") {
         type = PseudoElementSelector::ElementType::FirstLetter;
     } else {
-        add_error("Unsupported pseudo-element: " + name);
+        add_error("Unsupported pseudo-element: " + std::string(name));
         return nullptr;
     }
 
@@ -696,9 +717,9 @@ std::string PseudoClassSelector::to_string() const {
         case PseudoType::LastChild:
             return ":last-child";
         case PseudoType::NthChild:
-            return ":nth-child(" + m_argument + ")";
+            return ":nth-child(" + std::string(m_argument) + ")";
         case PseudoType::NthLastChild:
-            return ":nth-last-child(" + m_argument + ")";
+            return ":nth-last-child(" + std::string(m_argument) + ")";
         case PseudoType::FirstOfType:
             return ":first-of-type";
         case PseudoType::LastOfType:
@@ -712,7 +733,7 @@ std::string PseudoClassSelector::to_string() const {
         case PseudoType::Root:
             return ":root";
         case PseudoType::Not:
-            return ":not(" + m_argument + ")";
+            return ":not(" + std::string(m_argument) + ")";
         case PseudoType::Hover:
             return ":hover";
         case PseudoType::Active:
@@ -733,7 +754,7 @@ std::string PseudoClassSelector::to_string() const {
     return ":unknown";
 }
 
-bool PseudoClassSelector::matches_nth_expression(const std::string& expression, const int index) {
+bool PseudoClassSelector::matches_nth_expression(std::string_view expression, const int index) {
     if (expression.empty()) {
         return false;
     }
@@ -745,10 +766,12 @@ bool PseudoClassSelector::matches_nth_expression(const std::string& expression, 
     if (expression == "even") {
         return index % 2 == 0;
     }
+    
+    std::string expr_str(expression);
 
     // 处理纯数字
-    if (std::ranges::all_of(expression, is_digit)) {
-        return index == std::stoi(expression);
+    if (std::ranges::all_of(expr_str, is_digit)) {
+        return index == std::stoi(expr_str);
     }
 
     // 处理an+b格式
@@ -756,7 +779,7 @@ bool PseudoClassSelector::matches_nth_expression(const std::string& expression, 
     const std::regex nth_regex(R"(^\s*([+-]?\d*)n\s*([+-]\s*\d+)?\s*$)");
     std::smatch      match;
 
-    if (std::regex_match(expression, match, nth_regex)) {
+    if (std::regex_match(expr_str, match, nth_regex)) {
         int a = 1;  // 默认系数
         int b = 0;  // 默认偏移
 

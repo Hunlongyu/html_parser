@@ -102,3 +102,8 @@ include(CTest)
 if(HPS_BUILD_TESTING)
     add_subdirectory(tests)
 endif()
+
+option(HPS_BUILD_BENCHMARK "Build the benchmark" ${PROJECT_IS_TOP_LEVEL})
+if(HPS_BUILD_BENCHMARK)
+    add_subdirectory(benchmark)
+endif()

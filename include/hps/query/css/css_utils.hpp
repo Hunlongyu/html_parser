@@ -11,13 +11,8 @@
 namespace hps {
 
 inline bool is_valid_selector(const std::string_view selector) {
-    try {
-        CSSParser  parser(selector);
-        const auto result = parser.parse_selector_list();
-        return result && !result->empty() && !parser.has_errors();
-    } catch (const HPSException&) {
-        return false;
-    }
+    CSSParser parser(selector);
+    return parser.validate();
 }
 
 inline std::string normalize_selector(const std::string_view selector) {
@@ -63,12 +58,12 @@ inline std::string normalize_selector(const std::string_view selector) {
 }
 
 inline std::unique_ptr<SelectorList> parse_css_selector(const std::string_view selector, const Options& options) {
-    const std::string normalized = normalize_selector(selector);
-    CSSParser         parser(normalized, options);
-    auto              result = parser.parse_selector_list();
-    if (options.error_handling == ErrorHandlingMode::Strict) {
-        throw HPSException(ErrorCode::InvalidSelector, "CSS parsing failed");
-    }
+    // CSSParser handles normalization (skipping whitespace, lowercasing types/attributes)
+    // We pass the raw selector to avoid unnecessary string copy.
+    CSSParser parser(selector, options);
+    auto result = parser.parse_selector_list();
+    // In strict mode, parser would have thrown.
+    // In lenient mode, we return what we have (even if partial).
     return result;
 }
 
@@ -81,12 +76,8 @@ inline std::vector<std::unique_ptr<SelectorList>> parse_css_selectors(const std:
     results.reserve(selectors.size());
 
     for (const auto& selector : selectors) {
-        try {
-            auto result = parse_css_selector(selector);
-            results.push_back(std::move(result));
-        } catch (const HPSException&) {
-            results.push_back(nullptr);
-        }
+        auto result = parse_css_selector(selector);
+        results.push_back(std::move(result));
     }
 
     return results;

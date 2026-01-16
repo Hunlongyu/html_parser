@@ -35,7 +35,7 @@ class Token : public NonCopyable {
      * 高效转移Token的所有权，避免不必要的拷贝开销。
      * 在tokenizer中大量使用，对性能至关重要。
      */
-    Token(Token&& other) noexcept = default;
+    Token(Token&& other) noexcept;
 
     /**
      * @brief 移动赋值运算符
@@ -44,7 +44,7 @@ class Token : public NonCopyable {
      *
      * 高效转移Token的所有权，支持链式赋值操作。
      */
-    Token& operator=(Token&& other) noexcept = default;
+    Token& operator=(Token&& other) noexcept;
 
     /**
      * @brief 析构函数
@@ -82,6 +82,15 @@ class Token : public NonCopyable {
      * 用于在解析过程中动态调整Token类型，如将普通标签转换为自闭合标签
      */
     void set_type(TokenType type) noexcept;
+
+    /**
+     * @brief 设置拥有的Token值（移动语义）
+     * @param value 要获取所有权的字符串
+     *
+     * 当Token的内容是动态生成而非直接来自源码时使用。
+     * 此时Token将拥有该字符串的所有权。
+     */
+    void set_owned_value(std::string value);
 
     // === 属性管理（重要的扩展功能）===
 
@@ -199,10 +208,11 @@ class Token : public NonCopyable {
     [[nodiscard]] bool is_tag(std::string_view name) const noexcept;
 
   private:
-    TokenType                   m_type;   ///< Token类型，决定了Token的基本行为
-    std::string                 m_name;   ///< Token名称，对于标签是标签名，对于文本通常为空
-    std::string                 m_value;  ///< Token值，对于文本是内容，对于注释是注释文本
-    std::vector<TokenAttribute> m_attrs;  ///< 属性列表，存储标签的所有属性信息
+    TokenType                   m_type;        ///< Token类型，决定了Token的基本行为
+    std::string                 m_name;        ///< Token名称，对于标签是标签名，对于文本通常为空
+    std::string_view            m_value;       ///< Token值，用于零拷贝场景（指向源码）
+    std::string                 m_value_owned; ///< Token值，用于拥有所有权的场景（动态内容）
+    std::vector<TokenAttribute> m_attrs;       ///< 属性列表，存储标签的所有属性信息
 };
 
 }  // namespace hps

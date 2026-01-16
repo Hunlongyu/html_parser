@@ -9,7 +9,7 @@ namespace hps::tests {
 
 TEST(HTMLEntityDecodingTest, DefaultRawKeepsEntities) {
     HTMLParser parser;
-    const auto doc = parser.parse("<div>Tom &amp; Jerry</div>");
+    const auto doc = parser.parse(std::string_view("<div>Tom &amp; Jerry</div>"));
 
     const auto* div = doc->querySelector("div");
     ASSERT_NE(div, nullptr);
@@ -21,7 +21,7 @@ TEST(HTMLEntityDecodingTest, DecodeModeOnlyDecodesNbsp) {
     options.text_processing_mode = TextProcessingMode::Decode;
 
     HTMLParser parser;
-    const auto doc = parser.parse("<div>A&nbsp;B</div>", options);
+    const auto doc = parser.parse(std::string_view("<div>A&nbsp;B</div>"), options);
 
     const auto* div = doc->querySelector("div");
     ASSERT_NE(div, nullptr);
@@ -33,7 +33,7 @@ TEST(HTMLEntityDecodingTest, DecodeModeKeepsOtherEntitiesUnchanged) {
     options.text_processing_mode = TextProcessingMode::Decode;
 
     HTMLParser parser;
-    const auto doc = parser.parse("<div>&amp;&#65;&#x41;&lt;</div>", options);
+    const auto doc = parser.parse(std::string_view("<div>&amp;&#65;&#x41;&lt;</div>"), options);
 
     const auto* div = doc->querySelector("div");
     ASSERT_NE(div, nullptr);
@@ -45,7 +45,7 @@ TEST(HTMLEntityDecodingTest, DecodingDoesNotAffectDomStructure) {
     options.text_processing_mode = TextProcessingMode::Decode;
 
     HTMLParser parser;
-    const auto doc = parser.parse("<div>&lt;span id=\"x\"&gt;</div>", options);
+    const auto doc = parser.parse(std::string_view("<div>&lt;span id=\"x\"&gt;</div>"), options);
 
     const auto* div = doc->querySelector("div");
     ASSERT_NE(div, nullptr);

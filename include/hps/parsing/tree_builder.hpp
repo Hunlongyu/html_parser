@@ -168,6 +168,14 @@ class TreeBuilder : public NonCopyable {
      */
     void close_elements_until(std::string_view tag_name);
 
+    /**
+     * @brief 检查并处理隐含关闭的标签
+     * @param tag_name 当前遇到的开始标签名称
+     *
+     * 如果当前栈顶元素是可以被新标签隐含关闭的（如 <p> 遇到 <p>），则自动关闭栈顶元素。
+     */
+    void check_implicit_close(std::string_view tag_name);
+
     // === 错误处理方法 ===
 
     /**
