@@ -1,7 +1,12 @@
+.vscode/
 .vsccode/
 .vs/
 build/
 enc_temp_folder/
 /build_vs
 /build_x64
-/coverage
+/build_*
+/coverage/report/
+/coverage/Modules/
+/coverage/third-party/
+/coverage/index.html

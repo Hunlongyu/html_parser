@@ -60,6 +60,23 @@ TEST(TokenTest, Attributes) {
     EXPECT_FALSE(attrs[2].has_value);
 }
 
+TEST(TokenTest, AddAttrOverloads) {
+    Token token(TokenType::OPEN, "div", "");
+
+    const TokenAttribute id_attr{"id", "main", true};
+    token.add_attr(id_attr);
+    token.add_attr(TokenAttribute{"class", "container", true});
+
+    const auto& attrs = token.attrs();
+    ASSERT_EQ(attrs.size(), 2u);
+    EXPECT_EQ(attrs[0].name, "id");
+    EXPECT_EQ(attrs[0].value, "main");
+    EXPECT_TRUE(attrs[0].has_value);
+    EXPECT_EQ(attrs[1].name, "class");
+    EXPECT_EQ(attrs[1].value, "container");
+    EXPECT_TRUE(attrs[1].has_value);
+}
+
 TEST(TokenTest, OwnedValue) {
     Token token(TokenType::TEXT, "", "");
     std::string dynamic_content = "dynamic content";
@@ -76,6 +93,32 @@ TEST(TokenTest, SetType) {
     token.set_type(TokenType::CLOSE_SELF);
     EXPECT_EQ(token.type(), TokenType::CLOSE_SELF);
     EXPECT_TRUE(token.is_close_self());
+}
+
+TEST(TokenTest, ForceQuirks) {
+    Token token(TokenType::FORCE_QUIRKS, "", "");
+    EXPECT_TRUE(token.is_force_quirks());
+    EXPECT_FALSE(token.is_open());
+}
+
+TEST(TokenTest, MoveAssignmentTransfersState) {
+    Token target(TokenType::OPEN, "div", "static");
+
+    Token source(TokenType::TEXT, "", "view");
+    source.set_owned_value("owned");
+    source.add_attr("k", "v");
+
+    target = std::move(source);
+
+    EXPECT_EQ(target.type(), TokenType::TEXT);
+    EXPECT_TRUE(target.name().empty());
+    EXPECT_EQ(target.value(), "owned");
+    ASSERT_EQ(target.attrs().size(), 1u);
+    EXPECT_EQ(target.attrs()[0].name, "k");
+    EXPECT_EQ(target.attrs()[0].value, "v");
+    EXPECT_TRUE(target.attrs()[0].has_value);
+
+    EXPECT_TRUE(source.value().empty());
 }
 
 } // namespace hps::tests

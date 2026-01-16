@@ -1,4 +1,5 @@
 #include "hps/core/element.hpp"
+#include "hps/core/text_node.hpp"
 #include "hps/query/css/css_parser.hpp"
 #include "hps/query/css/css_selector.hpp"
 #include <gtest/gtest.h>
@@ -60,6 +61,7 @@ TEST(CSSSelectorTest, AttributeSelector) {
     Element el("input");
     el.add_attribute("type", "text");
     el.add_attribute("data-val", "hello world");
+    el.add_attribute("lang", "en-US");
     
     // [attr]
     EXPECT_TRUE(parse("[type]")->matches(el));
@@ -82,6 +84,11 @@ TEST(CSSSelectorTest, AttributeSelector) {
     
     // [attr*=val] (contains)
     EXPECT_TRUE(parse("[data-val*='lo wo']")->matches(el));
+
+    // [attr|=val] (lang match)
+    EXPECT_TRUE(parse("[lang|='en']")->matches(el));
+    EXPECT_TRUE(parse("[lang|='en-US']")->matches(el));
+    EXPECT_FALSE(parse("[lang|='fr']")->matches(el));
 }
 
 TEST(CSSSelectorTest, CombinatorSelector) {
@@ -113,6 +120,44 @@ TEST(CSSSelectorTest, CombinatorSelector) {
     
     // General sibling ~
     EXPECT_TRUE(parse("#child ~ span")->matches(*sibling_ptr));
+}
+
+TEST(CSSSelectorTest, SiblingCombinatorsIgnoreNonElementNodes) {
+    Element parent("div");
+
+    auto first = std::make_unique<Element>("span");
+    first->add_attribute("id", "child");
+
+    auto second = std::make_unique<Element>("span");
+    second->add_attribute("id", "sibling");
+
+    Element* second_ptr = second.get();
+    parent.add_child(std::move(first));
+    parent.add_child(std::make_unique<TextNode>(" "));
+    parent.add_child(std::move(second));
+
+    EXPECT_TRUE(parse("#child + span")->matches(*second_ptr));
+    EXPECT_TRUE(parse("#child ~ span")->matches(*second_ptr));
+}
+
+TEST(CSSSelectorTest, CombinatorSelectorsSupportNullLeftSelector) {
+    Element el("span");
+
+    AdjacentSiblingSelector adjacent(nullptr, std::make_unique<TypeSelector>("span"));
+    EXPECT_TRUE(adjacent.matches(el));
+
+    GeneralSiblingSelector sibling(nullptr, std::make_unique<TypeSelector>("span"));
+    EXPECT_TRUE(sibling.matches(el));
+}
+
+TEST(CSSSelectorTest, ToStringNormalizesOutput) {
+    const auto sel1 = parse("div>span");
+    ASSERT_TRUE(sel1);
+    EXPECT_EQ(sel1->to_string(), "div > span");
+
+    const auto sel2 = parse("div,span");
+    ASSERT_TRUE(sel2);
+    EXPECT_EQ(sel2->to_string(), "div, span");
 }
 
 TEST(CSSSelectorTest, CompoundSelector) {

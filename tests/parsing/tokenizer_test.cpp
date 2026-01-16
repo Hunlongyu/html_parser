@@ -55,6 +55,12 @@ TEST_F(TokenizerTest, BasicTags) {
     ExpectToken(tokens[2], TokenType::CLOSE_SELF, "br");
 }
 
+TEST_F(TokenizerTest, VoidElementWithoutSlashIsCloseSelf) {
+    auto tokens = tokenize("<br>");
+    ASSERT_EQ(tokens.size(), 1);
+    ExpectToken(tokens[0], TokenType::CLOSE_SELF, "br");
+}
+
 TEST_F(TokenizerTest, Attributes) {
     auto tokens = tokenize("<div id=\"test\" class='foo' checked data-val=123>");
     ASSERT_EQ(tokens.size(), 1);
@@ -117,10 +123,36 @@ TEST_F(TokenizerTest, ScriptData) {
     ExpectToken(tokens[2], TokenType::CLOSE, "script");
 }
 
+TEST_F(TokenizerTest, ScriptDataBogusEndTagIsTreatedAsText) {
+    std::string html = "<script>abc</scriptx>def</script>";
+    auto tokens = tokenize(html);
+    ASSERT_EQ(tokens.size(), 3);
+    ExpectToken(tokens[0], TokenType::OPEN, "script");
+    ExpectToken(tokens[1], TokenType::TEXT);
+    EXPECT_EQ(tokens[1].value(), "abc</scriptx>def");
+    ExpectToken(tokens[2], TokenType::CLOSE, "script");
+}
+
+TEST_F(TokenizerTest, ScriptDataWithoutEndTagReturnsTextAtEOF) {
+    auto tokens = tokenize("<script>abc");
+    ASSERT_EQ(tokens.size(), 2);
+    ExpectToken(tokens[0], TokenType::OPEN, "script");
+    ExpectToken(tokens[1], TokenType::TEXT, "", "abc");
+}
+
 TEST_F(TokenizerTest, Doctype) {
     auto tokens = tokenize("<!DOCTYPE html>");
     ASSERT_EQ(tokens.size(), 1);
     ExpectToken(tokens[0], TokenType::DOCTYPE, "DOCTYPE");
+}
+
+TEST_F(TokenizerTest, DoctypeMissingClosingBracketRecordsError) {
+    Tokenizer tokenizer("<!DOCTYPE html", Options());
+    const auto tokens = tokenizer.tokenize_all();
+    (void)tokens;
+    const auto errors = tokenizer.consume_errors();
+    ASSERT_FALSE(errors.empty());
+    EXPECT_EQ(errors[0].code, ErrorCode::UnexpectedEOF);
 }
 
 TEST_F(TokenizerTest, MixedContent) {
@@ -162,4 +194,163 @@ TEST_F(TokenizerTest, ComplexAttributes) {
     EXPECT_EQ(attrs[1].name, "disabled");
     EXPECT_EQ(attrs[2].name, "value");
     EXPECT_EQ(attrs[2].value, "123");
+}
+
+TEST_F(TokenizerTest, AfterAttributeNameSkipsEqualsAfterWhitespace) {
+    auto tokens = tokenize("<div a =\"1\">");
+    ASSERT_EQ(tokens.size(), 1);
+    ExpectToken(tokens[0], TokenType::OPEN, "div");
+    ASSERT_EQ(tokens[0].attrs().size(), 1u);
+    EXPECT_EQ(tokens[0].attrs()[0].name, "a");
+    EXPECT_EQ(tokens[0].attrs()[0].value, "1");
+}
+
+TEST_F(TokenizerTest, AfterAttributeNameSlashAfterWhitespaceIsSelfClosing) {
+    auto tokens = tokenize("<div a />");
+    ASSERT_EQ(tokens.size(), 1);
+    ExpectToken(tokens[0], TokenType::CLOSE_SELF, "div");
+    ASSERT_EQ(tokens[0].attrs().size(), 1u);
+    EXPECT_EQ(tokens[0].attrs()[0].name, "a");
+}
+
+TEST_F(TokenizerTest, AfterAttributeNameGreaterThanFinishesBooleanAttribute) {
+    auto tokens = tokenize("<div a >");
+    ASSERT_EQ(tokens.size(), 1);
+    ExpectToken(tokens[0], TokenType::OPEN, "div");
+    ASSERT_EQ(tokens[0].attrs().size(), 1u);
+    EXPECT_EQ(tokens[0].attrs()[0].name, "a");
+    EXPECT_TRUE(tokens[0].attrs()[0].value.empty());
+}
+
+TEST_F(TokenizerTest, AfterAttributeNameUnexpectedEOFRecordsError) {
+    std::string html = "<div a ";
+    html.push_back('\0');
+    Tokenizer tokenizer(std::string_view(html.data(), html.size()), Options());
+    const auto tokens = tokenizer.tokenize_all();
+    (void)tokens;
+    const auto errors = tokenizer.consume_errors();
+    ASSERT_FALSE(errors.empty());
+    EXPECT_EQ(errors[0].code, ErrorCode::UnexpectedEOF);
+}
+
+TEST_F(TokenizerTest, BeforeAttributeValueSkipsWhitespace) {
+    auto tokens = tokenize("<div a=   \"x\">");
+    ASSERT_EQ(tokens.size(), 1);
+    ExpectToken(tokens[0], TokenType::OPEN, "div");
+    ASSERT_EQ(tokens[0].attrs().size(), 1u);
+    EXPECT_EQ(tokens[0].attrs()[0].name, "a");
+    EXPECT_EQ(tokens[0].attrs()[0].value, "x");
+}
+
+TEST_F(TokenizerTest, DoubleQuotedAttributeValueUnexpectedEOFRecordsError) {
+    Tokenizer tokenizer("<div a=\"x", Options());
+    const auto tokens = tokenizer.tokenize_all();
+    (void)tokens;
+    const auto errors = tokenizer.consume_errors();
+    ASSERT_FALSE(errors.empty());
+    EXPECT_EQ(errors[0].code, ErrorCode::UnexpectedEOF);
+}
+
+TEST_F(TokenizerTest, SingleQuotedAttributeValueUnexpectedEOFRecordsError) {
+    Tokenizer tokenizer("<div a='x", Options());
+    const auto tokens = tokenizer.tokenize_all();
+    (void)tokens;
+    const auto errors = tokenizer.consume_errors();
+    ASSERT_FALSE(errors.empty());
+    EXPECT_EQ(errors[0].code, ErrorCode::UnexpectedEOF);
+}
+
+TEST_F(TokenizerTest, UnquotedAttributeValueUnexpectedCharacterRecordsError) {
+    Tokenizer tokenizer("<div a=b\"c>", Options());
+    const auto tokens = tokenizer.tokenize_all();
+    (void)tokens;
+    const auto errors = tokenizer.consume_errors();
+    ASSERT_FALSE(errors.empty());
+    EXPECT_EQ(errors[0].code, ErrorCode::InvalidToken);
+}
+
+TEST_F(TokenizerTest, UnquotedAttributeValueUnexpectedEOFRecordsError) {
+    std::string html = "<div a=b";
+    html.push_back('\0');
+    Tokenizer tokenizer(std::string_view(html.data(), html.size()), Options());
+    const auto tokens = tokenizer.tokenize_all();
+    (void)tokens;
+    const auto errors = tokenizer.consume_errors();
+    ASSERT_FALSE(errors.empty());
+    EXPECT_EQ(errors[0].code, ErrorCode::UnexpectedEOF);
+}
+
+TEST_F(TokenizerTest, SelfClosingTagUnexpectedEOFRecordsError) {
+    std::string html = "<div/";
+    html.push_back('\0');
+    Tokenizer tokenizer(std::string_view(html.data(), html.size()), Options());
+    const auto tokens = tokenizer.tokenize_all();
+    (void)tokens;
+    const auto errors = tokenizer.consume_errors();
+    ASSERT_FALSE(errors.empty());
+    EXPECT_EQ(errors[0].code, ErrorCode::UnexpectedEOF);
+}
+
+TEST_F(TokenizerTest, SelfClosingStartTagInvalidCharacterRecordsError) {
+    Tokenizer tokenizer("<div/x>", Options());
+    const auto tokens = tokenizer.tokenize_all();
+    (void)tokens;
+    const auto errors = tokenizer.consume_errors();
+    ASSERT_FALSE(errors.empty());
+    EXPECT_EQ(errors[0].code, ErrorCode::InvalidToken);
+}
+
+TEST_F(TokenizerTest, CommentDoubleDashNotCloseBranchIsHandled) {
+    auto tokens = tokenize("<!--a--b-->");
+    ASSERT_EQ(tokens.size(), 1);
+    ExpectToken(tokens[0], TokenType::COMMENT, "", "a--b");
+}
+
+TEST_F(TokenizerTest, PeekCharOutOfRangeInCommentIsCovered) {
+    Tokenizer tokenizer("<!--a--", Options());
+    const auto tokens = tokenizer.tokenize_all();
+    (void)tokens;
+    const auto errors = tokenizer.consume_errors();
+    ASSERT_FALSE(errors.empty());
+    EXPECT_EQ(errors[0].code, ErrorCode::UnexpectedEOF);
+}
+
+TEST_F(TokenizerTest, StrictModeThrowsOnParseError) {
+    Options options;
+    options.error_handling = ErrorHandlingMode::Strict;
+    EXPECT_THROW((void)tokenize("<div a=\"x", options), HPSException);
+}
+
+TEST_F(TokenizerTest, RawtextBogusEndTagIsTreatedAsText) {
+    std::string html = "<style>abc</stylex>def</style>";
+    auto tokens = tokenize(html);
+    ASSERT_EQ(tokens.size(), 3);
+    ExpectToken(tokens[0], TokenType::OPEN, "style");
+    ExpectToken(tokens[1], TokenType::TEXT);
+    EXPECT_EQ(tokens[1].value(), "abc</stylex>def");
+    ExpectToken(tokens[2], TokenType::CLOSE, "style");
+}
+
+TEST_F(TokenizerTest, RawtextWithoutEndTagReturnsTextAtEOF) {
+    auto tokens = tokenize("<style>abc");
+    ASSERT_EQ(tokens.size(), 2);
+    ExpectToken(tokens[0], TokenType::OPEN, "style");
+    ExpectToken(tokens[1], TokenType::TEXT, "", "abc");
+}
+
+TEST_F(TokenizerTest, RcdataBogusEndTagIsTreatedAsText) {
+    std::string html = "<textarea>abc</textareax>def</textarea>";
+    auto tokens = tokenize(html);
+    ASSERT_EQ(tokens.size(), 3);
+    ExpectToken(tokens[0], TokenType::OPEN, "textarea");
+    ExpectToken(tokens[1], TokenType::TEXT);
+    EXPECT_EQ(tokens[1].value(), "abc</textareax>def");
+    ExpectToken(tokens[2], TokenType::CLOSE, "textarea");
+}
+
+TEST_F(TokenizerTest, RcdataWithoutEndTagReturnsTextAtEOF) {
+    auto tokens = tokenize("<textarea>abc");
+    ASSERT_EQ(tokens.size(), 2);
+    ExpectToken(tokens[0], TokenType::OPEN, "textarea");
+    ExpectToken(tokens[1], TokenType::TEXT, "", "abc");
 }
