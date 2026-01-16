@@ -181,7 +181,7 @@ class Options {
         // 优化的二分查找，避免构建 set
         static constexpr std::array<std::string_view, 20> default_void_tags = {"area", "base", "basefont", "br", "col", "command", "embed", "frame", "hr", "img", "input", "isindex", "keygen", "link", "menuitem", "meta", "param", "source", "track", "wbr"};
 
-        return std::ranges::binary_search(default_void_tags, tag_name);
+        return std::binary_search(default_void_tags.begin(), default_void_tags.end(), tag_name);
     }
 
     /**
