@@ -91,6 +91,12 @@ TEST_F(TokenizerTest, TextContent) {
     ExpectToken(tokens[0], TokenType::TEXT, "", "Hello World");
 }
 
+TEST_F(TokenizerTest, WhitespaceOnlyTextIsPreservedForLaterWhitespacePolicy) {
+    auto tokens = tokenize("   \n\t ");
+    ASSERT_EQ(tokens.size(), 1);
+    ExpectToken(tokens[0], TokenType::TEXT, "", "   \n\t ");
+}
+
 TEST_F(TokenizerTest, Comments) {
     // This specifically tests the owned value mechanism we fixed
     std::string comment_text = " This is a comment ";
@@ -143,16 +149,47 @@ TEST_F(TokenizerTest, ScriptDataWithoutEndTagReturnsTextAtEOF) {
 TEST_F(TokenizerTest, Doctype) {
     auto tokens = tokenize("<!DOCTYPE html>");
     ASSERT_EQ(tokens.size(), 1);
-    ExpectToken(tokens[0], TokenType::DOCTYPE, "DOCTYPE");
+    ExpectToken(tokens[0], TokenType::DOCTYPE, "html");
+    EXPECT_FALSE(tokens[0].doctype_force_quirks());
+    EXPECT_TRUE(tokens[0].doctype_public_id().empty());
+    EXPECT_TRUE(tokens[0].doctype_system_id().empty());
+}
+
+TEST_F(TokenizerTest, DoctypeNameIsNormalizedToLowercase) {
+    auto tokens = tokenize("<!DOCTYPE HtMl>");
+    ASSERT_EQ(tokens.size(), 1);
+    ExpectToken(tokens[0], TokenType::DOCTYPE, "html");
 }
 
 TEST_F(TokenizerTest, DoctypeMissingClosingBracketRecordsError) {
     Tokenizer tokenizer("<!DOCTYPE html", Options());
     const auto tokens = tokenizer.tokenize_all();
-    (void)tokens;
+    ASSERT_EQ(tokens.size(), 1);
+    ExpectToken(tokens[0], TokenType::DOCTYPE, "html");
+    EXPECT_TRUE(tokens[0].doctype_force_quirks());
     const auto errors = tokenizer.consume_errors();
     ASSERT_FALSE(errors.empty());
     EXPECT_EQ(errors[0].code, ErrorCode::UnexpectedEOF);
+    EXPECT_EQ(errors[0].location.line, 1u);
+    EXPECT_EQ(errors[0].location.column, 15u);
+}
+
+TEST_F(TokenizerTest, MissingWhitespaceBetweenQuotedAttributesRecordsErrorAndContinues) {
+    Tokenizer tokenizer("<h a='b'c='d'>", Options());
+    const auto tokens = tokenizer.tokenize_all();
+    ASSERT_EQ(tokens.size(), 1);
+    ExpectToken(tokens[0], TokenType::OPEN, "h");
+    ASSERT_EQ(tokens[0].attrs().size(), 2u);
+    EXPECT_EQ(tokens[0].attrs()[0].name, "a");
+    EXPECT_EQ(tokens[0].attrs()[0].value, "b");
+    EXPECT_EQ(tokens[0].attrs()[1].name, "c");
+    EXPECT_EQ(tokens[0].attrs()[1].value, "d");
+
+    const auto errors = tokenizer.consume_errors();
+    ASSERT_EQ(errors.size(), 1u);
+    EXPECT_EQ(errors[0].code, ErrorCode::InvalidToken);
+    EXPECT_EQ(errors[0].location.line, 1u);
+    EXPECT_EQ(errors[0].location.column, 9u);
 }
 
 TEST_F(TokenizerTest, MixedContent) {
@@ -331,6 +368,14 @@ TEST_F(TokenizerTest, RawtextBogusEndTagIsTreatedAsText) {
     ExpectToken(tokens[2], TokenType::CLOSE, "style");
 }
 
+TEST_F(TokenizerTest, RawtextStyleTreatsMarkupAsText) {
+    auto tokens = tokenize("<style><b>x</b></style>");
+    ASSERT_EQ(tokens.size(), 3);
+    ExpectToken(tokens[0], TokenType::OPEN, "style");
+    ExpectToken(tokens[1], TokenType::TEXT, "", "<b>x</b>");
+    ExpectToken(tokens[2], TokenType::CLOSE, "style");
+}
+
 TEST_F(TokenizerTest, RawtextWithoutEndTagReturnsTextAtEOF) {
     auto tokens = tokenize("<style>abc");
     ASSERT_EQ(tokens.size(), 2);
@@ -345,6 +390,14 @@ TEST_F(TokenizerTest, RcdataBogusEndTagIsTreatedAsText) {
     ExpectToken(tokens[0], TokenType::OPEN, "textarea");
     ExpectToken(tokens[1], TokenType::TEXT);
     EXPECT_EQ(tokens[1].value(), "abc</textareax>def");
+    ExpectToken(tokens[2], TokenType::CLOSE, "textarea");
+}
+
+TEST_F(TokenizerTest, RcdataTextareaTreatsMarkupAsText) {
+    auto tokens = tokenize("<textarea><b>x</b></textarea>");
+    ASSERT_EQ(tokens.size(), 3);
+    ExpectToken(tokens[0], TokenType::OPEN, "textarea");
+    ExpectToken(tokens[1], TokenType::TEXT, "", "<b>x</b>");
     ExpectToken(tokens[2], TokenType::CLOSE, "textarea");
 }
 

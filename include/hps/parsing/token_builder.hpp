@@ -15,6 +15,8 @@ namespace hps {
 struct TokenBuilder {
     // === 核心标签信息 ===
     std::string tag_name;  ///< 当前标签名称
+    std::string doctype_public_id;  ///< DOCTYPE public identifier
+    std::string doctype_system_id;  ///< DOCTYPE system identifier
 
     // === 属性构建状态 ===
     std::string attr_name;  ///< 当前正在构建的属性名
@@ -22,6 +24,7 @@ struct TokenBuilder {
     // === 标签类型标志 ===
     bool is_void_element = false;  ///< 是否为空元素（如<br>, <img>等）
     bool is_self_closing = false;  ///< 是否为自闭合标签（如<tag />）
+    bool force_quirks    = false;  ///< DOCTYPE quirks flag
 
     // === 属性集合 ===
     std::vector<TokenAttribute> attrs;  ///< 已完成的属性列表
@@ -61,9 +64,12 @@ struct TokenBuilder {
      */
     void reset() {
         tag_name.clear();
+        doctype_public_id.clear();
+        doctype_system_id.clear();
         attr_name.clear();
         is_void_element = false;
         is_self_closing = false;
+        force_quirks    = false;
         attrs.clear();
     }
 

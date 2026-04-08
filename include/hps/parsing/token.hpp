@@ -73,6 +73,24 @@ class Token : public NonCopyable {
      */
     [[nodiscard]] std::string_view value() const noexcept;
 
+    /**
+     * @brief 获取DOCTYPE public identifier
+     * @return DOCTYPE public identifier；非DOCTYPE token 为空
+     */
+    [[nodiscard]] std::string_view doctype_public_id() const noexcept;
+
+    /**
+     * @brief 获取DOCTYPE system identifier
+     * @return DOCTYPE system identifier；非DOCTYPE token 为空
+     */
+    [[nodiscard]] std::string_view doctype_system_id() const noexcept;
+
+    /**
+     * @brief 获取DOCTYPE force-quirks 标志
+     * @return true 表示该DOCTYPE触发 quirks，false 表示不触发
+     */
+    [[nodiscard]] bool doctype_force_quirks() const noexcept;
+
     // === 类型修改器 ===
 
     /**
@@ -91,6 +109,16 @@ class Token : public NonCopyable {
      * 此时Token将拥有该字符串的所有权。
      */
     void set_owned_value(std::string value);
+
+    /**
+     * @brief 设置DOCTYPE public/system identifiers
+     */
+    void set_doctype_identifiers(std::string_view public_id, std::string_view system_id);
+
+    /**
+     * @brief 设置DOCTYPE force-quirks 标志
+     */
+    void set_doctype_force_quirks(bool force_quirks) noexcept;
 
     // === 属性管理（重要的扩展功能）===
 
@@ -212,6 +240,9 @@ class Token : public NonCopyable {
     std::string                 m_name;        ///< Token名称，对于标签是标签名，对于文本通常为空
     std::string_view            m_value;       ///< Token值，用于零拷贝场景（指向源码）
     std::string                 m_value_owned; ///< Token值，用于拥有所有权的场景（动态内容）
+    std::string                 m_doctype_public_id;  ///< DOCTYPE public identifier
+    std::string                 m_doctype_system_id;  ///< DOCTYPE system identifier
+    bool                        m_doctype_force_quirks{false}; ///< DOCTYPE quirks flag
     std::vector<TokenAttribute> m_attrs;       ///< 属性列表，存储标签的所有属性信息
 };
 

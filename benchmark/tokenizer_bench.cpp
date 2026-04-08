@@ -1,89 +1,100 @@
+#include "benchmark_common.hpp"
 #include "hps/parsing/tokenizer.hpp"
 
+#include <array>
 #include <chrono>
 #include <iostream>
-#include <numeric>
+#include <string>
 #include <vector>
 
 using namespace hps;
 
-// 用于生成大段 HTML 内容的辅助函数
-static std::string generate_large_html(const size_t repeat_count) {
-    std::string html    = "<!DOCTYPE html><html><head><title>Benchmark</title></head><body>";
-    std::string content = R"(
-        <div class="container" id="main" data-test="value">
-            <h1>Performance Test</h1>
-            <p class="text">Lorem ipsum dolor sit amet, consectetur adipiscing elit. 
-            Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. 
-            Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
+namespace {
+
+auto generate_html_for_target_bytes(const std::size_t target_bytes) -> std::string {
+    const std::string header = "<!DOCTYPE html><html><head><title>Tokenizer Benchmark</title></head><body>";
+    const std::string footer = "</body></html>";
+    const std::string block  = R"(
+        <article class="entry" data-id="42">
+            <header>
+                <h1>Tokenizer Benchmark</h1>
+                <time datetime="2026-04-08">2026-04-08</time>
+            </header>
+            <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
             <ul>
-                <li>Item 1</li>
-                <li>Item 2</li>
-                <li>Item 3</li>
+                <li>One</li>
+                <li>Two</li>
+                <li>Three</li>
             </ul>
-            <img src="image.jpg" alt="test image" width="100" height="100" />
-            <!-- This is a comment -->
-        </div>
+            <img src="image.jpg" alt="preview" width="320" height="180" />
+            <!-- synthetic benchmark payload -->
+        </article>
     )";
 
-    for (size_t i = 0; i < repeat_count; ++i) {
-        html += content;
-    }
+    const std::size_t payload_budget =
+        target_bytes > (header.size() + footer.size()) ? target_bytes - header.size() - footer.size() : block.size();
+    const std::size_t repeat_count = std::max<std::size_t>(1, (payload_budget + block.size() - 1) / block.size());
 
-    html += "</body></html>";
+    std::string html;
+    html.reserve(header.size() + footer.size() + repeat_count * block.size());
+    html += header;
+    for (std::size_t i = 0; i < repeat_count; ++i) {
+        html += block;
+    }
+    html += footer;
     return html;
 }
 
+}  // namespace
+
 int main() {
-    // 1. 准备测试数据
-    constexpr size_t REPEAT_COUNT = 10000;  // 重复次数，生成足够大的文件
-    std::cout << "Generating test data..." << '\n';
-    std::string source       = generate_large_html(REPEAT_COUNT);
-    size_t      data_size_mb = source.length() / (1024 * 1024);
-    std::cout << "Data size: " << source.length() << " bytes (~" << data_size_mb << " MB)" << '\n';
+    const std::array<std::pair<std::string_view, std::size_t>, 4> scenarios = {{
+        {"synthetic_8k", 8 * bench::KIB},
+        {"synthetic_64k", 64 * bench::KIB},
+        {"synthetic_512k", 512 * bench::KIB},
+        {"synthetic_2048k", 2 * bench::MIB},
+    }};
 
-    // 2. 预热
-    {
-        Tokenizer tokenizer(source, Options::performance());
-        tokenizer.tokenize_all();
+    bench::print_csv_header();
+
+    for (const auto& [scenario_name, target_bytes] : scenarios) {
+        const std::string source = generate_html_for_target_bytes(target_bytes);
+        const int         iterations = bench::recommended_iterations(source.size());
+
+        Tokenizer warmup_tokenizer(source, Options::performance());
+        const auto warmup_tokens = warmup_tokenizer.tokenize_all();
+        const std::size_t token_count = warmup_tokens.size();
+
+        std::vector<double> durations_ms;
+        durations_ms.reserve(static_cast<std::size_t>(iterations));
+
+        for (int iteration = 0; iteration < iterations; ++iteration) {
+            const auto start = std::chrono::steady_clock::now();
+            Tokenizer  tokenizer(source, Options::performance());
+            const auto tokens = tokenizer.tokenize_all();
+            const auto end = std::chrono::steady_clock::now();
+
+            if (tokens.size() != token_count) {
+                std::cerr << "Tokenizer result drift detected in scenario " << scenario_name << '\n';
+                return 1;
+            }
+
+            const std::chrono::duration<double, std::milli> elapsed_ms = end - start;
+            durations_ms.push_back(elapsed_ms.count());
+        }
+
+        const auto stats      = bench::compute_stats(durations_ms);
+        const auto throughput = bench::throughput_mib_s(source.size(), stats.avg_ms);
+        bench::print_csv_row(
+            "tokenizer_bench",
+            "tokenize",
+            scenario_name,
+            source.size(),
+            iterations,
+            token_count,
+            stats,
+            throughput);
     }
-
-    // 3. 执行测试
-    constexpr int       ITERATIONS = 10;
-    std::vector<double> durations;
-    size_t              total_tokens = 0;
-
-    std::cout << "Running benchmark (" << ITERATIONS << " iterations)..." << '\n';
-
-    for (int i = 0; i < ITERATIONS; ++i) {
-        auto start = std::chrono::high_resolution_clock::now();
-
-        Tokenizer tokenizer(source, Options::performance());
-        auto      tokens = tokenizer.tokenize_all();
-
-        auto                                      end = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double, std::milli> ms  = end - start;
-        durations.push_back(ms.count());
-
-        if (i == 0)
-            total_tokens = tokens.size();
-    }
-
-    // 4. 计算统计结果
-    double total_time = std::accumulate(durations.begin(), durations.end(), 0.0);
-    double avg_time   = total_time / ITERATIONS;
-    double min_time   = *std::ranges::min_element(durations);
-    double max_time   = *std::ranges::max_element(durations);
-
-    // 计算吞吐量 (MB/s)
-    double throughput = (static_cast<double>(source.length()) / (1024.0 * 1024.0)) / (avg_time / 1000.0);
-
-    std::cout << "\n=== Benchmark Results ===" << '\n';
-    std::cout << "Total Tokens: " << total_tokens << '\n';
-    std::cout << "Average Time: " << avg_time << " ms" << '\n';
-    std::cout << "Min Time:     " << min_time << " ms" << '\n';
-    std::cout << "Max Time:     " << max_time << " ms" << '\n';
-    std::cout << "Throughput:   " << throughput << " MB/s" << '\n';
 
     return 0;
 }

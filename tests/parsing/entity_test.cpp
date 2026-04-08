@@ -16,7 +16,7 @@ TEST(HTMLEntityDecodingTest, DefaultRawKeepsEntities) {
     EXPECT_EQ(div->text_content(), "Tom &amp; Jerry");
 }
 
-TEST(HTMLEntityDecodingTest, DecodeModeOnlyDecodesNbsp) {
+TEST(HTMLEntityDecodingTest, DecodeModeDecodesNbsp) {
     Options options;
     options.text_processing_mode = TextProcessingMode::Decode;
 
@@ -28,7 +28,7 @@ TEST(HTMLEntityDecodingTest, DecodeModeOnlyDecodesNbsp) {
     EXPECT_EQ(div->text_content(), "A B");
 }
 
-TEST(HTMLEntityDecodingTest, DecodeModeKeepsOtherEntitiesUnchanged) {
+TEST(HTMLEntityDecodingTest, DecodeModeDecodesNamedAndNumericEntities) {
     Options options;
     options.text_processing_mode = TextProcessingMode::Decode;
 
@@ -37,7 +37,7 @@ TEST(HTMLEntityDecodingTest, DecodeModeKeepsOtherEntitiesUnchanged) {
 
     const auto* div = doc->querySelector("div");
     ASSERT_NE(div, nullptr);
-    EXPECT_EQ(div->text_content(), "&amp;&#65;&#x41;&lt;");
+    EXPECT_EQ(div->text_content(), "&AA<");
 }
 
 TEST(HTMLEntityDecodingTest, DecodingDoesNotAffectDomStructure) {
@@ -49,7 +49,7 @@ TEST(HTMLEntityDecodingTest, DecodingDoesNotAffectDomStructure) {
 
     const auto* div = doc->querySelector("div");
     ASSERT_NE(div, nullptr);
-    EXPECT_EQ(div->text_content(), "&lt;span id=\"x\"&gt;");
+    EXPECT_EQ(div->text_content(), "<span id=\"x\">");
     EXPECT_EQ(div->querySelector("span"), nullptr);
 }
 

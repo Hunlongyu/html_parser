@@ -1,6 +1,7 @@
 #pragma once
 #include "hps/utils/string_pool.hpp"
 
+#include <algorithm>
 #include <memory>
 #include <optional>
 #include <string>
@@ -142,6 +143,30 @@ class CSSLexer {
      */
     [[nodiscard]] size_t current_column() const {
         return m_column;
+    }
+
+    /**
+     * @brief 获取预处理后输入中的原始片段
+     * @param position 起始位置
+     * @param length 长度
+     * @return 对应片段的字符串视图，越界时返回空视图
+     */
+    [[nodiscard]] std::string_view source_span(const size_t position, const size_t length) const noexcept {
+        if (position >= m_processed_input.size()) {
+            return {};
+        }
+
+        const size_t clamped_length = std::min(length, m_processed_input.size() - position);
+        return m_processed_input.substr(position, clamped_length);
+    }
+
+    /**
+     * @brief 获取某个 token 对应的原始片段
+     * @param token 目标 token
+     * @return token 对应片段
+     */
+    [[nodiscard]] std::string_view source_span(const CSSToken& token) const noexcept {
+        return source_span(token.position, token.length);
     }
 
     /**

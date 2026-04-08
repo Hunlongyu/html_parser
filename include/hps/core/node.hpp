@@ -168,16 +168,47 @@ class Node {
 
   protected:
     /**
+     * @brief 获取所属文档
+     * @return 当前节点所在的文档，未挂载则返回 nullptr
+     */
+    [[nodiscard]] const Document* owner_document() const noexcept;
+
+    /**
+     * @brief 获取所属文档（可变）
+     * @return 当前节点所在的文档，未挂载则返回 nullptr
+     */
+    [[nodiscard]] Document* owner_document_mut() noexcept;
+
+    /**
+     * @brief 通知所属文档清理查询缓存
+     */
+    void invalidate_document_query_cache() noexcept;
+
+    /**
      * @brief 添加子节点
      * @param child 子节点的唯一指针（所有权转移）
      */
-    void append_child(std::unique_ptr<Node> child);
+    Node* append_child(std::unique_ptr<Node> child);
+
+    /**
+     * @brief 在指定子节点前插入一个子节点
+     * @param child 要插入的子节点
+     * @param before 作为参照的现有子节点；为空时退化为追加
+     * @return 实际插入后的节点指针
+     */
+    Node* insert_child_before(std::unique_ptr<Node> child, const Node* before);
 
     /**
      * @brief 设置父节点
      * @param parent_node 父节点的原始指针
      */
     void set_parent(Node* parent_node) noexcept;
+
+    /**
+     * @brief 取出并移除所有子节点
+     * @return 当前节点原有子节点的所有权数组
+     */
+    std::vector<std::unique_ptr<Node>> take_children();
 
   private:
     NodeType                           m_type;

@@ -9,9 +9,10 @@
 #include <sstream>
 
 namespace hps {
-Element::Element(const std::string_view name)
+Element::Element(const std::string_view name, const NamespaceKind namespace_kind)
     : Node(NodeType::Element),
-      m_name(name) {}
+      m_name(name),
+      m_namespace_kind(namespace_kind) {}
 
 NodeType Element::type() const noexcept {
     return NodeType::Element;
@@ -19,7 +20,7 @@ NodeType Element::type() const noexcept {
 
 std::string Element::text_content() const {
     std::stringstream ss;
-    for (const auto& child : children()) {
+    for (auto child = first_child(); child; child = child->next_sibling()) {
         ss << child->text_content();
     }
     return ss.str();
@@ -27,7 +28,7 @@ std::string Element::text_content() const {
 
 std::string Element::own_text() const {
     std::stringstream ss;
-    for (const auto& child : children()) {
+    for (auto child = first_child(); child; child = child->next_sibling()) {
         if (child->is_text()) {
             ss << child->as_text()->value();
         }
@@ -37,6 +38,22 @@ std::string Element::own_text() const {
 
 const std::string& Element::tag_name() const noexcept {
     return m_name;
+}
+
+NamespaceKind Element::namespace_kind() const noexcept {
+    return m_namespace_kind;
+}
+
+std::string_view Element::namespace_uri() const noexcept {
+    switch (m_namespace_kind) {
+        case NamespaceKind::Html:
+            return "http://www.w3.org/1999/xhtml";
+        case NamespaceKind::Svg:
+            return "http://www.w3.org/2000/svg";
+        case NamespaceKind::MathML:
+            return "http://www.w3.org/1998/Math/MathML";
+    }
+    return "http://www.w3.org/1999/xhtml";
 }
 
 bool Element::has_attribute(const std::string_view name) const noexcept {
@@ -105,7 +122,7 @@ bool Element::has_class(const std::string_view class_name) const noexcept {
 }
 
 const Element* Element::querySelector(const std::string_view selector) const {
-    return Query::css(*this, selector).first_element();
+    return Query::css_first(*this, selector);
 }
 
 std::vector<const Element*> Element::querySelectorAll(const std::string_view selector) const {
@@ -121,14 +138,14 @@ const Element* Element::get_element_by_id(const std::string_view id) const {
         if (element->id() == id) {
             return element;
         }
-        for (const auto& child : element->children()) {
+        for (auto child = element->first_child(); child; child = child->next_sibling()) {
             if (const auto found = find_by_id(child)) {
                 return found;
             }
         }
         return nullptr;
     };
-    for (const auto& child : children()) {
+    for (auto child = first_child(); child; child = child->next_sibling()) {
         if (const auto found = find_by_id(child)) {
             return found;
         }
@@ -139,7 +156,7 @@ const Element* Element::get_element_by_id(const std::string_view id) const {
 std::vector<const Element*> Element::get_elements_by_tag_name(const std::string_view tag_name) const {
     std::vector<const Element*>         result;
     std::function<void(const Element*)> collect = [&](const Element* el) {
-        for (const auto& child : el->children()) {
+        for (auto child = el->first_child(); child; child = child->next_sibling()) {
             if (child->is_element()) {
                 auto element_child = child->as_element();
                 if (equals_ignore_case(element_child->tag_name(), tag_name)) {
@@ -157,7 +174,7 @@ std::vector<const Element*> Element::get_elements_by_class_name(const std::strin
     std::vector<const Element*> result;
 
     std::function<void(const Element*)> collect = [&](const Element* el) {
-        for (const auto& child : el->children()) {
+        for (auto child = el->first_child(); child; child = child->next_sibling()) {
             if (child->is_element()) {
                 auto element_child = child->as_element();
                 if (element_child->has_class(class_name)) {
@@ -175,20 +192,38 @@ ElementQuery Element::css(const std::string_view selector) const {
     return Query::css(*this, selector);
 }
 
-void Element::add_child(std::unique_ptr<Node> child) {
+Node* Element::add_child(std::unique_ptr<Node> child) {
     if (!child) {
-        return;
+        return nullptr;
     }
-    append_child(std::move(child));
+    Node* inserted = append_child(std::move(child));
+    invalidate_document_query_cache();
+    return inserted;
 }
 
-void Element::add_attribute(std::string_view name, std::string_view value) {
+Node* Element::insert_child_before(std::unique_ptr<Node> child, const Node* before) {
+    if (!child) {
+        return nullptr;
+    }
+    Node* inserted = Node::insert_child_before(std::move(child), before);
+    invalidate_document_query_cache();
+    return inserted;
+}
+
+std::vector<std::unique_ptr<Node>> Element::take_children() {
+    auto children = Node::take_children();
+    invalidate_document_query_cache();
+    return children;
+}
+
+void Element::add_attribute(std::string_view name, std::string_view value, const bool has_value) {
     const auto it = std::ranges::find_if(m_attributes, [name](const Attribute& attr) { return equals_ignore_case(attr.name(), name); });
     if (it != m_attributes.end()) {
-        it->set_value(value);
+        it->set_value(value, has_value);
     } else {
-        m_attributes.emplace_back(name, value);
+        m_attributes.emplace_back(name, value, has_value);
     }
+    invalidate_document_query_cache();
 }
 
 }  // namespace hps

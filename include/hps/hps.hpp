@@ -5,6 +5,7 @@
 #include "hps/hps_fwd.hpp"
 #include "hps/parsing/options.hpp"
 #include "hps/query/query.hpp"
+#include "hps/utils/encoding.hpp"
 #include "hps/utils/exception.hpp"
 #include "hps/version.hpp"
 
@@ -27,9 +28,23 @@ std::shared_ptr<Document> parse(std::string_view html);
 
 std::shared_ptr<Document> parse(std::string_view html, const Options& options);
 
+std::shared_ptr<Document> parse_fragment(std::string_view html, std::string_view context_tag);
+
+std::shared_ptr<Document> parse_fragment(
+    std::string_view html,
+    std::string_view context_tag,
+    const Options& options);
+
 ParseResult parse_with_error(std::string_view html);
 
 ParseResult parse_with_error(std::string_view html, const Options& options);
+
+ParseResult parse_fragment_with_error(std::string_view html, std::string_view context_tag);
+
+ParseResult parse_fragment_with_error(
+    std::string_view html,
+    std::string_view context_tag,
+    const Options& options);
 
 std::shared_ptr<Document> parse_file(std::string_view path);
 

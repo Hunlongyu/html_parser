@@ -11,6 +11,12 @@ enum class NodeType : std::uint8_t {
     Document,  /**< 文档节点 整个文档的根节点 */
 };
 
+enum class NamespaceKind : std::uint8_t {
+    Html,
+    Svg,
+    MathML,
+};
+
 enum class TokenType : std::uint8_t {
     OPEN,          /// <tag ...>
     CLOSE,         /// </tag>
@@ -48,6 +54,8 @@ enum class TokenizerState : std::uint8_t {
     ScriptData,  /// 进入 <script> 标签后的原始文本状态
     RAWTEXT,     /// 进入 <style>、<noscript> 等标签后的原始文本状态
     RCDATA,      /// 进入 <textarea>、<title> 标签后的状态（可解析字符实体但不解析标签）
+    Plaintext,   /// 进入 <plaintext> 标签后的纯文本状态
+    CDataSection, /// CDATA section state
 };
 
 // 核心模块

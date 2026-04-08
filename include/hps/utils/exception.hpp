@@ -1,6 +1,7 @@
 #pragma once
 #include <exception>
 #include <string>
+#include <string_view>
 
 namespace hps {
 
@@ -17,7 +18,22 @@ struct Location {
           line(line),
           column(column) {}
 
-    static Location from_position(const std::string_view& source, const size_t position);
+    static Location from_position(const std::string_view source, const size_t position) {
+        const size_t clamped_position = position > source.size() ? source.size() : position;
+
+        size_t line   = 1;
+        size_t column = 1;
+        for (size_t i = 0; i < clamped_position; ++i) {
+            if (source[i] == '\n') {
+                ++line;
+                column = 1;
+            } else {
+                ++column;
+            }
+        }
+
+        return Location(clamped_position, line, column);
+    }
 };
 
 enum class ErrorCode {
@@ -38,13 +54,17 @@ enum class ErrorCode {
     VoidElementClose,
     MismatchedTag,
     TooManyElements,
+    TooManyAttributes,
     TooDeep,
+    AttributeTooLong,
+    TextTooLong,
 
     // Parser 错误
     InvalidHTML,
     ParseTimeout,
     QuirksMode,
     FileReadError,
+    UnsupportedEncoding,
 
     // Query 错误
     InvalidSelector,

@@ -41,6 +41,30 @@ class HTMLParser : public NonCopyable {
      */
     [[nodiscard]] std::shared_ptr<Document> parse(std::string&& html, const Options& options = {});
 
+    /**
+     * @brief 解析 HTML 片段
+     * @param html HTML 片段内容
+     * @param context_tag 片段上下文标签名，例如 "div"、"table"、"textarea"
+     * @param options 解析选项
+     * @return 只包含片段节点的文档对象
+     */
+    [[nodiscard]] std::shared_ptr<Document> parse_fragment(
+        std::string_view html,
+        std::string_view context_tag,
+        const Options& options = {});
+
+    /**
+     * @brief 解析 HTML 片段（右值引用优化）
+     * @param html HTML 片段内容
+     * @param context_tag 片段上下文标签名
+     * @param options 解析选项
+     * @return 只包含片段节点的文档对象
+     */
+    [[nodiscard]] std::shared_ptr<Document> parse_fragment(
+        std::string&& html,
+        std::string_view context_tag,
+        const Options& options = {});
+
     // 文件解析功能（扩展功能）
     /**
      * @brief 解析HTML文件
@@ -61,6 +85,10 @@ class HTMLParser : public NonCopyable {
     std::vector<HPSError> m_errors;  ///< 解析错误列表
 
     [[nodiscard]] std::shared_ptr<Document> parse_owned(std::string html, const Options& options);
+    [[nodiscard]] std::shared_ptr<Document> parse_fragment_owned(
+        std::string html,
+        std::string_view context_tag,
+        const Options& options);
 };
 
 }  // namespace hps

@@ -1,43 +1,26 @@
 #include "hps/query/css/css_selector.hpp"
 
 #include "hps/core/element.hpp"
+#include "hps/utils/string_utils.hpp"
 
 #include <algorithm>
-#include <sstream>
 
 namespace hps {
 
 // ==================== TypeSelector Implementation ====================
 
 bool TypeSelector::matches(const Element& element) const {
-    return element.tag_name() == m_tag_name;
+    return equals_ignore_case(element.tag_name(), m_tag_name);
 }
 
 bool TypeSelector::can_quick_reject(const Element& element) const {
-    return element.tag_name() != m_tag_name;
+    return !equals_ignore_case(element.tag_name(), m_tag_name);
 }
 
 // ==================== ClassSelector Implementation ====================
 
 bool ClassSelector::matches(const Element& element) const {
-    if (!element.has_attribute("class")) {
-        return false;
-    }
-
-    const std::string class_attr = element.get_attribute("class");
-    if (class_attr.empty()) {
-        return false;
-    }
-
-    // 分割class属性值，检查是否包含目标类名
-    std::istringstream iss(class_attr);
-    std::string        class_name;
-    while (iss >> class_name) {
-        if (class_name == m_class_name) {
-            return true;
-        }
-    }
-    return false;
+    return element.has_class(m_class_name);
 }
 
 bool ClassSelector::can_quick_reject(const Element& element) const {
@@ -65,7 +48,7 @@ bool AttributeSelector::matches(const Element& element) const {
         return true;
     }
 
-    const std::string attr_value = element.get_attribute(m_attr_name);
+    const auto& attr_value = element.get_attribute(m_attr_name);
     return matches_attribute_value(attr_value);
 }
 
@@ -130,13 +113,25 @@ bool AttributeSelector::matches_attribute_value(const std::string_view attr_valu
             return attr_value.ends_with(m_value);
 
         case AttributeOperator::WordMatch: {
-            const std::string  attr_str(attr_value);
-            std::istringstream iss(attr_str);
-            std::string        word;
-            while (iss >> word) {
-                if (word == m_value) {
+            size_t pos = 0;
+            while (pos < attr_value.size()) {
+                while (pos < attr_value.size() && is_whitespace(attr_value[pos])) {
+                    ++pos;
+                }
+                if (pos >= attr_value.size()) {
+                    break;
+                }
+
+                size_t end = pos;
+                while (end < attr_value.size() && !is_whitespace(attr_value[end])) {
+                    ++end;
+                }
+
+                if (attr_value.substr(pos, end - pos) == m_value) {
                     return true;
                 }
+
+                pos = end;
             }
             return false;
         }
@@ -238,36 +233,10 @@ bool AdjacentSiblingSelector::matches(const Element& element) const {
         return true;
     }
 
-    // 获取父元素
-    const auto parent = element.parent();
-    if (!parent) {
-        return false;  // 没有父元素，无法有兄弟元素
-    }
-
-    // 获取所有子元素
-    const auto& siblings = parent->children();
-
-    // 找到当前元素在兄弟列表中的位置
-    auto current_it = std::ranges::find_if(siblings, [&element](const Node* node) { return node == &element; });
-
-    if (current_it == siblings.begin()) {
-        return false;  // 当前元素是第一个，没有前一个兄弟
-    }
-
-    // 向前查找紧邻的元素节点（跳过文本节点和注释节点）
-    auto prev_it = current_it;
-    while (prev_it != siblings.begin()) {
-        --prev_it;
-        if ((*prev_it)->is_element()) {
-            // 找到了前一个元素节点
-            if (const auto prev_element = (*prev_it)->as_element()) {
-                // 检查前一个元素是否匹配左侧选择器
-                return m_left->matches(*prev_element);
-            }
+    for (auto previous = element.previous_sibling(); previous; previous = previous->previous_sibling()) {
+        if (previous->is_element()) {
+            return m_left->matches(*previous->as_element());
         }
-        // 如果遇到非元素节点，继续向前查找
-        // 注意：严格的相邻兄弟选择器要求紧邻，不应跳过文本节点
-        // 但在实际实现中，通常会忽略空白文本节点
     }
 
     return false;
@@ -300,28 +269,10 @@ bool GeneralSiblingSelector::matches(const Element& element) const {
         return true;
     }
 
-    // 获取父元素
-    const auto parent = element.parent();
-    if (!parent) {
-        return false;  // 没有父元素，无法有兄弟元素
-    }
-
-    // 获取所有子元素
-    const auto& siblings = parent->children();
-
-    // 找到当前元素在兄弟列表中的位置
-    auto current_it = std::ranges::find_if(siblings, [&element](const Node* node) { return node == &element; });
-
-    if (current_it == siblings.begin()) {
-        return false;  // 当前元素是第一个，没有前面的兄弟
-    }
-
-    // 检查当前元素之前的所有兄弟元素
-    for (auto it = siblings.begin(); it != current_it; ++it) {
-        if ((*it)->is_element()) {
-            auto sibling_element = (*it)->as_element();
-            if (sibling_element && m_left->matches(*sibling_element)) {
-                return true;  // 找到匹配左侧选择器的前面兄弟元素
+    for (auto previous = element.previous_sibling(); previous; previous = previous->previous_sibling()) {
+        if (previous->is_element()) {
+            if (const auto* sibling_element = previous->as_element(); sibling_element && m_left->matches(*sibling_element)) {
+                return true;
             }
         }
     }

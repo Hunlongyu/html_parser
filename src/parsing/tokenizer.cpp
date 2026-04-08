@@ -3,13 +3,44 @@
 #include "hps/utils/exception.hpp"
 #include "hps/utils/string_utils.hpp"
 
+namespace {
+
+[[nodiscard]] auto text_parsing_state_for_tag(const std::string_view tag_name) noexcept -> hps::TokenizerState {
+    if (hps::equals_ignore_case(tag_name, "script")) {
+        return hps::TokenizerState::ScriptData;
+    }
+    if (hps::equals_ignore_case(tag_name, "svg")) {
+        return hps::TokenizerState::RAWTEXT;
+    }
+    if (hps::equals_ignore_case(tag_name, "style") || hps::equals_ignore_case(tag_name, "noscript")) {
+        return hps::TokenizerState::RAWTEXT;
+    }
+    if (hps::equals_ignore_case(tag_name, "textarea") || hps::equals_ignore_case(tag_name, "title")) {
+        return hps::TokenizerState::RCDATA;
+    }
+    if (hps::equals_ignore_case(tag_name, "plaintext")) {
+        return hps::TokenizerState::Plaintext;
+    }
+    return hps::TokenizerState::Data;
+}
+
+}  // namespace
+
 namespace hps {
 
 Tokenizer::Tokenizer(const std::string_view source, const Options& options)
+    : Tokenizer(source, options, TokenizerState::Data, {}) {}
+
+Tokenizer::Tokenizer(
+    const std::string_view source,
+    const Options&         options,
+    const TokenizerState   initial_state,
+    const std::string_view last_start_tag)
     : m_source(source),
       m_pos(0),
-      m_state(TokenizerState::Data),
+      m_state(initial_state),
       m_options(options),
+      m_last_start_tag(last_start_tag),
       m_attr_value_start(0) {}
 
 std::optional<Token> Tokenizer::next_token() {
@@ -87,6 +118,14 @@ std::optional<Token> Tokenizer::next_token() {
                 if (auto token = consume_rcdata_state())
                     return token;
                 break;
+            case TokenizerState::Plaintext:
+                if (auto token = consume_plaintext_state())
+                    return token;
+                break;
+            case TokenizerState::CDataSection:
+                if (auto token = consume_cdata_section_state())
+                    return token;
+                break;
         }
     }
     return create_done_token();
@@ -135,12 +174,7 @@ std::optional<Token> Tokenizer::consume_data_state() {
         advance();
     }
     if (start < m_pos) {
-        const std::string_view data              = m_source.substr(start, m_pos - start);
-        const bool             is_all_whitespace = std::ranges::all_of(data, [](char c) { return is_whitespace(c); });
-
-        if (!is_all_whitespace) {
-            return create_text_token(data);
-        }
+        return emit_text_token(m_source.substr(start, m_pos - start));
     }
     return {};
 }
@@ -168,7 +202,7 @@ std::optional<Token> Tokenizer::consume_tag_open_state() {
                 advance();
             }
             m_state = TokenizerState::Data;
-            return create_owned_text_token(std::move(cdata_content));
+            return emit_owned_text_token(std::move(cdata_content));
         } else {
             m_state = TokenizerState::Comment;
         }
@@ -341,19 +375,19 @@ std::optional<Token> Tokenizer::consume_attribute_name_state() {
         advance();
         m_state = TokenizerState::BeforeAttributeValue;
     } else if (current_char() == '>') {
-        m_token_builder.finish_boolean_attribute();
+        finish_boolean_attribute();
         advance();
         m_state = TokenizerState::Data;
         return create_start_tag_token();
     } else if (current_char() == '/') {
-        m_token_builder.finish_boolean_attribute();
+        finish_boolean_attribute();
         advance();
         m_state = TokenizerState::SelfClosingStartTag;
     } else if (current_char() == '\0') {
         handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in attribute name");
         return {};
     } else {
-        m_token_builder.finish_boolean_attribute();
+        finish_boolean_attribute();
         m_state = TokenizerState::BeforeAttributeName;
     }
     return {};
@@ -366,19 +400,19 @@ std::optional<Token> Tokenizer::consume_after_attribute_name_state() {
         advance();
         m_state = TokenizerState::BeforeAttributeValue;
     } else if (current_char() == '>') {
-        m_token_builder.finish_boolean_attribute();
+        finish_boolean_attribute();
         advance();
         m_state = TokenizerState::Data;
         return create_start_tag_token();
     } else if (current_char() == '/') {
-        m_token_builder.finish_boolean_attribute();
+        finish_boolean_attribute();
         advance();
         m_state = TokenizerState::SelfClosingStartTag;
     } else if (current_char() == '\0') {
         handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF after attribute name");
         return {};
     } else {
-        m_token_builder.finish_boolean_attribute();
+        finish_boolean_attribute();
         m_state = TokenizerState::AttributeName;
     }
     return {};
@@ -396,8 +430,11 @@ std::optional<Token> Tokenizer::consume_before_attribute_value_state() {
         m_attr_value_start = m_pos;
         m_state            = TokenizerState::AttributeValueSingleQuoted;
     } else if (current_char() == '>') {
-        handle_parse_error(ErrorCode::InvalidToken, "Missing attribute value");
-        m_token_builder.finish_boolean_attribute();
+        record_error(ErrorCode::InvalidToken, "Missing attribute value");
+        if (m_options.error_handling == ErrorHandlingMode::Strict) {
+            throw HPSException(ErrorCode::InvalidToken, "Missing attribute value", Location::from_position(m_source, m_pos));
+        }
+        finish_boolean_attribute();
         advance();
         m_state = TokenizerState::Data;
         return create_start_tag_token();
@@ -414,8 +451,11 @@ std::optional<Token> Tokenizer::consume_attribute_value_double_quoted_state() {
     while (has_more()) {
         if (current_char() == '"') {
             const std::string_view value = m_source.substr(start, m_pos - start);
-            m_token_builder.finish_attribute(value);
+            finish_attribute(value);
             advance();
+            if (current_char() != '\0' && !is_whitespace(current_char()) && current_char() != '>' && current_char() != '/') {
+                record_recoverable_error(ErrorCode::InvalidToken, "Missing whitespace between attributes");
+            }
             m_state = TokenizerState::BeforeAttributeName;
             return {};
         }
@@ -430,8 +470,11 @@ std::optional<Token> Tokenizer::consume_attribute_value_single_quoted_state() {
     while (has_more()) {
         if (current_char() == '\'') {
             const std::string_view value = m_source.substr(start, m_pos - start);
-            m_token_builder.finish_attribute(value);
+            finish_attribute(value);
             advance();
+            if (current_char() != '\0' && !is_whitespace(current_char()) && current_char() != '>' && current_char() != '/') {
+                record_recoverable_error(ErrorCode::InvalidToken, "Missing whitespace between attributes");
+            }
             m_state = TokenizerState::BeforeAttributeName;
             return {};
         }
@@ -447,12 +490,12 @@ std::optional<Token> Tokenizer::consume_attribute_value_unquoted_state() {
         const char c = current_char();
         if (is_whitespace(c)) {
             const std::string_view value = m_source.substr(start, m_pos - start);
-            m_token_builder.finish_attribute(value);
+            finish_attribute(value);
             m_state = TokenizerState::BeforeAttributeName;
             return {};
         } else if (c == '>') {
             const std::string_view value = m_source.substr(start, m_pos - start);
-            m_token_builder.finish_attribute(value);
+            finish_attribute(value);
             advance();
             m_state = TokenizerState::Data;
             return create_start_tag_token();
@@ -475,7 +518,13 @@ std::optional<Token> Tokenizer::consume_self_closing_start_tag_state() {
         handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in self-closing tag");
         return {};
     }
-    handle_parse_error(ErrorCode::InvalidToken, "Unexpected character after '/' in self-closing start tag");
+    record_error(ErrorCode::InvalidToken, "Unexpected character after '/' in self-closing start tag");
+    if (m_options.error_handling == ErrorHandlingMode::Strict) {
+        throw HPSException(
+            ErrorCode::InvalidToken,
+            "Unexpected character after '/' in self-closing start tag",
+            Location::from_position(m_source, m_pos));
+    }
     m_state = TokenizerState::BeforeAttributeName;
     return {};
 }
@@ -523,6 +572,24 @@ std::optional<Token> Tokenizer::consume_doctype_state() {
         m_state = TokenizerState::Data;
         return {};
     }
+
+    m_token_builder.reset();
+    skip_whitespace();
+
+    while (has_more()) {
+        const char c = current_char();
+        if (c == '>' || is_whitespace(c)) {
+            break;
+        }
+
+        if (is_alpha(c)) {
+            m_token_builder.tag_name += to_lower(c);
+        } else {
+            m_token_builder.tag_name += c;
+        }
+        advance();
+    }
+
     skip_whitespace();
     while (has_more() && current_char() != '>') {
         advance();
@@ -531,34 +598,84 @@ std::optional<Token> Tokenizer::consume_doctype_state() {
     if (current_char() == '>') {
         advance();
         m_state = TokenizerState::Data;
-        m_token_builder.reset();
-        m_token_builder.tag_name = "DOCTYPE";
         return create_doctype_token();
     }
 
-    handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in DOCTYPE");
+    m_token_builder.force_quirks = true;
+    record_recoverable_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in DOCTYPE");
     m_state = TokenizerState::Data;
-    return {};
+    return create_doctype_token();
 }
 
 std::optional<Token> Tokenizer::consume_script_data_state() {
+    const std::string_view closing_tag = m_last_start_tag.empty() ? std::string_view("script") : std::string_view(m_last_start_tag);
     const size_t start = m_pos;
     while (has_more()) {
-        if (current_char() == '<' && (starts_with("</script") || starts_with("</svg"))) {
+        if (current_char() == '<' && peek_char() == '/' &&
+            starts_with_ignore_case(m_source.substr(m_pos + 2), closing_tag)) {
             const size_t saved_pos = m_pos;
-            const bool   is_script = starts_with("</script");
-            m_pos += (is_script ? 8 : 5);
-            skip_whitespace();
+            m_pos += 2 + closing_tag.size();
+
+            if (!has_more()) {
+                m_pos = m_source.size();
+                break;
+            }
+
+            if (is_whitespace(current_char())) {
+                while (has_more() && is_whitespace(current_char())) {
+                    advance();
+                }
+                if (!has_more()) {
+                    if (start < saved_pos) {
+                        const std::string_view content = m_source.substr(start, saved_pos - start);
+                        record_recoverable_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in script end tag");
+                        m_state = TokenizerState::Data;
+                        return emit_text_token(content);
+                    }
+                    record_recoverable_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in script end tag");
+                    m_state = TokenizerState::Data;
+                    return {};
+                }
+            }
+
             if (current_char() == '>') {
                 if (start < saved_pos) {
                     m_pos                          = saved_pos;
                     const std::string_view content = m_source.substr(start, saved_pos - start);
-                    return create_text_token(content);
+                    return emit_text_token(content);
                 }
                 advance();
                 m_state   = TokenizerState::Data;
-                m_end_tag = is_script ? "script" : "svg";
+                m_end_tag = std::string(closing_tag);
                 return create_end_tag_token();
+            }
+            if (current_char() == '/') {
+                advance();
+                while (has_more() && is_whitespace(current_char())) {
+                    advance();
+                }
+                if (!has_more()) {
+                    if (start < saved_pos) {
+                        const std::string_view content = m_source.substr(start, saved_pos - start);
+                        record_recoverable_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in script end tag");
+                        m_state = TokenizerState::Data;
+                        return emit_text_token(content);
+                    }
+                    record_recoverable_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in script end tag");
+                    m_state = TokenizerState::Data;
+                    return {};
+                }
+                if (current_char() == '>') {
+                    if (start < saved_pos) {
+                        m_pos                          = saved_pos;
+                        const std::string_view content = m_source.substr(start, saved_pos - start);
+                        return emit_text_token(content);
+                    }
+                    advance();
+                    m_state   = TokenizerState::Data;
+                    m_end_tag = std::string(closing_tag);
+                    return create_end_tag_token();
+                }
             }
             m_pos = saved_pos;
             advance();
@@ -569,7 +686,7 @@ std::optional<Token> Tokenizer::consume_script_data_state() {
     if (start < m_pos) {
         const std::string_view content = m_source.substr(start, m_pos - start);
         m_state                        = TokenizerState::Data;
-        return create_text_token(content);
+        return emit_text_token(content);
     }
     handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in script data");
     m_state = TokenizerState::Data;
@@ -577,28 +694,82 @@ std::optional<Token> Tokenizer::consume_script_data_state() {
 }
 
 std::optional<Token> Tokenizer::consume_rawtext_state() {
+    if (m_last_start_tag.empty()) {
+        m_state = TokenizerState::Data;
+        return {};
+    }
+
+    const std::string_view closing_tag = m_last_start_tag;
     const size_t start = m_pos;
 
     while (has_more()) {
-        if (current_char() == '<' && (starts_with("</style") || starts_with("</noscript"))) {
+        if (current_char() == '<' && peek_char() == '/' &&
+            starts_with_ignore_case(m_source.substr(m_pos + 2), closing_tag)) {
             const size_t saved_pos = m_pos;
-            const bool   is_style  = starts_with("</style");
-            m_pos += (is_style ? 7 : 10);
+            m_pos += 2 + closing_tag.size();
 
-            skip_whitespace();
+            if (!has_more()) {
+                m_pos = m_source.size();
+                break;
+            }
+
+            if (is_whitespace(current_char())) {
+                while (has_more() && is_whitespace(current_char())) {
+                    advance();
+                }
+                if (!has_more()) {
+                    if (start < saved_pos) {
+                        const std::string_view content = m_source.substr(start, saved_pos - start);
+                        record_recoverable_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in RAWTEXT end tag");
+                        m_state = TokenizerState::Data;
+                        return emit_text_token(content);
+                    }
+                    record_recoverable_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in RAWTEXT end tag");
+                    m_state = TokenizerState::Data;
+                    return {};
+                }
+            }
             if (current_char() == '>') {
                 if (start < saved_pos) {
                     m_pos                          = saved_pos;
                     const std::string_view content = m_source.substr(start, saved_pos - start);
-                    return create_text_token(content);
+                    return emit_text_token(content);
                 }
                 advance();
-                m_state = TokenizerState::Data;
-                return {};
+                m_state   = TokenizerState::Data;
+                m_end_tag = std::string(closing_tag);
+                return create_end_tag_token();
+            }
+            if (current_char() == '/') {
+                advance();
+                while (has_more() && is_whitespace(current_char())) {
+                    advance();
+                }
+                if (!has_more()) {
+                    if (start < saved_pos) {
+                        const std::string_view content = m_source.substr(start, saved_pos - start);
+                        record_recoverable_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in RAWTEXT end tag");
+                        m_state = TokenizerState::Data;
+                        return emit_text_token(content);
+                    }
+                    record_recoverable_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in RAWTEXT end tag");
+                    m_state = TokenizerState::Data;
+                    return {};
+                }
+                if (current_char() == '>') {
+                    if (start < saved_pos) {
+                        m_pos                          = saved_pos;
+                        const std::string_view content = m_source.substr(start, saved_pos - start);
+                        return emit_text_token(content);
+                    }
+                    advance();
+                    m_state   = TokenizerState::Data;
+                    m_end_tag = std::string(closing_tag);
+                    return create_end_tag_token();
+                }
             }
             m_pos = saved_pos;
             advance();
-
         } else {
             advance();
         }
@@ -607,7 +778,7 @@ std::optional<Token> Tokenizer::consume_rawtext_state() {
     if (start < m_pos) {
         const std::string_view content = m_source.substr(start, m_pos - start);
         m_state                        = TokenizerState::Data;
-        return create_text_token(content);
+        return emit_text_token(content);
     }
 
     handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in RAWTEXT");
@@ -616,28 +787,82 @@ std::optional<Token> Tokenizer::consume_rawtext_state() {
 }
 
 std::optional<Token> Tokenizer::consume_rcdata_state() {
+    if (m_last_start_tag.empty()) {
+        m_state = TokenizerState::Data;
+        return {};
+    }
+
+    const std::string_view closing_tag = m_last_start_tag;
     const size_t start = m_pos;
 
     while (has_more()) {
-        if (current_char() == '<' && (starts_with("</textarea") || starts_with("</title"))) {
-            const size_t saved_pos   = m_pos;
-            const bool   is_textarea = starts_with("</textarea");
-            m_pos += (is_textarea ? 10 : 7);
+        if (current_char() == '<' && peek_char() == '/' &&
+            starts_with_ignore_case(m_source.substr(m_pos + 2), closing_tag)) {
+            const size_t saved_pos = m_pos;
+            m_pos += 2 + closing_tag.size();
 
-            skip_whitespace();
+            if (!has_more()) {
+                m_pos = m_source.size();
+                break;
+            }
+
+            if (is_whitespace(current_char())) {
+                while (has_more() && is_whitespace(current_char())) {
+                    advance();
+                }
+                if (!has_more()) {
+                    if (start < saved_pos) {
+                        const std::string_view content = m_source.substr(start, saved_pos - start);
+                        record_recoverable_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in RCDATA end tag");
+                        m_state = TokenizerState::Data;
+                        return emit_owned_text_token(decode_html_entities(std::string(content)));
+                    }
+                    record_recoverable_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in RCDATA end tag");
+                    m_state = TokenizerState::Data;
+                    return {};
+                }
+            }
             if (current_char() == '>') {
                 if (start < saved_pos) {
                     m_pos                          = saved_pos;
                     const std::string_view content = m_source.substr(start, saved_pos - start);
-                    return create_text_token(content);
+                    return emit_owned_text_token(decode_html_entities(std::string(content)));
                 }
                 advance();
-                m_state = TokenizerState::Data;
-                return {};
+                m_state   = TokenizerState::Data;
+                m_end_tag = std::string(closing_tag);
+                return create_end_tag_token();
+            }
+            if (current_char() == '/') {
+                advance();
+                while (has_more() && is_whitespace(current_char())) {
+                    advance();
+                }
+                if (!has_more()) {
+                    if (start < saved_pos) {
+                        const std::string_view content = m_source.substr(start, saved_pos - start);
+                        record_recoverable_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in RCDATA end tag");
+                        m_state = TokenizerState::Data;
+                        return emit_owned_text_token(decode_html_entities(std::string(content)));
+                    }
+                    record_recoverable_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in RCDATA end tag");
+                    m_state = TokenizerState::Data;
+                    return {};
+                }
+                if (current_char() == '>') {
+                    if (start < saved_pos) {
+                        m_pos                          = saved_pos;
+                        const std::string_view content = m_source.substr(start, saved_pos - start);
+                        return emit_owned_text_token(decode_html_entities(std::string(content)));
+                    }
+                    advance();
+                    m_state   = TokenizerState::Data;
+                    m_end_tag = std::string(closing_tag);
+                    return create_end_tag_token();
+                }
             }
             m_pos = saved_pos;
             advance();
-
         } else {
             advance();
         }
@@ -646,12 +871,37 @@ std::optional<Token> Tokenizer::consume_rcdata_state() {
     if (start < m_pos) {
         const std::string_view content = m_source.substr(start, m_pos - start);
         m_state                        = TokenizerState::Data;
-        return create_text_token(content);
+        return emit_owned_text_token(decode_html_entities(std::string(content)));
     }
 
     handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in RCDATA");
     m_state = TokenizerState::Data;
     return {};
+}
+
+std::optional<Token> Tokenizer::consume_plaintext_state() {
+    const size_t start = m_pos;
+    while (has_more()) {
+        advance();
+    }
+    if (start < m_pos) {
+        return emit_text_token(m_source.substr(start, m_pos - start));
+    }
+    return {};
+}
+
+std::optional<Token> Tokenizer::consume_cdata_section_state() {
+    std::string cdata_content;
+    while (has_more()) {
+        if (starts_with("]]>")) {
+            m_pos += 3;
+            break;
+        }
+        cdata_content += current_char();
+        advance();
+    }
+    m_state = TokenizerState::Data;
+    return emit_owned_text_token(std::move(cdata_content));
 }
 
 char Tokenizer::current_char() const noexcept {
@@ -698,8 +948,10 @@ Token Tokenizer::create_start_tag_token() {
         token.set_type(TokenType::CLOSE_SELF);
     }
 
-    if (m_token_builder.tag_name == "script" || m_token_builder.tag_name == "svg") {
-        m_state = TokenizerState::ScriptData;
+    const auto next_state = text_parsing_state_for_tag(m_token_builder.tag_name);
+    m_last_start_tag      = m_token_builder.tag_name;
+    if (token.type() == TokenType::OPEN && next_state != TokenizerState::Data) {
+        m_state = next_state;
     }
 
     m_token_builder.reset();
@@ -722,6 +974,44 @@ Token Tokenizer::create_owned_text_token(std::string&& data) {
     return token;
 }
 
+std::optional<Token> Tokenizer::emit_text_token(std::string_view data) {
+    if (data.empty()) {
+        return {};
+    }
+
+    if (data.size() > m_options.max_text_length) {
+        record_error(ErrorCode::TextTooLong, "Text node length limit exceeded");
+        if (m_options.error_handling == ErrorHandlingMode::Strict) {
+            throw HPSException(
+                ErrorCode::TextTooLong,
+                "Text node length limit exceeded",
+                Location::from_position(m_source, m_pos));
+        }
+        data = data.substr(0, m_options.max_text_length);
+    }
+
+    return create_text_token(data);
+}
+
+std::optional<Token> Tokenizer::emit_owned_text_token(std::string data) {
+    if (data.empty()) {
+        return {};
+    }
+
+    if (data.size() > m_options.max_text_length) {
+        record_error(ErrorCode::TextTooLong, "Text node length limit exceeded");
+        if (m_options.error_handling == ErrorHandlingMode::Strict) {
+            throw HPSException(
+                ErrorCode::TextTooLong,
+                "Text node length limit exceeded",
+                Location::from_position(m_source, m_pos));
+        }
+        data.resize(m_options.max_text_length);
+    }
+
+    return create_owned_text_token(std::move(data));
+}
+
 Token Tokenizer::create_comment_token(std::string_view comment) {
     return {TokenType::COMMENT, "", comment};
 }
@@ -734,6 +1024,8 @@ Token Tokenizer::create_owned_comment_token(std::string&& comment) {
 
 Token Tokenizer::create_doctype_token() {
     Token token(TokenType::DOCTYPE, m_token_builder.tag_name, "");
+    token.set_doctype_identifiers(m_token_builder.doctype_public_id, m_token_builder.doctype_system_id);
+    token.set_doctype_force_quirks(m_token_builder.force_quirks);
     m_token_builder.reset();
     return token;
 }
@@ -756,7 +1048,7 @@ void Tokenizer::handle_parse_error(const ErrorCode code, const std::string& mess
 
     switch (m_options.error_handling) {
         case ErrorHandlingMode::Strict:
-            throw HPSException(code, message, m_pos);
+            throw HPSException(code, message, Location::from_position(m_source, m_pos));
         case ErrorHandlingMode::Lenient:
             transition_to_data_state();
             break;
@@ -765,13 +1057,98 @@ void Tokenizer::handle_parse_error(const ErrorCode code, const std::string& mess
     }
 }
 
+void Tokenizer::record_recoverable_error(const ErrorCode code, const std::string& message) {
+    record_error(code, message);
+    if (m_options.error_handling == ErrorHandlingMode::Strict) {
+        throw HPSException(code, message, Location::from_position(m_source, m_pos));
+    }
+}
+
 void Tokenizer::record_error(ErrorCode code, const std::string& message) {
-    m_errors.emplace_back(code, message, m_pos);
+    m_errors.emplace_back(code, message, Location::from_position(m_source, m_pos));
 }
 
 void Tokenizer::transition_to_data_state() {
     m_state = TokenizerState::Data;
     m_token_builder.reset();
+}
+
+void Tokenizer::finish_boolean_attribute() {
+    if (m_token_builder.attr_name.empty()) {
+        return;
+    }
+
+    if (m_token_builder.attrs.size() >= m_options.max_attributes) {
+        record_error(ErrorCode::TooManyAttributes, "Attribute count limit exceeded");
+        if (m_options.error_handling == ErrorHandlingMode::Strict) {
+            throw HPSException(
+                ErrorCode::TooManyAttributes,
+                "Attribute count limit exceeded",
+                Location::from_position(m_source, m_pos));
+        }
+        m_token_builder.attr_name.clear();
+        return;
+    }
+
+    if (m_token_builder.attr_name.size() > m_options.max_attribute_name_length) {
+        record_error(ErrorCode::AttributeTooLong, "Attribute name length limit exceeded");
+        if (m_options.error_handling == ErrorHandlingMode::Strict) {
+            throw HPSException(
+                ErrorCode::AttributeTooLong,
+                "Attribute name length limit exceeded",
+                Location::from_position(m_source, m_pos));
+        }
+        m_token_builder.attr_name.clear();
+        return;
+    }
+
+    m_token_builder.add_attr(std::move(m_token_builder.attr_name), "", false);
+    m_token_builder.attr_name.clear();
+}
+
+void Tokenizer::finish_attribute(const std::string_view value) {
+    if (m_token_builder.attr_name.empty()) {
+        return;
+    }
+
+    if (m_token_builder.attrs.size() >= m_options.max_attributes) {
+        record_error(ErrorCode::TooManyAttributes, "Attribute count limit exceeded");
+        if (m_options.error_handling == ErrorHandlingMode::Strict) {
+            throw HPSException(
+                ErrorCode::TooManyAttributes,
+                "Attribute count limit exceeded",
+                Location::from_position(m_source, m_pos));
+        }
+        m_token_builder.attr_name.clear();
+        return;
+    }
+
+    if (m_token_builder.attr_name.size() > m_options.max_attribute_name_length) {
+        record_error(ErrorCode::AttributeTooLong, "Attribute name length limit exceeded");
+        if (m_options.error_handling == ErrorHandlingMode::Strict) {
+            throw HPSException(
+                ErrorCode::AttributeTooLong,
+                "Attribute name length limit exceeded",
+                Location::from_position(m_source, m_pos));
+        }
+        m_token_builder.attr_name.clear();
+        return;
+    }
+
+    auto stored_value = value;
+    if (stored_value.size() > m_options.max_attribute_value_length) {
+        record_error(ErrorCode::AttributeTooLong, "Attribute value length limit exceeded");
+        if (m_options.error_handling == ErrorHandlingMode::Strict) {
+            throw HPSException(
+                ErrorCode::AttributeTooLong,
+                "Attribute value length limit exceeded",
+                Location::from_position(m_source, m_pos));
+        }
+        stored_value = stored_value.substr(0, m_options.max_attribute_value_length);
+    }
+
+    m_token_builder.add_attr(std::move(m_token_builder.attr_name), stored_value, true);
+    m_token_builder.attr_name.clear();
 }
 
 }  // namespace hps

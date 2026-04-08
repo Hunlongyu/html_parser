@@ -296,6 +296,13 @@ class ElementQuery {
      */
     [[nodiscard]] ElementQuery css(std::string_view selector) const;
 
+    /**
+     * @brief 在当前结果集的每个元素后代中继续查找
+     * @param selector CSS 选择器
+     * @return 新的 ElementQuery
+     */
+    [[nodiscard]] ElementQuery find(std::string_view selector) const;
+
     // 高级查询方法 Advanced query methods
 
     /**

@@ -40,6 +40,7 @@ class Tokenizer : public NonCopyable {
      * @param options 解析选项
      */
     explicit Tokenizer(std::string_view source, const Options& options);
+    Tokenizer(std::string_view source, const Options& options, TokenizerState initial_state, std::string_view last_start_tag);
 
     /**
      * @brief 析构函数
@@ -218,6 +219,8 @@ class Tokenizer : public NonCopyable {
      * @return 处理后的文本 Token
      */
     std::optional<Token> consume_rcdata_state();
+    std::optional<Token> consume_plaintext_state();
+    std::optional<Token> consume_cdata_section_state();
 
     // ==================== 字符操作辅助方法 ====================
 
@@ -275,6 +278,8 @@ class Tokenizer : public NonCopyable {
     static Token create_text_token(std::string_view data = "");
     static Token create_text_token(std::string&&) = delete;  // Prevent dangling references
     static Token create_owned_text_token(std::string&& data);
+    std::optional<Token> emit_text_token(std::string_view data);
+    std::optional<Token> emit_owned_text_token(std::string data);
 
     /**
      * @brief 创建注释 Token
@@ -311,6 +316,7 @@ class Tokenizer : public NonCopyable {
      * @param message 错误消息
      */
     void handle_parse_error(ErrorCode code, const std::string& message);
+    void record_recoverable_error(ErrorCode code, const std::string& message);
 
     /**
      * @brief 记录解析错误到错误列表
@@ -324,6 +330,9 @@ class Tokenizer : public NonCopyable {
      */
     void transition_to_data_state();
 
+    void finish_boolean_attribute();
+    void finish_attribute(std::string_view value);
+
   private:
     // ==================== 核心状态成员变量 ====================
 
@@ -336,6 +345,7 @@ class Tokenizer : public NonCopyable {
 
     TokenBuilder          m_token_builder;     ///< Token构造器，用于逐步构建复杂的Token对象
     std::string           m_end_tag;           ///< 当前正在解析的结束标签名称缓存
+    std::string           m_last_start_tag;    ///< 最近一次发射的开始标签名称
     std::vector<HPSError> m_errors;            ///< 解析过程中收集的所有错误信息列表
     std::string           m_char_ref_buffer;   ///< 字符引用解析缓冲区，用于处理HTML实体
     size_t                m_attr_value_start;  ///< 属性值起始位置（Zero-Copy优化）

@@ -7,8 +7,26 @@
 
 #include <algorithm>
 #include <span>
+#include <unordered_set>
 
 namespace hps {
+namespace {
+
+[[nodiscard]] bool matches_simple_selector(const Element& element, const SimpleSelectorView selector) {
+    switch (selector.kind) {
+        case SimpleSelectorKind::Type:
+            return equals_ignore_case(element.tag_name(), selector.value);
+        case SimpleSelectorKind::Class:
+            return element.has_class(selector.value);
+        case SimpleSelectorKind::Id:
+            return element.id() == selector.value;
+    }
+
+    return false;
+}
+
+}  // namespace
+
 ElementQuery::ElementQuery(const Element* element) {
     if (element) {
         m_elements.push_back(element);
@@ -111,7 +129,7 @@ ElementQuery ElementQuery::has_class(const std::string_view class_name) const {
 ElementQuery ElementQuery::has_tag(const std::string_view tag_name) const {
     std::vector<const Element*> filtered;
     for (const auto& element : m_elements) {
-        if (element && element->tag_name() == tag_name) {
+        if (element && equals_ignore_case(element->tag_name(), tag_name)) {
             filtered.push_back(element);
         }
     }
@@ -216,8 +234,7 @@ ElementQuery ElementQuery::children() const {
     std::vector<const Element*> all_children;
     for (const auto& element : m_elements) {
         if (element) {
-            auto children = element->children();
-            for (const auto& child : children) {
+            for (auto child = element->first_child(); child; child = child->next_sibling()) {
                 if (auto elem = child->as_element()) {
                     all_children.push_back(elem);
                 }
@@ -232,17 +249,34 @@ ElementQuery ElementQuery::children(const std::string_view selector) const {
         return children();
     }
 
-    auto selector_list = parse_css_selector(selector);
-    if (!selector_list) {
+    std::vector<const Element*> filtered_children;
+    std::unordered_set<const Element*> seen;
+
+    if (const auto simple_selector = classify_simple_selector(selector); simple_selector.has_value()) {
+        for (const auto& element : m_elements) {
+            if (!element) {
+                continue;
+            }
+            for (auto child = element->first_child(); child; child = child->next_sibling()) {
+                if (auto elem = child->as_element(); elem && matches_simple_selector(*elem, *simple_selector) && seen.insert(elem).second) {
+                    filtered_children.push_back(elem);
+                }
+            }
+        }
+        return ElementQuery(std::move(filtered_children));
+    }
+
+    const auto selector_list = parse_css_selector_cached(selector);
+    if (!selector_list || selector_list->empty()) {
         return {};
     }
-    std::vector<const Element*> filtered_children;
+
     for (const auto& element : m_elements) {
         if (!element) {
             continue;
         }
-        for (const auto& child : element->children()) {
-            if (auto elem = child->as_element(); elem && selector_list->matches(*elem)) {
+        for (auto child = element->first_child(); child; child = child->next_sibling()) {
+            if (auto elem = child->as_element(); elem && selector_list->matches(*elem) && seen.insert(elem).second) {
                 filtered_children.push_back(elem);
             }
         }
@@ -252,10 +286,13 @@ ElementQuery ElementQuery::children(const std::string_view selector) const {
 
 ElementQuery ElementQuery::parent() const {
     std::vector<const Element*> parents;
+    std::unordered_set<const Element*> seen;
     for (const auto& element : m_elements) {
         if (element && element->parent()) {
             if (auto parent_elem = element->parent()->as_element()) {
-                parents.push_back(parent_elem);
+                if (seen.insert(parent_elem).second) {
+                    parents.push_back(parent_elem);
+                }
             }
         }
     }
@@ -286,8 +323,8 @@ ElementQuery ElementQuery::closest(const std::string_view selector) const {
     if (selector.empty()) {
         return {};
     }
-    const auto selector_list = parse_css_selector(selector);
-    if (!selector_list) {
+    const auto selector_list = parse_css_selector_cached(selector);
+    if (!selector_list || selector_list->empty()) {
         return {};
     }
 
@@ -440,6 +477,10 @@ ElementQuery ElementQuery::css(const std::string_view selector) const {
     return ElementQuery(std::move(all_results));
 }
 
+ElementQuery ElementQuery::find(const std::string_view selector) const {
+    return css(selector);
+}
+
 // 高级查询方法
 ElementQuery ElementQuery::filter(const std::function<bool(const Element&)>& predicate) const {
     std::vector<const Element*> filtered;
@@ -455,7 +496,7 @@ ElementQuery ElementQuery::not_(const std::string_view selector) const {
     if (selector.empty()) {
         return *this;
     }
-    const auto selector_list = parse_css_selector(selector);
+    const auto selector_list = parse_css_selector_cached(selector);
     if (!selector_list || selector_list->empty()) {
         return *this;
     }
@@ -550,7 +591,7 @@ bool ElementQuery::is(const std::string_view selector) const {
     if (selector.empty()) {
         return false;
     }
-    const auto selector_list = parse_css_selector(selector);
+    const auto selector_list = parse_css_selector_cached(selector);
     if (!selector_list || selector_list->empty()) {
         return false;
     }

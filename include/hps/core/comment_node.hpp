@@ -25,8 +25,8 @@ class CommentNode : public Node {
     [[nodiscard]] const std::string& value() const;
 
     /**
-     * @brief 递归所有的注释内容
-     * @return 注释内容
+     * @brief 面向文本提取时的内容
+     * @return 空字符串，避免注释污染父节点的 text_content
      */
     [[nodiscard]] std::string text_content() const override;
 

@@ -59,6 +59,38 @@ TEST(CSSSelectorTest, PseudoClassHas) {
     EXPECT_TRUE(parse("div:has(span)")->matches(parent));
 }
 
+TEST(CSSSelectorTest, PseudoClassHasSupportsRelativeSelectors) {
+    Element parent("div");
+
+    auto first = std::make_unique<Element>("span");
+    first->add_attribute("class", "lead");
+    auto nested = std::make_unique<Element>("em");
+    nested->add_attribute("class", "nested");
+    first->add_child(std::move(nested));
+
+    auto second = std::make_unique<Element>("span");
+    second->add_attribute("class", "target");
+
+    Element* first_ptr = first.get();
+    parent.add_child(std::move(first));
+    parent.add_child(std::move(second));
+
+    EXPECT_TRUE(parse("div:has(> span.target)")->matches(parent));
+    EXPECT_TRUE(parse("span:has(+ span.target)")->matches(*first_ptr));
+    EXPECT_TRUE(parse("span:has(~ span.target)")->matches(*first_ptr));
+    EXPECT_FALSE(parse("span:has(+ em.nested)")->matches(*first_ptr));
+}
+
+TEST(CSSSelectorTest, PseudoClassHasSpecificityUsesRelativeSelectorContents) {
+    const auto selector = parse("div:has(> .target, + #next)");
+    ASSERT_TRUE(selector);
+
+    const auto specificity = selector->get_max_specificity();
+    EXPECT_EQ(specificity.ids, 1);
+    EXPECT_EQ(specificity.classes, 0);
+    EXPECT_EQ(specificity.elements, 1);
+}
+
 TEST(CSSSelectorTest, PseudoClassNot) {
     Element div("div");
     div.add_attribute("class", "foo");

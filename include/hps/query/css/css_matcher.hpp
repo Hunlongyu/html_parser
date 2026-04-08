@@ -17,7 +17,7 @@ class Element;
 class CSSMatcher {
   public:
     /**
-     * 在指定根元素下查找所有匹配选择器的元素
+     * 在指定元素的后代中查找所有匹配选择器的元素
      * @param element 元素
      * @param selector CSS选择器
      * @return 匹配的元素列表
@@ -25,7 +25,7 @@ class CSSMatcher {
     static std::vector<const Element*> find_all(const Element& element, const CSSSelector& selector);
 
     /**
-     * 在指定根元素下查找所有匹配选择器列表的元素
+     * 在指定元素的后代中查找所有匹配选择器列表的元素
      * @param element 元素
      * @param selector_list 选择器列表
      * @return 匹配的元素列表（去重）
@@ -49,7 +49,7 @@ class CSSMatcher {
     static std::vector<const Element*> find_all(const Document& document, const SelectorList& selector_list);
 
     /**
-     * 在指定根元素下查找第一个匹配选择器的元素
+     * 在指定元素的后代中查找第一个匹配选择器的元素
      * @param element 元素
      * @param selector CSS选择器
      * @return 第一个匹配的元素，如果没有找到返回nullptr
@@ -57,7 +57,7 @@ class CSSMatcher {
     static const Element* find_first(const Element& element, const CSSSelector& selector);
 
     /**
-     * 在指定根元素下查找第一个匹配选择器列表的元素
+     * 在指定元素的后代中查找第一个匹配选择器列表的元素
      * @param element 元素
      * @param selector_list 选择器列表
      * @return 第一个匹配的元素，如果没有找到返回nullptr

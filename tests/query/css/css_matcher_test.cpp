@@ -58,4 +58,27 @@ TEST_F(CSSMatcherTest, NoMatch) {
     EXPECT_TRUE(results.empty());
 }
 
+TEST(CSSMatcherFragmentTest, DocumentTraversalIncludesAllTopLevelElementSubtrees) {
+    Document fragment("");
+
+    auto first = std::make_unique<Element>("div");
+    first->add_attribute("class", "first");
+
+    auto second = std::make_unique<Element>("section");
+    auto nested = std::make_unique<Element>("span");
+    nested->add_attribute("class", "target");
+    second->add_child(std::move(nested));
+
+    fragment.add_child(std::move(first));
+    fragment.add_child(std::move(second));
+
+    CSSParser parser(".target");
+    auto      selector = parser.parse_selector();
+    ASSERT_NE(selector, nullptr);
+
+    const auto results = CSSMatcher::find_all(fragment, *selector);
+    ASSERT_EQ(results.size(), 1u);
+    EXPECT_EQ(results[0]->tag_name(), "span");
+}
+
 } // namespace hps::tests

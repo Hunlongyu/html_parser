@@ -11,13 +11,21 @@ namespace hps {
 
 std::vector<const Element*> CSSMatcher::find_all(const Element& element, const CSSSelector& selector) {
     std::vector<const Element*> results;
-    traverse_and_match(element, selector, results);
+    for (auto child = element.first_child(); child; child = child->next_sibling()) {
+        if (child->is_element()) {
+            traverse_and_match(*child->as_element(), selector, results);
+        }
+    }
     return results;
 }
 
 std::vector<const Element*> CSSMatcher::find_all(const Element& element, const SelectorList& selector_list) {
     std::vector<const Element*> results;
-    traverse_and_match(element, selector_list, results);
+    for (auto child = element.first_child(); child; child = child->next_sibling()) {
+        if (child->is_element()) {
+            traverse_and_match(*child->as_element(), selector_list, results);
+        }
+    }
     std::unordered_set<const Element*> seen;
     const auto                         it = std::ranges::remove_if(results, [&seen](const Element* elem) { return !seen.insert(elem).second; }).begin();
     results.erase(it, results.end());
@@ -26,30 +34,36 @@ std::vector<const Element*> CSSMatcher::find_all(const Element& element, const S
 }
 
 std::vector<const Element*> CSSMatcher::find_all(const Document& document, const CSSSelector& selector) {
-    const auto root = document.root();
-    if (!root) {
-        return {};
+    std::vector<const Element*> results;
+    for (auto child = document.first_child(); child; child = child->next_sibling()) {
+        if (child->is_element()) {
+            traverse_and_match(*child->as_element(), selector, results);
+        }
     }
-    return find_all(*root, selector);
+    return results;
 }
 
 std::vector<const Element*> CSSMatcher::find_all(const Document& document, const SelectorList& selector_list) {
-    const auto root = document.root();
-    if (!root) {
-        return {};
+    std::vector<const Element*> results;
+    for (auto child = document.first_child(); child; child = child->next_sibling()) {
+        if (child->is_element()) {
+            traverse_and_match(*child->as_element(), selector_list, results);
+        }
     }
-    return find_all(*root, selector_list);
+
+    std::unordered_set<const Element*> seen;
+    const auto                         it = std::ranges::remove_if(results, [&seen](const Element* elem) { return !seen.insert(elem).second; }).begin();
+    results.erase(it, results.end());
+    return results;
 }
 
 const Element* CSSMatcher::find_first(const Element& element, const CSSSelector& selector) {
-    // 检查根元素本身
-    if (selector.matches(element)) {
-        return &element;
-    }
-    // 深度优先搜索子元素
-    for (const auto& child : element.children()) {
+    for (auto child = element.first_child(); child; child = child->next_sibling()) {
         if (child->is_element()) {
             auto element_child = child->as_element();
+            if (selector.matches(*element_child)) {
+                return element_child;
+            }
             if (auto result = find_first(*element_child, selector)) {
                 return result;
             }
@@ -59,14 +73,12 @@ const Element* CSSMatcher::find_first(const Element& element, const CSSSelector&
 }
 
 const Element* CSSMatcher::find_first(const Element& element, const SelectorList& selector_list) {
-    // 检查根元素本身
-    if (selector_list.matches(element)) {
-        return &element;
-    }
-    // 深度优先搜索子元素
-    for (const auto& child : element.children()) {
+    for (auto child = element.first_child(); child; child = child->next_sibling()) {
         if (child->is_element()) {
             auto element_child = child->as_element();
+            if (selector_list.matches(*element_child)) {
+                return element_child;
+            }
             if (auto result = find_first(*element_child, selector_list)) {
                 return result;
             }
@@ -76,19 +88,37 @@ const Element* CSSMatcher::find_first(const Element& element, const SelectorList
 }
 
 const Element* CSSMatcher::find_first(const Document& document, const CSSSelector& selector) {
-    const auto root = document.root();
-    if (!root) {
-        return nullptr;
+    for (auto child = document.first_child(); child; child = child->next_sibling()) {
+        if (!child->is_element()) {
+            continue;
+        }
+
+        const auto* element_child = child->as_element();
+        if (selector.matches(*element_child)) {
+            return element_child;
+        }
+        if (const auto* result = find_first(*element_child, selector)) {
+            return result;
+        }
     }
-    return find_first(*root, selector);
+    return nullptr;
 }
 
 const Element* CSSMatcher::find_first(const Document& document, const SelectorList& selector_list) {
-    const auto root = document.root();
-    if (!root) {
-        return nullptr;
+    for (auto child = document.first_child(); child; child = child->next_sibling()) {
+        if (!child->is_element()) {
+            continue;
+        }
+
+        const auto* element_child = child->as_element();
+        if (selector_list.matches(*element_child)) {
+            return element_child;
+        }
+        if (const auto* result = find_first(*element_child, selector_list)) {
+            return result;
+        }
     }
-    return find_first(*root, selector_list);
+    return nullptr;
 }
 
 // ==================== DOM树遍历实现 ====================
@@ -99,7 +129,7 @@ void CSSMatcher::traverse_and_match(const Element& element, const CSSSelector& s
         results.push_back(&element);
     }
     // 递归遍历子元素
-    for (const auto& child : element.children()) {
+    for (auto child = element.first_child(); child; child = child->next_sibling()) {
         if (child->is_element()) {
             traverse_and_match(*child->as_element(), selector, results);
         }
@@ -112,7 +142,7 @@ void CSSMatcher::traverse_and_match(const Element& element, const SelectorList& 
         results.push_back(&element);
     }
     // 递归遍历子元素
-    for (const auto& child : element.children()) {
+    for (auto child = element.first_child(); child; child = child->next_sibling()) {
         if (child->is_element()) {
             traverse_and_match(*child->as_element(), selector_list, results);
         }

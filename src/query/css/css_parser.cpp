@@ -1,13 +1,189 @@
 #include "hps/query/css/css_matcher.hpp"
 #include "hps/query/css/css_parser.hpp"
+#include "hps/query/css/css_utils.hpp"
 
 #include "hps/core/element.hpp"
 #include "hps/utils/exception.hpp"
 #include "hps/utils/string_utils.hpp"
 
 #include <algorithm>
+#include <array>
 #include <ranges>
 #include <regex>
+
+namespace {
+
+std::vector<std::string_view> split_selector_arguments(const std::string_view input) {
+    std::vector<std::string_view> parts;
+    size_t                        part_start   = 0;
+    int                           paren_depth  = 0;
+    int                           bracket_depth = 0;
+    char                          quote_char   = '\0';
+
+    for (size_t i = 0; i < input.size(); ++i) {
+        const char current = input[i];
+
+        if (quote_char != '\0') {
+            if (current == quote_char) {
+                quote_char = '\0';
+            } else if (current == '\\' && i + 1 < input.size()) {
+                ++i;
+            }
+            continue;
+        }
+
+        if (current == '"' || current == '\'') {
+            quote_char = current;
+            continue;
+        }
+
+        if (current == '(') {
+            ++paren_depth;
+            continue;
+        }
+        if (current == ')' && paren_depth > 0) {
+            --paren_depth;
+            continue;
+        }
+        if (current == '[') {
+            ++bracket_depth;
+            continue;
+        }
+        if (current == ']' && bracket_depth > 0) {
+            --bracket_depth;
+            continue;
+        }
+
+        if (current == ',' && paren_depth == 0 && bracket_depth == 0) {
+            parts.push_back(input.substr(part_start, i - part_start));
+            part_start = i + 1;
+        }
+    }
+
+    parts.push_back(input.substr(part_start));
+    return parts;
+}
+
+const hps::Element* first_element_child(const hps::Node* parent) {
+    for (auto child = parent ? parent->first_child() : nullptr; child; child = child->next_sibling()) {
+        if (child->is_element()) {
+            return child->as_element();
+        }
+    }
+    return nullptr;
+}
+
+const hps::Element* last_element_child(const hps::Node* parent) {
+    for (auto child = parent ? parent->last_child() : nullptr; child; child = child->previous_sibling()) {
+        if (child->is_element()) {
+            return child->as_element();
+        }
+    }
+    return nullptr;
+}
+
+bool matches_has_selector(const hps::Element& element, std::string_view selector) {
+    selector = hps::trim_whitespace(selector);
+    if (selector.empty()) {
+        return false;
+    }
+
+    enum class RelativeMode : std::uint8_t { Descendant, Child, Adjacent, Sibling };
+
+    RelativeMode mode = RelativeMode::Descendant;
+    if (selector.front() == '>') {
+        mode = RelativeMode::Child;
+        selector.remove_prefix(1);
+    } else if (selector.front() == '+') {
+        mode = RelativeMode::Adjacent;
+        selector.remove_prefix(1);
+    } else if (selector.front() == '~') {
+        mode = RelativeMode::Sibling;
+        selector.remove_prefix(1);
+    }
+
+    selector = hps::trim_whitespace(selector);
+    if (selector.empty()) {
+        return false;
+    }
+
+    const auto selector_list = hps::parse_css_selector_cached(selector);
+    if (!selector_list || selector_list->empty()) {
+        return false;
+    }
+
+    switch (mode) {
+        case RelativeMode::Descendant:
+            return hps::CSSMatcher::find_first(element, *selector_list) != nullptr;
+        case RelativeMode::Child:
+            for (auto child = element.first_child(); child; child = child->next_sibling()) {
+                if (const auto* child_element = child->as_element(); child_element && selector_list->matches(*child_element)) {
+                    return true;
+                }
+            }
+            return false;
+        case RelativeMode::Adjacent:
+            for (auto sibling = element.next_sibling(); sibling; sibling = sibling->next_sibling()) {
+                if (const auto* sibling_element = sibling->as_element()) {
+                    return selector_list->matches(*sibling_element);
+                }
+            }
+            return false;
+        case RelativeMode::Sibling:
+            for (auto sibling = element.next_sibling(); sibling; sibling = sibling->next_sibling()) {
+                if (const auto* sibling_element = sibling->as_element(); sibling_element && selector_list->matches(*sibling_element)) {
+                    return true;
+                }
+            }
+            return false;
+    }
+
+    return false;
+}
+
+bool matches_has_argument(const hps::Element& element, const std::string_view argument) {
+    if (argument.empty()) {
+        return false;
+    }
+
+    for (const auto part : split_selector_arguments(argument)) {
+        if (matches_has_selector(element, part)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+hps::SelectorSpecificity calculate_has_specificity(const std::string_view argument) {
+    hps::SelectorSpecificity max_specificity{};
+
+    for (auto part : split_selector_arguments(argument)) {
+        part = hps::trim_whitespace(part);
+        if (part.empty()) {
+            continue;
+        }
+
+        if (part.front() == '>' || part.front() == '+' || part.front() == '~') {
+            part.remove_prefix(1);
+            part = hps::trim_whitespace(part);
+        }
+
+        if (part.empty()) {
+            continue;
+        }
+
+        if (const auto selector_list = hps::parse_css_selector_cached(part); selector_list && !selector_list->empty()) {
+            if (const auto specificity = selector_list->get_max_specificity(); max_specificity < specificity) {
+                max_specificity = specificity;
+            }
+        }
+    }
+
+    return max_specificity;
+}
+
+}  // namespace
 
 namespace hps {
 
@@ -299,7 +475,7 @@ std::unique_ptr<CSSSelector> CSSParser::parse_pseudo_class() {
             if (token.type == CSSLexer::CSSTokenType::LeftParen) {
                 paren_depth++;
                 m_lexer.next_token();
-                argument_str += token.value;
+                argument_str += m_lexer.source_span(token);
             } else if (token.type == CSSLexer::CSSTokenType::RightParen) {
                 if (paren_depth == 0) {
                     // 这是结束的右括号
@@ -307,7 +483,7 @@ std::unique_ptr<CSSSelector> CSSParser::parse_pseudo_class() {
                 }
                 paren_depth--;
                 m_lexer.next_token();
-                argument_str += token.value;
+                argument_str += m_lexer.source_span(token);
             } else if (token.type == CSSLexer::CSSTokenType::EndOfFile) {
                 add_error("Unexpected end of input in pseudo-class arguments");
                 return nullptr;
@@ -315,7 +491,7 @@ std::unique_ptr<CSSSelector> CSSParser::parse_pseudo_class() {
                 // 消费其他类型的 token
                 m_lexer.next_token();
                 if (token.type != CSSLexer::CSSTokenType::Whitespace || !argument_str.empty()) {
-                    argument_str += token.value;
+                    argument_str += m_lexer.source_span(token);
                 }
             }
         }
@@ -385,19 +561,10 @@ std::unique_ptr<CSSSelector> CSSParser::parse_pseudo_class() {
     std::unique_ptr<SelectorList> sub_selectors = nullptr;
 
     // 对于需要子选择器列表的伪类，解析参数
-    if (type == PseudoClassSelector::PseudoType::Not || type == PseudoClassSelector::PseudoType::Is || type == PseudoClassSelector::PseudoType::Where || type == PseudoClassSelector::PseudoType::Has) {
+    if (type == PseudoClassSelector::PseudoType::Not || type == PseudoClassSelector::PseudoType::Is || type == PseudoClassSelector::PseudoType::Where) {
         if (!argument_str.empty()) {
-            // 使用临时解析器解析参数中的选择器列表
-            // 注意：我们需要一个新的StringPool来管理子选择器的字符串，或者共享当前的
-            // 为了简单起见，这里创建新的解析器，但理想情况下应该复用StringPool
-            // 修正：m_pool是shared_ptr，可以共享
-            
-            // 我们不能直接传递当前的m_pool，因为CSSParser构造函数会创建新的
-            // 这里我们只能创建一个新的解析器，它会有自己的StringPool
-            // 这可能会导致字符串重复存储，但逻辑是正确的
             try {
                 CSSParser inner_parser(argument_view);
-                // 对于 :not, :is, :where, :has，参数是一个选择器列表
                 sub_selectors = inner_parser.parse_selector_list();
             } catch (const HPSException& e) {
                  add_error("Invalid selector in pseudo-class argument: " + std::string(e.what()));
@@ -553,14 +720,7 @@ bool PseudoClassSelector::matches(const Element& element) const {
             if (!parent) {
                 return false;
             }
-
-            auto siblings = parent->children();
-            for (const auto& child : siblings) {
-                if (child->type() == NodeType::Element) {
-                    return child == &element;
-                }
-            }
-            return false;
+            return first_element_child(parent) == &element;
         }
 
         case PseudoType::LastChild: {
@@ -569,14 +729,7 @@ bool PseudoClassSelector::matches(const Element& element) const {
             if (!parent) {
                 return false;
             }
-
-            auto siblings = parent->children();
-            for (auto& sibling : std::ranges::reverse_view(siblings)) {
-                if (sibling->type() == NodeType::Element) {
-                    return sibling == &element;
-                }
-            }
-            return false;
+            return last_element_child(parent) == &element;
         }
 
         case PseudoType::NthChild: {
@@ -586,14 +739,13 @@ bool PseudoClassSelector::matches(const Element& element) const {
                 return false;
             }
 
-            int  index    = 1;
-            auto siblings = parent->children();
-            for (const auto& child : siblings) {
-                if (child->type() == NodeType::Element) {
+            int index = 1;
+            for (auto child = parent->first_child(); child; child = child->next_sibling()) {
+                if (child->is_element()) {
                     if (child == &element) {
                         return matches_nth_expression(m_argument, index);
                     }
-                    index++;
+                    ++index;
                 }
             }
             return false;
@@ -606,19 +758,13 @@ bool PseudoClassSelector::matches(const Element& element) const {
                 return false;
             }
 
-            // 先收集所有元素子节点
-            std::vector<const Node*> element_children;
-            for (auto siblings = parent->children(); const auto& child : siblings) {
-                if (child->type() == NodeType::Element) {
-                    element_children.push_back(child);
-                }
-            }
-
-            // 从末尾开始计算索引
-            for (size_t i = element_children.size(); i > 0; i--) {
-                if (element_children[i - 1] == &element) {
-                    size_t reverse_index = element_children.size() - (i - 1);
-                    return matches_nth_expression(m_argument, static_cast<int>(reverse_index));
+            int reverse_index = 1;
+            for (auto child = parent->last_child(); child; child = child->previous_sibling()) {
+                if (child->is_element()) {
+                    if (child == &element) {
+                        return matches_nth_expression(m_argument, reverse_index);
+                    }
+                    ++reverse_index;
                 }
             }
             return false;
@@ -654,9 +800,9 @@ bool PseudoClassSelector::matches(const Element& element) const {
             }
 
             int element_count = 0;
-            for (auto siblings = parent->children(); const auto& child : siblings) {
-                if (child->type() == NodeType::Element) {
-                    element_count++;
+            for (auto child = parent->first_child(); child; child = child->next_sibling()) {
+                if (child->is_element()) {
+                    ++element_count;
                     if (element_count > 1) {
                         return false;
                     }
@@ -672,9 +818,7 @@ bool PseudoClassSelector::matches(const Element& element) const {
 
         case PseudoType::Empty: {
             // :empty - 检查元素是否为空（无子元素和文本内容）
-            auto children = element.children();
-
-            for (const auto& child : children) {
+            for (auto child = element.first_child(); child; child = child->next_sibling()) {
                 if (child->type() == NodeType::Element) {
                     return false;
                 }
@@ -713,23 +857,11 @@ bool PseudoClassSelector::matches(const Element& element) const {
         }
 
         case PseudoType::Has: {
-             if (!m_sub_selectors) {
+             if (m_argument.empty()) {
                 return false;
             }
-            
-            // :has(selector) 检查是否有后代匹配选择器
-            // 这里我们使用 CSSMatcher 来查找匹配的元素
-            // 由于 CSSMatcher::find_first 会搜索所有后代，这正是我们需要的功能
-            
-            // 注意：标准的 :has() 可以包含相对选择器（如 > .child），
-            // 但目前的 parser 实现可能将它们解析为普通的后代选择器或者解析失败。
-            // 假设这里的 selector 是标准的后代选择器。
-            
-            // 我们需要在当前元素的上下文中查找
-            // CSSMatcher::find_first(element, selector) 会在 element 的后代中查找
-            
-            auto result = CSSMatcher::find_first(element, *m_sub_selectors);
-            return result != nullptr;
+
+            return matches_has_argument(element, m_argument);
         }
 
         // 状态伪类通常需要外部状态信息，这里提供基础实现
@@ -742,7 +874,7 @@ bool PseudoClassSelector::matches(const Element& element) const {
         case PseudoType::Visited:
         case PseudoType::Link: {
             // 链接相关伪类，检查是否为a标签且有href属性
-            if (element.tag_name() != "a") {
+            if (!equals_ignore_case(element.tag_name(), "a")) {
                 return false;
             }
             bool has_href = element.has_attribute("href");
@@ -756,19 +888,19 @@ bool PseudoClassSelector::matches(const Element& element) const {
 
         case PseudoType::Enabled: {
             // :enabled - 检查表单元素是否启用
-            const std::vector<std::string> form_elements   = {"input", "button", "select", "textarea", "option", "optgroup", "fieldset"};
-            const auto&                    tag             = element.tag_name();
-            bool                           is_form_element = std::ranges::find(form_elements, tag) != form_elements.end();
+            static constexpr std::array<std::string_view, 7> form_elements = {"input", "button", "select", "textarea", "option", "optgroup", "fieldset"};
+            const auto&                                 tag             = element.tag_name();
+            const bool                                  is_form_element = std::ranges::any_of(form_elements, [&tag](const auto form_element) { return equals_ignore_case(tag, form_element); });
             return is_form_element && !element.has_attribute("disabled");
         }
 
         case PseudoType::Checked: {
             // :checked - 检查表单元素是否被选中
-            if (const auto& tag = element.tag_name(); tag == "input") {
-                if (auto type = element.get_attribute("type"); type == "checkbox" || type == "radio") {
+            if (const auto& tag = element.tag_name(); equals_ignore_case(tag, "input")) {
+                if (const auto& type = element.get_attribute("type"); equals_ignore_case(type, "checkbox") || equals_ignore_case(type, "radio")) {
                     return element.has_attribute("checked");
                 }
-            } else if (tag == "option") {
+            } else if (equals_ignore_case(tag, "option")) {
                 return element.has_attribute("selected");
             }
             return false;
@@ -836,7 +968,11 @@ SelectorSpecificity PseudoClassSelector::calculate_specificity() const {
         return SelectorSpecificity{}; // :where() 优先级总是0
     }
 
-    if (m_pseudo_type == PseudoType::Is || m_pseudo_type == PseudoType::Not || m_pseudo_type == PseudoType::Has) {
+    if (m_pseudo_type == PseudoType::Has) {
+        return calculate_has_specificity(m_argument);
+    }
+
+    if (m_pseudo_type == PseudoType::Is || m_pseudo_type == PseudoType::Not) {
         // :is(), :not(), :has() 优先级是其参数列表中优先级最高的选择器的优先级
         if (m_sub_selectors) {
             return m_sub_selectors->get_max_specificity();
@@ -922,13 +1058,12 @@ int PseudoClassSelector::count_siblings_of_type(const Element& element) {
 
     int         count    = 0;
     const auto& tag_name = element.tag_name();
-    const auto  siblings = parent->children();
 
-    for (const auto& child : siblings) {
+    for (auto child = parent->first_child(); child; child = child->next_sibling()) {
         if (child->type() == NodeType::Element) {
             const auto child_element = child->as_element();
-            if (child_element && child_element->tag_name() == tag_name) {
-                count++;
+            if (child_element && equals_ignore_case(child_element->tag_name(), tag_name)) {
+                ++count;
             }
         }
     }
@@ -942,27 +1077,34 @@ int PseudoClassSelector::get_type_index(const Element& element, const bool from_
         return 1;
     }
 
-    const auto&                 tag_name = element.tag_name();
-    const auto                  siblings = parent->children();
-    std::vector<const Element*> same_type_elements;
+    const auto& tag_name = element.tag_name();
 
-    // 收集所有同类型的元素
-    for (const auto& child : siblings) {
-        if (child->type() == NodeType::Element) {
-            auto child_element = child->as_element();
-            if (child_element && child_element->tag_name() == tag_name) {
-                same_type_elements.push_back(child_element);
+    if (from_end) {
+        int index = 1;
+        for (auto child = parent->last_child(); child; child = child->previous_sibling()) {
+            if (child->type() == NodeType::Element) {
+                const auto* child_element = child->as_element();
+                if (child_element && equals_ignore_case(child_element->tag_name(), tag_name)) {
+                    if (child_element == &element) {
+                        return index;
+                    }
+                    ++index;
+                }
             }
         }
+        return 0;
     }
 
-    // 查找目标元素的索引
-    for (size_t i = 0; i < same_type_elements.size(); i++) {
-        if (same_type_elements[i] == &element) {
-            if (from_end) {
-                return static_cast<int>(same_type_elements.size() - i);
+    int index = 1;
+    for (auto child = parent->first_child(); child; child = child->next_sibling()) {
+        if (child->type() == NodeType::Element) {
+            const auto* child_element = child->as_element();
+            if (child_element && equals_ignore_case(child_element->tag_name(), tag_name)) {
+                if (child_element == &element) {
+                    return index;
+                }
+                ++index;
             }
-            return static_cast<int>(i + 1);
         }
     }
 
@@ -1005,8 +1147,8 @@ bool PseudoElementSelector::matches(const Element& element) const {
             {
                 const std::string& tag = element.tag_name();
                 // 排除不支持 ::before/::after 的替换元素
-                static const std::vector<std::string> replaced_elements = {"img", "input", "textarea", "select", "option", "br", "hr", "area", "base", "col", "embed", "link", "meta", "param", "source", "track", "wbr"};
-                return std::ranges::find(replaced_elements, tag) == replaced_elements.end();
+                static constexpr std::array<std::string_view, 17> replaced_elements = {"img", "input", "textarea", "select", "option", "br", "hr", "area", "base", "col", "embed", "link", "meta", "param", "source", "track", "wbr"};
+                return !std::ranges::any_of(replaced_elements, [&tag](const auto replaced_tag) { return equals_ignore_case(tag, replaced_tag); });
             }
 
         case ElementType::FirstLine:
@@ -1014,9 +1156,9 @@ bool PseudoElementSelector::matches(const Element& element) const {
             // ::first-line 和 ::first-letter 只能应用于块级元素
             // 这里简化处理，检查是否为常见的块级元素
             {
-                const std::string&                    tag            = element.tag_name();
-                static const std::vector<std::string> block_elements = {"div", "p", "h1", "h2", "h3", "h4", "h5", "h6", "article", "section", "header", "footer", "main", "aside", "nav", "blockquote", "pre", "address"};
-                return std::ranges::find(block_elements, tag) != block_elements.end();
+                const std::string&                        tag            = element.tag_name();
+                static constexpr std::array<std::string_view, 18> block_elements = {"div", "p", "h1", "h2", "h3", "h4", "h5", "h6", "article", "section", "header", "footer", "main", "aside", "nav", "blockquote", "pre", "address"};
+                return std::ranges::any_of(block_elements, [&tag](const auto block_tag) { return equals_ignore_case(tag, block_tag); });
             }
     }
     return false;

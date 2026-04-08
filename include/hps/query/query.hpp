@@ -48,6 +48,38 @@ class Query {
      */
     static ElementQuery css(const Document& document, const SelectorList& selector_list);
 
+    /**
+     * @brief 在指定元素的后代中查找第一个匹配的 CSS 选择器结果
+     * @param element 目标元素
+     * @param selector CSS 选择器
+     * @return 第一个匹配元素，未找到则返回 nullptr
+     */
+    static const Element* css_first(const Element& element, std::string_view selector);
+
+    /**
+     * @brief 在指定元素的后代中查找第一个匹配的已解析选择器结果
+     * @param element 目标元素
+     * @param selector_list 已解析选择器
+     * @return 第一个匹配元素，未找到则返回 nullptr
+     */
+    static const Element* css_first(const Element& element, const SelectorList& selector_list);
+
+    /**
+     * @brief 在文档中查找第一个匹配的 CSS 选择器结果
+     * @param document 目标文档
+     * @param selector CSS 选择器
+     * @return 第一个匹配元素，未找到则返回 nullptr
+     */
+    static const Element* css_first(const Document& document, std::string_view selector);
+
+    /**
+     * @brief 在文档中查找第一个匹配的已解析选择器结果
+     * @param document 目标文档
+     * @param selector_list 已解析选择器
+     * @return 第一个匹配元素，未找到则返回 nullptr
+     */
+    static const Element* css_first(const Document& document, const SelectorList& selector_list);
+
 
 };
 }  // namespace hps

@@ -55,6 +55,8 @@ TEST(ElementQueryAdvancedTest, FiltersAndNavigationWorkOnParsedDom) {
     EXPECT_EQ(ps.eq(1).siblings().size(), 2u);
 
     EXPECT_EQ(root.css("p.a").size(), 2u);
+    EXPECT_EQ(root.find("p.a").size(), 2u);
+    EXPECT_EQ(root.css("#root").size(), 0u);
 
     EXPECT_TRUE(ps.is("p"));
     EXPECT_TRUE(ps.is(".a"));
@@ -98,5 +100,20 @@ TEST(ElementQueryAdvancedTest, PredicateBasedFiltersWork) {
     EXPECT_EQ(text_contains.size(), 1u);
 }
 
-}  // namespace hps::tests
+TEST(ElementQueryAdvancedTest, FindAliasAndHasTagStayHtmlCaseInsensitive) {
+    hps::Options options;
+    options.preserve_case = true;
 
+    const auto doc = hps::parse(R"(<DIV id="root"><SPAN class="tag">One</SPAN><SPAN>Two</SPAN></DIV>)", options);
+    ASSERT_NE(doc, nullptr);
+
+    const auto root = doc->css("#root");
+    ASSERT_EQ(root.size(), 1u);
+
+    const auto spans = root.find("span");
+    ASSERT_EQ(spans.size(), 2u);
+    EXPECT_EQ(spans.has_tag("span").size(), 2u);
+    EXPECT_EQ(spans.has_tag("SPAN").size(), 2u);
+}
+
+}  // namespace hps::tests

@@ -55,7 +55,11 @@ TEST(StringUtilsTest, NormalizeWhitespace) {
 
 TEST(StringUtilsTest, DecodeEntities) {
     EXPECT_EQ(decode_html_entities("a&nbsp;b"), "a b");
-    EXPECT_EQ(decode_html_entities("a&amp;b"), "a&amp;b"); // Current implementation only supports &nbsp;?
+    EXPECT_EQ(decode_html_entities("a&amp;b&lt;c&gt;"), "a&b<c>");
+    EXPECT_EQ(decode_html_entities("&quot;&apos;"), "\"'");
+    EXPECT_EQ(decode_html_entities("&#65;&#x41;"), "AA");
+    EXPECT_EQ(decode_html_entities("&#x4E2D;"), std::string("\xE4\xB8\xAD"));
+    EXPECT_EQ(decode_html_entities("&unknown;"), "&unknown;");
 }
 
 } // namespace hps::tests

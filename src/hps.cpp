@@ -14,6 +14,15 @@ std::shared_ptr<Document> parse(const std::string_view html, const Options& opti
     return parser.parse(html, options);
 }
 
+std::shared_ptr<Document> parse_fragment(const std::string_view html, const std::string_view context_tag) {
+    return parse_fragment(html, context_tag, Options());
+}
+
+std::shared_ptr<Document> parse_fragment(const std::string_view html, const std::string_view context_tag, const Options& options) {
+    HTMLParser parser;
+    return parser.parse_fragment(html, context_tag, options);
+}
+
 ParseResult parse_with_error(const std::string_view html) {
     return parse_with_error(html, Options());
 }
@@ -21,6 +30,18 @@ ParseResult parse_with_error(const std::string_view html) {
 ParseResult parse_with_error(const std::string_view html, const Options& options) {
     HTMLParser                      parser;
     const std::shared_ptr<Document> document = parser.parse(html, options);
+    const std::vector<HPSError>     errors   = parser.get_errors();
+
+    return ParseResult{.document = document, .errors = errors};
+}
+
+ParseResult parse_fragment_with_error(const std::string_view html, const std::string_view context_tag) {
+    return parse_fragment_with_error(html, context_tag, Options());
+}
+
+ParseResult parse_fragment_with_error(const std::string_view html, const std::string_view context_tag, const Options& options) {
+    HTMLParser                      parser;
+    const std::shared_ptr<Document> document = parser.parse_fragment(html, context_tag, options);
     const std::vector<HPSError>     errors   = parser.get_errors();
 
     return ParseResult{.document = document, .errors = errors};

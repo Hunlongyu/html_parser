@@ -1,0 +1,398 @@
+#data
+<p>Hello
+#document
+| <html>
+|   <head>
+|   <body>
+|     <p>
+|       "Hello"
+
+#data
+<meta charset="utf-8"><title>Example</title><p>Body</p>
+#document
+| <html>
+|   <head>
+|     <meta>
+|       charset="utf-8"
+|     <title>
+|       "Example"
+|   <body>
+|     <p>
+|       "Body"
+
+#data
+<ul><li>one<li>two</ul>
+#document
+| <html>
+|   <head>
+|   <body>
+|     <ul>
+|       <li>
+|         "one"
+|       <li>
+|         "two"
+
+#data
+<select><option>a<option>b</select>
+#document
+| <html>
+|   <head>
+|   <body>
+|     <select>
+|       <option>
+|         "a"
+|       <option>
+|         "b"
+
+#data
+<select><optgroup label="one"><option>a<optgroup label="two"><option>b</select>
+#document
+| <html>
+|   <head>
+|   <body>
+|     <select>
+|       <optgroup>
+|         label="one"
+|         <option>
+|           "a"
+|       <optgroup>
+|         label="two"
+|         <option>
+|           "b"
+
+#data
+<div><button>one<button>two</div>
+#document
+| <html>
+|   <head>
+|   <body>
+|     <div>
+|       <button>
+|         "one"
+|       <button>
+|         "two"
+
+#data
+<div><a href="one">one<a href="two">two</a></div>
+#document
+| <html>
+|   <head>
+|   <body>
+|     <div>
+|       <a>
+|         href="one"
+|         "one"
+|       <a>
+|         href="two"
+|         "two"
+
+#data
+<div><form id="outer"><input name="a"><form id="inner"><input name="b"></form></form></div>
+#document
+| <html>
+|   <head>
+|   <body>
+|     <div>
+|       <form>
+|         id="outer"
+|         <input>
+|           name="a"
+|         <input>
+|           name="b"
+
+#data
+</div><p>ok</p>
+#document
+| <html>
+|   <head>
+|   <body>
+|     <p>
+|       "ok"
+
+#data
+<style><b>x</b></style><textarea>&lt;</textarea>
+#document
+| <html>
+|   <head>
+|     <style>
+|       "<b>x</b>"
+|   <body>
+|     <textarea>
+|       "<"
+
+#data
+<head><meta charset="utf-8"></head>Text<p>Body</p>
+#document
+| <html>
+|   <head>
+|     <meta>
+|       charset="utf-8"
+|   <body>
+|     "Text"
+|     <p>
+|       "Body"
+
+#data
+<!--pre--><p>x</p>
+#document
+| <!-- pre -->
+| <html>
+|   <head>
+|   <body>
+|     <p>
+|       "x"
+
+#data
+<table><tr><td>a</td><td>b</td></tr></table>
+#document
+| <html>
+|   <head>
+|   <body>
+|     <table>
+|       <tbody>
+|         <tr>
+|           <td>
+|             "a"
+|           <td>
+|             "b"
+
+#data
+<table><td>a<td>b</table>
+#document
+| <html>
+|   <head>
+|   <body>
+|     <table>
+|       <tbody>
+|         <tr>
+|           <td>
+|             "a"
+|           <td>
+|             "b"
+
+#data
+<table><caption>cap<tr><td>x</table>
+#document
+| <html>
+|   <head>
+|   <body>
+|     <table>
+|       <caption>
+|         "cap"
+|       <tbody>
+|         <tr>
+|           <td>
+|             "x"
+
+#data
+<table><tr><td>a<table><tr><td>b</td></tr></table>c</td></tr></table>
+#document
+| <html>
+|   <head>
+|   <body>
+|     <table>
+|       <tbody>
+|         <tr>
+|           <td>
+|             "a"
+|             <table>
+|               <tbody>
+|                 <tr>
+|                   <td>
+|                     "b"
+|             "c"
+
+#data
+<table><col><col></table>
+#document
+| <html>
+|   <head>
+|   <body>
+|     <table>
+|       <colgroup>
+|         <col>
+|         <col>
+
+#data
+<section><table><colgroup><div>x</div><tr><td>y</table></section>
+#document
+| <html>
+|   <head>
+|   <body>
+|     <section>
+|       <div>
+|         "x"
+|       <table>
+|         <colgroup>
+|         <tbody>
+|           <tr>
+|             <td>
+|               "y"
+
+#data
+<p>one<table><tr><td>two</table>
+#document
+| <html>
+|   <head>
+|   <body>
+|     <p>
+|       "one"
+|     <table>
+|       <tbody>
+|         <tr>
+|           <td>
+|             "two"
+
+#data
+alpha<span>beta</span>
+#document-fragment
+div
+| "alpha"
+| <span>
+|   "beta"
+
+#data
+&lt;<b>x</b>
+#document-fragment
+textarea
+| "<<b>x</b>"
+
+#data
+<optgroup label="one"><option>a<optgroup label="two"><option>b
+#document-fragment
+select
+| <optgroup>
+|   label="one"
+|   <option>
+|     "a"
+| <optgroup>
+|   label="two"
+|   <option>
+|     "b"
+
+#data
+<button>one<button>two
+#document-fragment
+div
+| <button>
+|   "one"
+| <button>
+|   "two"
+
+#data
+<a href="one">one<a href="two">two</a>
+#document-fragment
+div
+| <a>
+|   href="one"
+|   "one"
+| <a>
+|   href="two"
+|   "two"
+
+#data
+<tr><td>a<td>b
+#document-fragment
+table
+| <tbody>
+|   <tr>
+|     <td>
+|       "a"
+|     <td>
+|       "b"
+
+#data
+<caption>cap<col>
+#document-fragment
+table
+| <caption>
+|   "cap"
+| <colgroup>
+|   <col>
+
+#data
+<colgroup><div>x</div><tr><td>y
+#document-fragment
+table
+| <div>
+|   "x"
+| <colgroup>
+| <tbody>
+|   <tr>
+|     <td>
+|       "y"
+
+#data
+<div><table>alpha<tr><td>beta</table></div>
+#document
+| <html>
+|   <head>
+|   <body>
+|     <div>
+|       "alpha"
+|       <table>
+|         <tbody>
+|           <tr>
+|             <td>
+|               "beta"
+
+#data
+alpha<tr><td>beta
+#document-fragment
+table
+| "alpha"
+| <tbody>
+|   <tr>
+|     <td>
+|       "beta"
+
+#data
+<div><table><b>alpha<tr><td>beta</table></div>
+#document
+| <html>
+|   <head>
+|   <body>
+|     <div>
+|       <b>
+|         "alpha"
+|       <table>
+|         <tbody>
+|           <tr>
+|             <td>
+|               "beta"
+
+#data
+<b>alpha<tr><td>beta
+#document-fragment
+table
+| <b>
+|   "alpha"
+| <tbody>
+|   <tr>
+|     <td>
+|       "beta"
+
+#data
+<p><b><i>x</b>y</i>z
+#document
+| <html>
+|   <head>
+|   <body>
+|     <p>
+|       <b>
+|         <i>
+|           "x"
+|       <i>
+|         "y"
+|       "z"
+
+#data
+<b><i>x</b>y</i>z
+#document-fragment
+div
+| <b>
+|   <i>
+|     "x"
+| <i>
+|   "y"
+| "z"

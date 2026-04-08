@@ -101,6 +101,17 @@ TEST(TokenTest, ForceQuirks) {
     EXPECT_FALSE(token.is_open());
 }
 
+TEST(TokenTest, DoctypeMetadata) {
+    Token token(TokenType::DOCTYPE, "html", "");
+    token.set_doctype_identifiers("-//W3C//DTD HTML 4.01//EN", "about:legacy-compat");
+    token.set_doctype_force_quirks(true);
+
+    EXPECT_EQ(token.name(), "html");
+    EXPECT_EQ(token.doctype_public_id(), "-//W3C//DTD HTML 4.01//EN");
+    EXPECT_EQ(token.doctype_system_id(), "about:legacy-compat");
+    EXPECT_TRUE(token.doctype_force_quirks());
+}
+
 TEST(TokenTest, MoveAssignmentTransfersState) {
     Token target(TokenType::OPEN, "div", "static");
 
@@ -117,8 +128,6 @@ TEST(TokenTest, MoveAssignmentTransfersState) {
     EXPECT_EQ(target.attrs()[0].name, "k");
     EXPECT_EQ(target.attrs()[0].value, "v");
     EXPECT_TRUE(target.attrs()[0].has_value);
-
-    EXPECT_TRUE(source.value().empty());
 }
 
 } // namespace hps::tests

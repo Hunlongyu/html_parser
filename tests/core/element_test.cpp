@@ -1,4 +1,5 @@
 #include "hps/core/element.hpp"
+#include "hps/core/comment_node.hpp"
 #include "hps/core/text_node.hpp"
 
 #include <gtest/gtest.h>
@@ -11,6 +12,16 @@ TEST(ElementTest, TagNameAndType) {
     EXPECT_EQ(div.type(), NodeType::Element);
     EXPECT_TRUE(div.is_element());
     EXPECT_EQ(div.tag_name(), "div");
+}
+
+TEST(ElementTest, NamespaceAccessorsExposeConfiguredNamespace) {
+    const Element svg("svg", NamespaceKind::Svg);
+    EXPECT_EQ(svg.namespace_kind(), NamespaceKind::Svg);
+    EXPECT_EQ(svg.namespace_uri(), "http://www.w3.org/2000/svg");
+
+    const Element math("math", NamespaceKind::MathML);
+    EXPECT_EQ(math.namespace_kind(), NamespaceKind::MathML);
+    EXPECT_EQ(math.namespace_uri(), "http://www.w3.org/1998/Math/MathML");
 }
 
 TEST(ElementTest, AttributesAreCaseInsensitiveForLookupAndUpdate) {
@@ -57,6 +68,37 @@ TEST(ElementTest, OwnTextOnlyIncludesDirectTextNodes) {
 
     EXPECT_EQ(root.own_text(), "AC");
     EXPECT_EQ(root.text_content(), "ABC");
+}
+
+TEST(ElementTest, TextContentIgnoresCommentNodes) {
+    Element root("div");
+    root.add_child(std::make_unique<TextNode>("A"));
+    root.add_child(std::make_unique<CommentNode>("hidden"));
+
+    auto child = std::make_unique<Element>("span");
+    child->add_child(std::make_unique<TextNode>("B"));
+    child->add_child(std::make_unique<CommentNode>("nested"));
+    root.add_child(std::move(child));
+
+    root.add_child(std::make_unique<TextNode>("C"));
+
+    EXPECT_EQ(root.own_text(), "AC");
+    EXPECT_EQ(root.text_content(), "ABC");
+}
+
+TEST(ElementTest, BooleanAttributeSemanticsCanBeStored) {
+    Element el("input");
+    el.add_attribute("checked", "", false);
+    el.add_attribute("value", "", true);
+
+    ASSERT_EQ(el.attribute_count(), 2u);
+    EXPECT_FALSE(el.attributes()[0].has_value());
+    EXPECT_TRUE(el.attributes()[1].has_value());
+
+    el.add_attribute("checked", "checked", true);
+    ASSERT_EQ(el.attribute_count(), 2u);
+    EXPECT_TRUE(el.attributes()[0].has_value());
+    EXPECT_EQ(el.attributes()[0].value(), "checked");
 }
 
 TEST(ElementTest, RecursiveFindByIdSearchesDescendants) {
@@ -106,4 +148,3 @@ TEST(ElementTest, RecursiveCollectByTagNameAndClassName) {
 }
 
 }  // namespace hps::tests
-

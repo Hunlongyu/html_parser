@@ -5,6 +5,7 @@ project(hps VERSION 0.0.4 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if (MSVC)
     add_compile_options(/utf-8)
@@ -58,6 +59,17 @@ configure_file(
 
 option(HPS_BUILD_SHARED "Build shared library" OFF)
 option(HPS_BUILD_STATIC "Build static library" ON)
+option(HPS_ENABLE_CLANG_TIDY "Run clang-tidy on hps targets during builds" OFF)
+
+if (HPS_ENABLE_CLANG_TIDY)
+    find_program(HPS_CLANG_TIDY_EXE NAMES clang-tidy REQUIRED)
+endif()
+
+function(hps_enable_clang_tidy target_name)
+    if (HPS_ENABLE_CLANG_TIDY)
+        set_target_properties(${target_name} PROPERTIES CXX_CLANG_TIDY "${HPS_CLANG_TIDY_EXE}")
+    endif()
+endfunction()
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/include) 
@@ -79,17 +91,20 @@ set(SOURCE
 
     "src/query/element_query.cpp"
     "src/query/query.cpp"
+    "src/utils/encoding.cpp"
     "src/hps.cpp"
 )
 
 if (HPS_BUILD_SHARED)
     add_library(hps SHARED ${SOURCE})
     set_target_properties(hps PROPERTIES OUTPUT_NAME "hps" WINDOWS_EXPORT_ALL_SYMBOLS ON)
+    hps_enable_clang_tidy(hps)
 endif()
 
 if (HPS_BUILD_STATIC)
     add_library(hps_static STATIC ${SOURCE})
     set_target_properties(hps_static PROPERTIES OUTPUT_NAME "hps_static")
+    hps_enable_clang_tidy(hps_static)
 endif()
 
 option(HPS_BUILD_EXAMPLES "Build examples" ${PROJECT_IS_TOP_LEVEL})

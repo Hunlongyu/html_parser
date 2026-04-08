@@ -17,7 +17,7 @@ const std::string& CommentNode::value() const {
 }
 
 std::string CommentNode::text_content() const {
-    return m_comment;
+    return {};
 }
 
 const std::string& CommentNode::comment() const {

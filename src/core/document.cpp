@@ -9,6 +9,15 @@
 #include <sstream>
 
 namespace hps {
+namespace {
+std::string normalize_tag_key(const std::string_view tag_name) {
+    std::string normalized(tag_name);
+    std::ranges::transform(normalized, normalized.begin(), [](const unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+    return normalized;
+}
+
+}  // namespace
+
 Document::Document(std::string html_content)
     : Node(NodeType::Document),
       m_html_source(std::move(html_content)) {}
@@ -17,9 +26,53 @@ NodeType Document::type() const noexcept {
     return NodeType::Document;
 }
 
+void Document::invalidate_query_indexes() noexcept {
+    m_query_index_cache.id_lookup.clear();
+    m_query_index_cache.class_lookup.clear();
+    m_query_index_cache.tag_lookup.clear();
+    m_query_index_cache.valid = false;
+    m_cached_title.reset();
+    m_cached_charset.reset();
+}
+
+void Document::index_element_subtree(const Element& element) const {
+    if (!element.id().empty()) {
+        m_query_index_cache.id_lookup.emplace(element.id(), &element);
+    }
+    m_query_index_cache.tag_lookup[normalize_tag_key(element.tag_name())].push_back(&element);
+
+    for (const auto& class_name : element.class_names()) {
+        m_query_index_cache.class_lookup[class_name].push_back(&element);
+    }
+
+    for (auto child = element.first_child(); child; child = child->next_sibling()) {
+        if (const auto* child_element = child->as_element()) {
+            index_element_subtree(*child_element);
+        }
+    }
+}
+
+void Document::ensure_query_indexes() const {
+    if (m_query_index_cache.valid) {
+        return;
+    }
+
+    m_query_index_cache.id_lookup.clear();
+    m_query_index_cache.class_lookup.clear();
+    m_query_index_cache.tag_lookup.clear();
+
+    for (auto child = first_child(); child; child = child->next_sibling()) {
+        if (const auto* child_element = child->as_element()) {
+            index_element_subtree(*child_element);
+        }
+    }
+
+    m_query_index_cache.valid = true;
+}
+
 std::string Document::text_content() const {
     std::stringstream ss;
-    for (const auto& child : children()) {
+    for (auto child = first_child(); child; child = child->next_sibling()) {
         ss << child->text_content();
     }
     return ss.str();
@@ -110,7 +163,7 @@ const Element* Document::root() const {
     if (const auto html_element = html()) {
         return html_element;
     }
-    for (const auto& child : children()) {
+    for (auto child = first_child(); child; child = child->next_sibling()) {
         if (child->is_element()) {
             return child->as_element();
         }
@@ -119,7 +172,7 @@ const Element* Document::root() const {
 }
 
 const Element* Document::html() const {
-    for (const auto& child : children()) {
+    for (auto child = first_child(); child; child = child->next_sibling()) {
         if (child->is_element()) {
             const auto element = child->as_element();
             if (equals_ignore_case(element->tag_name(), "html")) {
@@ -131,7 +184,7 @@ const Element* Document::html() const {
 }
 
 const Element* Document::querySelector(const std::string_view selector) const {
-    return Query::css(*this, selector).first_element();
+    return Query::css_first(*this, selector);
 }
 
 std::vector<const Element*> Document::querySelectorAll(const std::string_view selector) const {
@@ -139,25 +192,61 @@ std::vector<const Element*> Document::querySelectorAll(const std::string_view se
 }
 
 const Element* Document::get_element_by_id(const std::string_view id) const {
-    return Query::css(*this, "#" + std::string(id)).first_element();
+    if (id.empty()) {
+        return nullptr;
+    }
+
+    ensure_query_indexes();
+
+    if (const auto it = m_query_index_cache.id_lookup.find(std::string(id)); it != m_query_index_cache.id_lookup.end()) {
+        return it->second;
+    }
+    return nullptr;
 }
 
 std::vector<const Element*> Document::get_elements_by_tag_name(const std::string_view tag_name) const {
-    return Query::css(*this, std::string(tag_name)).elements();
+    ensure_query_indexes();
+
+    if (const auto it = m_query_index_cache.tag_lookup.find(normalize_tag_key(tag_name)); it != m_query_index_cache.tag_lookup.end()) {
+        return it->second;
+    }
+    return {};
 }
 
 std::vector<const Element*> Document::get_elements_by_class_name(const std::string_view class_name) const {
-    return Query::css(*this, "." + std::string(class_name)).elements();
+    ensure_query_indexes();
+
+    if (const auto it = m_query_index_cache.class_lookup.find(std::string(class_name)); it != m_query_index_cache.class_lookup.end()) {
+        return it->second;
+    }
+    return {};
 }
 
 ElementQuery Document::css(const std::string_view selector) const {
     return Query::css(*this, selector);
 }
 
-void Document::add_child(std::unique_ptr<Node> child) {
+Node* Document::add_child(std::unique_ptr<Node> child) {
     if (!child) {
-        return;
+        return nullptr;
     }
-    append_child(std::move(child));
+    Node* inserted = append_child(std::move(child));
+    invalidate_query_indexes();
+    return inserted;
+}
+
+Node* Document::insert_child_before(std::unique_ptr<Node> child, const Node* before) {
+    if (!child) {
+        return nullptr;
+    }
+    Node* inserted = Node::insert_child_before(std::move(child), before);
+    invalidate_query_indexes();
+    return inserted;
+}
+
+std::vector<std::unique_ptr<Node>> Document::take_children() {
+    auto children = Node::take_children();
+    invalidate_query_indexes();
+    return children;
 }
 }  // namespace hps

@@ -4,6 +4,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 namespace hps {
@@ -155,13 +156,34 @@ class Document : public Node {
      * 将指定的节点添加为文档的子节点。通常用于添加根元素（如 html 元素）。
      * 如果传入的节点为 nullptr，则不执行任何操作。
      */
-    void add_child(std::unique_ptr<Node> child);
+    Node* add_child(std::unique_ptr<Node> child);
+    Node* insert_child_before(std::unique_ptr<Node> child, const Node* before);
+
+    /**
+     * @brief 取出并移除所有直接子节点
+     * @return 当前文档原有子节点的所有权数组
+     */
+    std::vector<std::unique_ptr<Node>> take_children();
 
   private:
+    struct QueryIndexCache {
+        std::unordered_map<std::string, const Element*>              id_lookup;
+        std::unordered_map<std::string, std::vector<const Element*>> class_lookup;
+        std::unordered_map<std::string, std::vector<const Element*>> tag_lookup;
+        bool                                                         valid{false};
+    };
+
+    void invalidate_query_indexes() noexcept;
+    void ensure_query_indexes() const;
+    void index_element_subtree(const Element& element) const;
+
     std::string m_html_source; /**< 原始 HTML 源代码 */
 
+    mutable QueryIndexCache           m_query_index_cache;
     mutable std::optional<std::string> m_cached_title;   /**< 缓存的文档标题 */
     mutable std::optional<std::string> m_cached_charset; /**< 缓存的字符编码 */
+
+    friend class Node;
 };
 
 }  // namespace hps

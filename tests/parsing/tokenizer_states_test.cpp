@@ -60,13 +60,18 @@ TEST(TokenizerStatesTest, SelfClosingStartTagBreaksOnUnexpectedCharacter) {
     EXPECT_EQ(errors[0].code, ErrorCode::InvalidToken);
 }
 
-TEST(TokenizerStatesTest, DoctypeMissingGtDoesNotReturnToken) {
+TEST(TokenizerStatesTest, DoctypeMissingGtEmitsQuirksDoctypeToken) {
     Tokenizer tz("<!DOCTYPE html", Options());
     const auto tokens = tz.tokenize_all();
-    EXPECT_TRUE(tokens.empty());
+    ASSERT_EQ(tokens.size(), 1u);
+    EXPECT_EQ(tokens[0].type(), TokenType::DOCTYPE);
+    EXPECT_EQ(tokens[0].name(), "html");
+    EXPECT_TRUE(tokens[0].doctype_force_quirks());
     const auto errors = tz.consume_errors();
     ASSERT_FALSE(errors.empty());
     EXPECT_EQ(errors[0].code, ErrorCode::UnexpectedEOF);
+    EXPECT_EQ(errors[0].location.line, 1u);
+    EXPECT_EQ(errors[0].location.column, 15u);
 }
 
 TEST(TokenizerStatesTest, RawtextStyleProducesTextAndEndTagTokens) {
@@ -111,6 +116,32 @@ TEST(TokenizerStatesTest, RcdataTextareaEmptyStillProducesEndTagToken) {
     EXPECT_EQ(tokens[0].name(), "textarea");
     EXPECT_EQ(tokens[1].type(), TokenType::CLOSE);
     EXPECT_EQ(tokens[1].name(), "textarea");
+}
+
+TEST(TokenizerStatesTest, InitialRawtextStateUsesLastStartTag) {
+    Tokenizer tz("foo</xmp>", Options(), TokenizerState::RAWTEXT, "xmp");
+    const auto tokens = tz.tokenize_all();
+    ASSERT_EQ(tokens.size(), 2u);
+    EXPECT_EQ(tokens[0].type(), TokenType::TEXT);
+    EXPECT_EQ(tokens[0].value(), "foo");
+    EXPECT_EQ(tokens[1].type(), TokenType::CLOSE);
+    EXPECT_EQ(tokens[1].name(), "xmp");
+}
+
+TEST(TokenizerStatesTest, InitialRcdataStateDecodesEntities) {
+    Tokenizer tz("&lt;", Options(), TokenizerState::RCDATA, "textarea");
+    const auto tokens = tz.tokenize_all();
+    ASSERT_EQ(tokens.size(), 1u);
+    EXPECT_EQ(tokens[0].type(), TokenType::TEXT);
+    EXPECT_EQ(tokens[0].value(), "<");
+}
+
+TEST(TokenizerStatesTest, PlaintextStateTreatsEverythingAsText) {
+    Tokenizer tz("</plaintext>&body;", Options(), TokenizerState::Plaintext, "plaintext");
+    const auto tokens = tz.tokenize_all();
+    ASSERT_EQ(tokens.size(), 1u);
+    EXPECT_EQ(tokens[0].type(), TokenType::TEXT);
+    EXPECT_EQ(tokens[0].value(), "</plaintext>&body;");
 }
 
 TEST(TokenizerStatesTest, ExposesPositionLengthAndErrors) {

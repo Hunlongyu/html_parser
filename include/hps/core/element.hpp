@@ -15,7 +15,7 @@ class Element : public Node {
      * @brief 构造函数
      * @param name 元素的标签名
      */
-    explicit Element(std::string_view name);
+    explicit Element(std::string_view name, NamespaceKind namespace_kind = NamespaceKind::Html);
 
     /**
      * @brief 虚析构函数
@@ -47,6 +47,8 @@ class Element : public Node {
      * @return 元素的标签名（例如 "div", "p", "a"）。
      */
     [[nodiscard]] const std::string& tag_name() const noexcept;
+    [[nodiscard]] NamespaceKind namespace_kind() const noexcept;
+    [[nodiscard]] std::string_view namespace_uri() const noexcept;
 
     // Attribute Management
     /**
@@ -148,18 +150,27 @@ class Element : public Node {
      * @brief 添加子节点
      * @param child 要添加的子节点的唯一指针
      */
-    void add_child(std::unique_ptr<Node> child);
+    Node* add_child(std::unique_ptr<Node> child);
+    Node* insert_child_before(std::unique_ptr<Node> child, const Node* before);
+
+    /**
+     * @brief 取出并移除所有直接子节点
+     * @return 当前元素原有子节点的所有权数组
+     */
+    std::vector<std::unique_ptr<Node>> take_children();
 
     /**
      * @brief 添加或更新属性
      * @param name 属性名
      * @param value 属性值
+     * @param has_value 是否显式带值，用于区分 `checked` 和 `checked=""`
      */
-    void add_attribute(std::string_view name, std::string_view value);
+    void add_attribute(std::string_view name, std::string_view value, bool has_value = true);
 
   private:
-    std::string            m_name;       /**< 标签名 */
-    std::vector<Attribute> m_attributes; /**< 属性列表 */
+    std::string            m_name;            /**< 标签名 */
+    NamespaceKind          m_namespace_kind;  /**< 命名空间 */
+    std::vector<Attribute> m_attributes;      /**< 属性列表 */
 };
 
 }  // namespace hps
