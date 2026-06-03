@@ -88,8 +88,8 @@ These should be integrated next, but not forced in before the implementation is 
 
 - WPT `querySelector` / selector semantics
 - fuzzing with `ASan` / `UBSan`
-- broader encoding fixtures beyond the current helper-level unit-test coverage for `sniff_html_encoding(...)` and `decode_html_bytes_to_utf8(...)`
-  currently covered helper paths are UTF-8 BOM, UTF-16LE BOM, declared `gbk`, `iso-8859-1` -> `windows-1252`, and `windows-31j` / Shift_JIS
-  parser-level file loading is now intentionally UTF-8-only and separately tested as a rejection path for non-UTF-8 inputs
+- broader real-world encoding fixtures beyond the current unit-test coverage for the `utils/encoding` module (`detect_encoding(...)`, `decode_to_utf8(...)`, `is_encoding_supported(...)`, `supported_encodings()`)
+  currently covered: BOM detection (UTF-8 / UTF-16LE / UTF-16BE), `<meta charset>` prescan with alias + precedence + scan-window + case handling, UTF-8 heuristic, and round-trip decoding for UTF-8, UTF-16 (incl. surrogate pairs and malformed units), GBK/GB2312/GB18030, Big5, Shift_JIS, and windows-1252 / ISO-8859-1, plus the `Unknown`/`Unsupported`/`InvalidBytes` status paths and forced-encoding overrides
+  parser-level `parse_bytes(...)` / `parse_file(...)` now auto-detect and transcode to UTF-8 via this module; covered both as success (GBK/UTF-16 transcoding) and as `UnsupportedEncoding` diagnostics
 
 The current tree builder is still intentionally lighter than the full HTML5 tree-construction algorithm, so the tree baseline remains curated rather than being used as a full conformance gate.

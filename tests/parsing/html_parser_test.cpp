@@ -66,7 +66,7 @@ TEST(HTMLParser, ParseFileStripsUtf8Bom) {
     ASSERT_NE(res.document, nullptr);
     EXPECT_EQ(res.document->source_html(), html);
 
-    const auto* div = res.document->querySelector("div");
+    const auto* div = res.document->query_selector("div");
     ASSERT_NE(div, nullptr);
     EXPECT_EQ(div->text_content(), "Hello");
 
@@ -74,31 +74,38 @@ TEST(HTMLParser, ParseFileStripsUtf8Bom) {
     std::filesystem::remove(temp_path, ec);
 }
 
-TEST(HTMLParser, ParseFileRejectsUtf16LeBomByDefault) {
+TEST(HTMLParser, ParseFileTranscodesUtf16LeBomToUtf8) {
     const auto temp_path = std::filesystem::temp_directory_path() / "hps_html_parser_test_utf16le.html";
     write_binary_file(temp_path, utf16le_with_bom(u"<div>Hello</div>"));
 
     const auto res = hps::parse_file_with_error(temp_path.string(), hps::Options{});
     ASSERT_NE(res.document, nullptr);
-    EXPECT_TRUE(has_error_code(res.errors, hps::ErrorCode::UnsupportedEncoding));
-    EXPECT_TRUE(res.document->source_html().empty());
+    EXPECT_FALSE(has_error_code(res.errors, hps::ErrorCode::UnsupportedEncoding));
+    EXPECT_EQ(res.document->source_html(), "<div>Hello</div>");
+
+    const auto* div = res.document->query_selector("div");
+    ASSERT_NE(div, nullptr);
+    EXPECT_EQ(div->text_content(), "Hello");
 
     std::error_code ec;
     std::filesystem::remove(temp_path, ec);
 }
 
-TEST(HTMLParser, ParseFileRejectsDeclaredGbkCharsetByDefault) {
+TEST(HTMLParser, ParseFileTranscodesDeclaredGbkCharsetToUtf8) {
     const auto temp_path = std::filesystem::temp_directory_path() / "hps_html_parser_test_gbk.html";
 
     std::string bytes = "<html><head><meta charset='gbk'></head><body><p>";
-    bytes.append("\xD6\xD0\xCE\xC4", 4);
+    bytes.append("\xD6\xD0\xCE\xC4", 4);  // GBK 编码的“中文”
     bytes += "</p></body></html>";
     write_binary_file(temp_path, bytes);
 
     const auto res = hps::parse_file_with_error(temp_path.string(), hps::Options{});
     ASSERT_NE(res.document, nullptr);
-    EXPECT_TRUE(has_error_code(res.errors, hps::ErrorCode::UnsupportedEncoding));
-    EXPECT_TRUE(res.document->source_html().empty());
+    EXPECT_FALSE(has_error_code(res.errors, hps::ErrorCode::UnsupportedEncoding));
+
+    const auto* p = res.document->query_selector("p");
+    ASSERT_NE(p, nullptr);
+    EXPECT_EQ(p->text_content(), "中文");
 
     std::error_code ec;
     std::filesystem::remove(temp_path, ec);
@@ -108,7 +115,7 @@ TEST(HTMLParser, PreserveWhitespaceOnlyTextNodesByDefault) {
     const auto document = hps::parse("<div>   </div>");
     ASSERT_NE(document, nullptr);
 
-    const auto* div = document->querySelector("div");
+    const auto* div = document->query_selector("div");
     ASSERT_NE(div, nullptr);
 
     const auto children = div->children();
@@ -123,12 +130,12 @@ TEST(HTMLParser, AutoWrapsDocumentWithHtmlHeadAndBody) {
 
     const auto* html = document->html();
     ASSERT_NE(html, nullptr);
-    ASSERT_NE(document->querySelector("head"), nullptr);
+    ASSERT_NE(document->query_selector("head"), nullptr);
 
-    const auto* body = document->querySelector("body");
+    const auto* body = document->query_selector("body");
     ASSERT_NE(body, nullptr);
 
-    const auto* div = body->querySelector("div");
+    const auto* div = body->query_selector("div");
     ASSERT_NE(div, nullptr);
     EXPECT_EQ(div->text_content(), "Hello");
 }
@@ -137,17 +144,17 @@ TEST(HTMLParser, HeadContentBeforeBodyIsPlacedInHead) {
     const auto document = hps::parse("<meta charset='utf-8'><title>Example</title><p>Body</p>");
     ASSERT_NE(document, nullptr);
 
-    const auto* head = document->querySelector("head");
-    const auto* body = document->querySelector("body");
+    const auto* head = document->query_selector("head");
+    const auto* body = document->query_selector("body");
     ASSERT_NE(head, nullptr);
     ASSERT_NE(body, nullptr);
 
-    ASSERT_NE(head->querySelector("meta"), nullptr);
-    const auto* title = head->querySelector("title");
+    ASSERT_NE(head->query_selector("meta"), nullptr);
+    const auto* title = head->query_selector("title");
     ASSERT_NE(title, nullptr);
     EXPECT_EQ(title->text_content(), "Example");
 
-    const auto* paragraph = body->querySelector("p");
+    const auto* paragraph = body->query_selector("p");
     ASSERT_NE(paragraph, nullptr);
     EXPECT_EQ(paragraph->text_content(), "Body");
 }
@@ -156,12 +163,12 @@ TEST(HTMLParser, NonWhitespaceTextInsideHeadFallsBackToBody) {
     const auto document = hps::parse("<head>orphan<title>Example</title></head><p>Body</p>");
     ASSERT_NE(document, nullptr);
 
-    const auto* head = document->querySelector("head");
-    const auto* body = document->querySelector("body");
+    const auto* head = document->query_selector("head");
+    const auto* body = document->query_selector("body");
     ASSERT_NE(head, nullptr);
     ASSERT_NE(body, nullptr);
 
-    const auto* title = head->querySelector("title");
+    const auto* title = head->query_selector("title");
     EXPECT_EQ(title, nullptr);
     EXPECT_NE(body->text_content().find("orphan"), std::string::npos);
     EXPECT_NE(body->text_content().find("Example"), std::string::npos);
@@ -172,16 +179,16 @@ TEST(HTMLParser, SvgIsPreservedAsOpaqueRawContent) {
     const auto document = hps::parse("<svg viewBox='0 0 1 1'><g><title>x</title></g></svg><p>after</p>");
     ASSERT_NE(document, nullptr);
 
-    const auto* svg = document->querySelector("svg");
-    const auto* paragraph = document->querySelector("p");
+    const auto* svg = document->query_selector("svg");
+    const auto* paragraph = document->query_selector("p");
     ASSERT_NE(svg, nullptr);
     ASSERT_NE(paragraph, nullptr);
 
     EXPECT_EQ(svg->namespace_kind(), hps::NamespaceKind::Svg);
     EXPECT_EQ(svg->get_attribute("viewbox"), "0 0 1 1");
     EXPECT_EQ(svg->text_content(), "<g><title>x</title></g>");
-    EXPECT_EQ(document->querySelector("svg g"), nullptr);
-    EXPECT_EQ(document->querySelector("svg title"), nullptr);
+    EXPECT_EQ(document->query_selector("svg g"), nullptr);
+    EXPECT_EQ(document->query_selector("svg title"), nullptr);
     EXPECT_EQ(paragraph->text_content(), "after");
 }
 
@@ -189,8 +196,8 @@ TEST(HTMLParser, MathDescendantsStillCarryMathNamespace) {
     const auto document = hps::parse("<math><mi>y</mi></math>");
     ASSERT_NE(document, nullptr);
 
-    const auto* math = document->querySelector("math");
-    const auto* mi = document->querySelector("math mi");
+    const auto* math = document->query_selector("math");
+    const auto* mi = document->query_selector("math mi");
     ASSERT_NE(math, nullptr);
     ASSERT_NE(mi, nullptr);
 
@@ -212,9 +219,9 @@ TEST(HTMLParser, RawtextAndRcdataContentsStayAsText) {
     )");
     ASSERT_NE(document, nullptr);
 
-    const auto* style = document->querySelector("style");
-    const auto* title = document->querySelector("title");
-    const auto* textarea = document->querySelector("textarea");
+    const auto* style = document->query_selector("style");
+    const auto* title = document->query_selector("title");
+    const auto* textarea = document->query_selector("textarea");
 
     ASSERT_NE(style, nullptr);
     ASSERT_NE(title, nullptr);
@@ -224,17 +231,17 @@ TEST(HTMLParser, RawtextAndRcdataContentsStayAsText) {
     EXPECT_EQ(title->text_content(), "<i>y</i>");
     EXPECT_EQ(textarea->text_content(), "<span>z</span>");
 
-    EXPECT_EQ(document->querySelector("style b"), nullptr);
-    EXPECT_EQ(document->querySelector("title i"), nullptr);
-    EXPECT_EQ(document->querySelector("textarea span"), nullptr);
+    EXPECT_EQ(document->query_selector("style b"), nullptr);
+    EXPECT_EQ(document->query_selector("title i"), nullptr);
+    EXPECT_EQ(document->query_selector("textarea span"), nullptr);
 }
 
 TEST(HTMLParser, RcdataDecodesEntitiesDuringTokenization) {
     const auto document = hps::parse("<textarea>&lt;&amp;</textarea><title>&lt;</title>");
     ASSERT_NE(document, nullptr);
 
-    const auto* textarea = document->querySelector("textarea");
-    const auto* title = document->querySelector("title");
+    const auto* textarea = document->query_selector("textarea");
+    const auto* title = document->query_selector("title");
     ASSERT_NE(textarea, nullptr);
     ASSERT_NE(title, nullptr);
 
@@ -246,16 +253,16 @@ TEST(HTMLParser, TableRowsAutoInsertTbody) {
     const auto document = hps::parse("<table><tr><td>a</td><td>b</td></tr></table>");
     ASSERT_NE(document, nullptr);
 
-    const auto* table = document->querySelector("table");
+    const auto* table = document->query_selector("table");
     ASSERT_NE(table, nullptr);
 
-    const auto* tbody = table->querySelector("tbody");
+    const auto* tbody = table->query_selector("tbody");
     ASSERT_NE(tbody, nullptr);
 
-    const auto* row = tbody->querySelector("tr");
+    const auto* row = tbody->query_selector("tr");
     ASSERT_NE(row, nullptr);
 
-    const auto cells = row->querySelectorAll("td");
+    const auto cells = row->query_selector_all("td");
     ASSERT_EQ(cells.size(), 2u);
     EXPECT_EQ(cells[0]->text_content(), "a");
     EXPECT_EQ(cells[1]->text_content(), "b");
@@ -265,10 +272,10 @@ TEST(HTMLParser, TableCellsAutoInsertRowAndClosePreviousCell) {
     const auto document = hps::parse("<table><td>a<td>b</table>");
     ASSERT_NE(document, nullptr);
 
-    const auto* row = document->querySelector("table tbody tr");
+    const auto* row = document->query_selector("table tbody tr");
     ASSERT_NE(row, nullptr);
 
-    const auto cells = row->querySelectorAll("td");
+    const auto cells = row->query_selector_all("td");
     ASSERT_EQ(cells.size(), 2u);
     EXPECT_EQ(cells[0]->text_content(), "a");
     EXPECT_EQ(cells[1]->text_content(), "b");
@@ -278,7 +285,7 @@ TEST(HTMLParser, SelectOptionsImplicitlyClosePreviousOption) {
     const auto document = hps::parse("<select><option>a<option>b</select>");
     ASSERT_NE(document, nullptr);
 
-    const auto* select = document->querySelector("select");
+    const auto* select = document->query_selector("select");
     ASSERT_NE(select, nullptr);
 
     const auto children = select->children();
@@ -296,7 +303,7 @@ TEST(HTMLParser, SelectOptgroupClosesOpenOptionAndPreviousOptgroup) {
         hps::parse("<select><optgroup label=\"one\"><option>a<optgroup label=\"two\"><option>b</select>");
     ASSERT_NE(document, nullptr);
 
-    const auto* select = document->querySelector("select");
+    const auto* select = document->query_selector("select");
     ASSERT_NE(select, nullptr);
 
     const auto children = select->children();
@@ -324,7 +331,7 @@ TEST(HTMLParser, ButtonStartTagImplicitlyClosesOpenButton) {
     const auto document = hps::parse("<div><button>one<button>two</div>");
     ASSERT_NE(document, nullptr);
 
-    const auto* div = document->querySelector("div");
+    const auto* div = document->query_selector("div");
     ASSERT_NE(div, nullptr);
 
     const auto children = div->children();
@@ -341,7 +348,7 @@ TEST(HTMLParser, DuplicateAnchorStartTagClosesPreviousAnchor) {
     const auto document = hps::parse("<div><a href=\"one\">one<a href=\"two\">two</a></div>");
     ASSERT_NE(document, nullptr);
 
-    const auto* div = document->querySelector("div");
+    const auto* div = document->query_selector("div");
     ASSERT_NE(div, nullptr);
 
     const auto children = div->children();
@@ -361,17 +368,17 @@ TEST(HTMLParser, NestedFormStartTagIsIgnored) {
         hps::parse("<div><form id=\"outer\"><input name=\"a\"><form id=\"inner\"><input name=\"b\"></form></form></div>");
     ASSERT_NE(document, nullptr);
 
-    const auto forms = document->querySelectorAll("form");
+    const auto forms = document->query_selector_all("form");
     ASSERT_EQ(forms.size(), 1u);
     EXPECT_EQ(forms[0]->id(), "outer");
-    EXPECT_EQ(forms[0]->querySelectorAll("input").size(), 2u);
+    EXPECT_EQ(forms[0]->query_selector_all("input").size(), 2u);
 }
 
 TEST(HTMLParser, TableCaptionClosesBeforeBodyRows) {
     const auto document = hps::parse("<table><caption>cap<tr><td>x</table>");
     ASSERT_NE(document, nullptr);
 
-    const auto* table = document->querySelector("table");
+    const auto* table = document->query_selector("table");
     ASSERT_NE(table, nullptr);
 
     const auto children = table->children();
@@ -382,7 +389,7 @@ TEST(HTMLParser, TableCaptionClosesBeforeBodyRows) {
     EXPECT_EQ(children[0]->as_element()->text_content(), "cap");
     EXPECT_EQ(children[1]->as_element()->tag_name(), "tbody");
 
-    const auto* cell = document->querySelector("table tbody tr td");
+    const auto* cell = document->query_selector("table tbody tr td");
     ASSERT_NE(cell, nullptr);
     EXPECT_EQ(cell->text_content(), "x");
 }
@@ -391,7 +398,7 @@ TEST(HTMLParser, NestedTableInsideCellRemainsInsideCell) {
     const auto document = hps::parse("<table><tr><td>a<table><tr><td>b</td></tr></table>c</td></tr></table>");
     ASSERT_NE(document, nullptr);
 
-    const auto* outer_row = document->querySelector("table > tbody > tr");
+    const auto* outer_row = document->query_selector("table > tbody > tr");
     ASSERT_NE(outer_row, nullptr);
 
     const auto row_children = outer_row->children();
@@ -409,7 +416,7 @@ TEST(HTMLParser, NestedTableInsideCellRemainsInsideCell) {
     EXPECT_EQ(children[1]->as_element()->tag_name(), "table");
     EXPECT_EQ(children[2]->as_text()->value(), "c");
 
-    const auto* nested_cell = outer_cell->querySelector("table tbody tr td");
+    const auto* nested_cell = outer_cell->query_selector("table tbody tr td");
     ASSERT_NE(nested_cell, nullptr);
     EXPECT_EQ(nested_cell->text_content(), "b");
 }
@@ -418,7 +425,7 @@ TEST(HTMLParser, TableColImpliesColgroup) {
     const auto document = hps::parse("<table><col><col></table>");
     ASSERT_NE(document, nullptr);
 
-    const auto* table = document->querySelector("table");
+    const auto* table = document->query_selector("table");
     ASSERT_NE(table, nullptr);
 
     const auto children = table->children();
@@ -438,7 +445,7 @@ TEST(HTMLParser, ColgroupFallbackReprocessesNonColTokensInTableMode) {
     const auto document = hps::parse("<section><table><colgroup><div>x</div><tr><td>y</table></section>");
     ASSERT_NE(document, nullptr);
 
-    const auto* section = document->querySelector("section");
+    const auto* section = document->query_selector("section");
     ASSERT_NE(section, nullptr);
 
     const auto children = section->children();
@@ -464,7 +471,7 @@ TEST(HTMLParser, ParseFragmentDoesNotAutoWrapDocumentShell) {
     EXPECT_EQ(document->html(), nullptr);
     EXPECT_EQ(document->text_content(), "alphabeta");
 
-    const auto* span = document->querySelector("span");
+    const auto* span = document->query_selector("span");
     ASSERT_NE(span, nullptr);
     EXPECT_EQ(span->text_content(), "beta");
 }
@@ -477,7 +484,7 @@ TEST(HTMLParser, ParseFragmentSvgContextTreatsContentAsOpaqueText) {
     ASSERT_EQ(children.size(), 1u);
     ASSERT_TRUE(children[0]->is_text());
     EXPECT_EQ(children[0]->as_text()->value(), "<g><title>x</title></g>");
-    EXPECT_EQ(document->querySelector("g"), nullptr);
+    EXPECT_EQ(document->query_selector("g"), nullptr);
     EXPECT_EQ(document->text_content(), "<g><title>x</title></g>");
 }
 
@@ -485,7 +492,7 @@ TEST(HTMLParser, ParseFragmentMathContextInheritsMathNamespace) {
     const auto document = hps::parse_fragment("<mi>x</mi>", "math");
     ASSERT_NE(document, nullptr);
 
-    const auto* mi = document->querySelector("mi");
+    const auto* mi = document->query_selector("mi");
     ASSERT_NE(mi, nullptr);
     EXPECT_EQ(mi->namespace_kind(), hps::NamespaceKind::MathML);
 }
@@ -495,7 +502,7 @@ TEST(HTMLParser, ParseFragmentUsesRcdataContextState) {
     ASSERT_NE(document, nullptr);
 
     EXPECT_EQ(document->text_content(), "<<b>x</b>");
-    EXPECT_EQ(document->querySelector("b"), nullptr);
+    EXPECT_EQ(document->query_selector("b"), nullptr);
 }
 
 TEST(HTMLParser, ParseFragmentSelectContextClosesOptionsAndOptgroups) {
@@ -547,13 +554,13 @@ TEST(HTMLParser, ParseFragmentSupportsTableContext) {
     const auto document = hps::parse_fragment("<tr><td>a<td>b", "table");
     ASSERT_NE(document, nullptr);
 
-    const auto* tbody = document->querySelector("tbody");
+    const auto* tbody = document->query_selector("tbody");
     ASSERT_NE(tbody, nullptr);
 
-    const auto* row = tbody->querySelector("tr");
+    const auto* row = tbody->query_selector("tr");
     ASSERT_NE(row, nullptr);
 
-    const auto cells = row->querySelectorAll("td");
+    const auto cells = row->query_selector_all("td");
     ASSERT_EQ(cells.size(), 2u);
     EXPECT_EQ(cells[0]->text_content(), "a");
     EXPECT_EQ(cells[1]->text_content(), "b");
@@ -596,7 +603,7 @@ TEST(HTMLParser, TableTextBeforeRowIsFosterParentedBeforeTable) {
     const auto document = hps::parse("<div><table>alpha<tr><td>beta</td></tr></table></div>");
     ASSERT_NE(document, nullptr);
 
-    const auto* div = document->querySelector("div");
+    const auto* div = document->query_selector("div");
     ASSERT_NE(div, nullptr);
 
     const auto children = div->children();
@@ -606,7 +613,7 @@ TEST(HTMLParser, TableTextBeforeRowIsFosterParentedBeforeTable) {
     EXPECT_EQ(children[0]->as_text()->value(), "alpha");
     EXPECT_EQ(children[1]->as_element()->tag_name(), "table");
 
-    const auto* cell = document->querySelector("table tbody tr td");
+    const auto* cell = document->query_selector("table tbody tr td");
     ASSERT_NE(cell, nullptr);
     EXPECT_EQ(cell->text_content(), "beta");
 }
@@ -627,7 +634,7 @@ TEST(HTMLParser, TableElementBeforeRowIsFosterParentedBeforeTable) {
     const auto document = hps::parse("<div><table><b>alpha<tr><td>beta</td></tr></table></div>");
     ASSERT_NE(document, nullptr);
 
-    const auto* div = document->querySelector("div");
+    const auto* div = document->query_selector("div");
     ASSERT_NE(div, nullptr);
 
     const auto children = div->children();
@@ -638,7 +645,7 @@ TEST(HTMLParser, TableElementBeforeRowIsFosterParentedBeforeTable) {
     EXPECT_EQ(children[0]->as_element()->text_content(), "alpha");
     EXPECT_EQ(children[1]->as_element()->tag_name(), "table");
 
-    const auto* cell = document->querySelector("table tbody tr td");
+    const auto* cell = document->query_selector("table tbody tr td");
     ASSERT_NE(cell, nullptr);
     EXPECT_EQ(cell->text_content(), "beta");
 }
@@ -660,7 +667,7 @@ TEST(HTMLParser, RecoversMisnestedFormattingElements) {
     const auto document = hps::parse("<p><b><i>x</b>y</i>z");
     ASSERT_NE(document, nullptr);
 
-    const auto* paragraph = document->querySelector("p");
+    const auto* paragraph = document->query_selector("p");
     ASSERT_NE(paragraph, nullptr);
 
     const auto children = paragraph->children();
@@ -695,7 +702,7 @@ TEST(HTMLParser, ParsedBooleanAttributesPreserveHasValue) {
     const auto document = hps::parse("<input checked data-empty=\"\">");
     ASSERT_NE(document, nullptr);
 
-    const auto* input = document->querySelector("input");
+    const auto* input = document->query_selector("input");
     ASSERT_NE(input, nullptr);
     ASSERT_EQ(input->attribute_count(), 2u);
 
@@ -715,7 +722,7 @@ TEST(HTMLParser, DecodeEntitiesOptionDecodesNamedAndNumericEntities) {
     const auto document = hps::parse("<p>&amp;&lt;&gt;&quot;&apos;&nbsp;&#65;&#x41;</p>", opts);
     ASSERT_NE(document, nullptr);
 
-    const auto* paragraph = document->querySelector("p");
+    const auto* paragraph = document->query_selector("p");
     ASSERT_NE(paragraph, nullptr);
     EXPECT_EQ(paragraph->text_content(), "&<>\"' AA");
 }
@@ -728,9 +735,9 @@ TEST(HTMLParser, EnforcesMaxDepthBySkippingTooDeepSubtrees) {
     ASSERT_NE(res.document, nullptr);
 
     EXPECT_TRUE(has_error_code(res.errors, hps::ErrorCode::TooDeep));
-    EXPECT_NE(res.document->querySelector("a"), nullptr);
-    EXPECT_NE(res.document->querySelector("b"), nullptr);
-    EXPECT_EQ(res.document->querySelector("c"), nullptr);
+    EXPECT_NE(res.document->query_selector("a"), nullptr);
+    EXPECT_NE(res.document->query_selector("b"), nullptr);
+    EXPECT_EQ(res.document->query_selector("c"), nullptr);
 }
 
 TEST(HTMLParser, EnforcesMaxAttributesPerElement) {
@@ -741,7 +748,7 @@ TEST(HTMLParser, EnforcesMaxAttributesPerElement) {
     ASSERT_NE(res.document, nullptr);
     ASSERT_TRUE(has_error_code(res.errors, hps::ErrorCode::TooManyAttributes));
 
-    const auto* div = res.document->querySelector("div");
+    const auto* div = res.document->query_selector("div");
     ASSERT_NE(div, nullptr);
     ASSERT_EQ(div->attribute_count(), 1u);
     EXPECT_EQ(div->attributes()[0].name(), "a");
@@ -757,7 +764,7 @@ TEST(HTMLParser, EnforcesAttributeLengthLimits) {
     ASSERT_NE(res.document, nullptr);
     ASSERT_TRUE(has_error_code(res.errors, hps::ErrorCode::AttributeTooLong));
 
-    const auto* div = res.document->querySelector("div");
+    const auto* div = res.document->query_selector("div");
     ASSERT_NE(div, nullptr);
     ASSERT_EQ(div->attribute_count(), 1u);
     EXPECT_EQ(div->attributes()[0].name(), "ok");
@@ -772,7 +779,7 @@ TEST(HTMLParser, EnforcesMaxTextLength) {
     ASSERT_NE(res.document, nullptr);
     ASSERT_TRUE(has_error_code(res.errors, hps::ErrorCode::TextTooLong));
 
-    const auto* div = res.document->querySelector("div");
+    const auto* div = res.document->query_selector("div");
     ASSERT_NE(div, nullptr);
     EXPECT_EQ(div->text_content(), "abc");
 }

@@ -9,10 +9,10 @@ class Element;
 class SelectorList;
 
 /**
- * @brief 查询工具类 Query utility class
+ * @brief CSS 查询工具类
  *
- * 提供静态方法用于在文档或元素中执行 CSS 和 XPath 查询
- * Provides static methods for executing CSS and XPath queries in documents or elements
+ * 提供静态方法在文档或元素中执行 CSS 选择器查询，是 Document::css / Element::css
+ * 等便捷接口的底层实现。一般直接用 `doc->css(...)` / `element->css(...)` 即可。
  */
 class Query {
   public:

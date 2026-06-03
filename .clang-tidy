@@ -43,7 +43,7 @@ CheckOptions:
   readability-simplify-boolean-expr.ChainedConditionalAssignment: true
   readability-simplify-boolean-expr.ChainedConditionalReturn: true
 
-HeaderFilterRegex: '.*(include/hps|src|tests).*'
+HeaderFilterRegex: '.*(include/hps|src|tests|examples|benchmark).*'
 FormatStyle: file
 SystemHeaders: false
 User: hps

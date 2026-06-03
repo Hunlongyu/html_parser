@@ -31,12 +31,6 @@ class CommentNode : public Node {
     [[nodiscard]] std::string text_content() const override;
 
     /**
-     * @brief 获取注释内容
-     * @return 注释内容
-     */
-    [[nodiscard]] const std::string& comment() const;
-
-    /**
      * @brief 获取注释内容 移除两端空白字符
      * @return 注释内容
      */

@@ -184,44 +184,6 @@ class Options {
         return std::binary_search(default_void_tags.begin(), default_void_tags.end(), tag_name);
     }
 
-    /**
-     * @brief 获取默认void元素集合
-     *
-     * 返回HTML5标准定义的void元素列表，包括向后兼容的HTML4元素。
-     *
-     * @return 默认void元素集合的常量引用
-     */
-    static const std::unordered_set<std::string>& get_default_void_elements() {
-        static const std::unordered_set<std::string> default_void_elements = {
-            // HTML5 标准 void 元素（不能有结束标签）
-            "area",    ///< 图像映射区域
-            "base",    ///< 文档基础URL
-            "br",      ///< 换行符
-            "col",     ///< 表格列
-            "embed",   ///< 嵌入内容
-            "hr",      ///< 水平分割线
-            "img",     ///< 图像
-            "input",   ///< 输入控件
-            "link",    ///< 外部资源链接
-            "meta",    ///< 元数据
-            "param",   ///< 对象参数
-            "source",  ///< 媒体资源
-            "track",   ///< 文本轨道
-            "wbr",     ///< 可选换行点
-
-            // HTML4 遗留 void 元素（向后兼容）
-            "basefont",  ///< 基础字体（已废弃但仍需支持）
-            "frame",     ///< 框架（已废弃但仍需支持）
-            "isindex",   ///< 索引输入（已废弃但仍需支持）
-
-            // 常见的自闭合元素
-            "command",   ///< 命令按钮
-            "keygen",    ///< 密钥生成器
-            "menuitem",  ///< 菜单项
-        };
-        return default_void_elements;
-    }
-
     // ==================== 配置选项 ====================
 
     // 核心解析选项
@@ -237,6 +199,12 @@ class Options {
     // 高级选项
     bool preserve_case = false;  ///< ✅ 是否保持标签和属性名大小写，默认转为小写
     bool decode_entities = false; ///< ✅ 是否解码HTML实体，默认不解码（Zero-Copy优化）
+
+    // 编码选项（仅作用于 parse_bytes / parse_file 等以原始字节为输入的入口）
+    std::string encoding;  ///< 强制输入编码标签（如 "gbk"、"shift_jis"、"big5"）；为空时自动嗅探（BOM/<meta charset>/UTF-8 启发式）
+
+    // URL 解析选项
+    std::string base_url;  ///< 文档来源 URL（页面地址）；用于将相对链接解析为绝对地址（与文档内 <base href> 协同），为空时不解析
 
     // 性能和安全限制
     size_t max_tokens                 = 1000000;  ///< 最大Token数量限制

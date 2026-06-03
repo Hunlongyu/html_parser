@@ -32,7 +32,7 @@ TEST(ElementQueryAdvancedTest, FiltersAndNavigationWorkOnParsedDom) {
     EXPECT_EQ(ps.first(2).size(), 2u);
     EXPECT_EQ(ps.last(2).size(), 2u);
     EXPECT_EQ(ps.skip(1).size(), 2u);
-    EXPECT_EQ(ps.limit(1).size(), 1u);
+    EXPECT_EQ(ps.first(1).size(), 1u);
 
     EXPECT_EQ(ps.even().size(), 2u);
     EXPECT_EQ(ps.odd().size(), 1u);
@@ -96,7 +96,7 @@ TEST(ElementQueryAdvancedTest, PredicateBasedFiltersWork) {
     const auto attr_contains = ps.has_attribute_contains("data-k", "b");
     EXPECT_EQ(attr_contains.size(), 1u);
 
-    const auto text_contains = ps.has_text_contains("wo");
+    const auto text_contains = ps.containing_text("wo");
     EXPECT_EQ(text_contains.size(), 1u);
 }
 

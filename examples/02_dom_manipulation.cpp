@@ -58,7 +58,7 @@ int main() {
     // For demonstration, we assume the structure is known.
     // hps::Document 本身也是 Node，可以有 children
 
-    // 使用 querySelector 更方便地定位 / Use querySelector for easier positioning
+    // 使用 query_selector 更方便地定位 / Use query_selector for easier positioning
     const auto* container = doc->get_element_by_id("container");
 
     if (container) {
@@ -103,9 +103,9 @@ int main() {
 
     std::cout << "\n--------------------------------\n";
 
-    // 6. 演示 querySelector (单个元素)
-    // 6. Demonstrate querySelector (single element)
-    const auto* link = doc->querySelector("a");
+    // 6. 演示 query_selector (单个元素)
+    // 6. Demonstrate query_selector (single element)
+    const auto* link = doc->query_selector("a");
     if (link) {
         std::cout << "Link found:" << '\n';
         std::cout << "Href: " << link->get_attribute("href") << '\n';

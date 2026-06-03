@@ -1,59 +1,62 @@
 if(POLICY CMP0168)
-  cmake_policy(SET CMP0168 NEW)
+    cmake_policy(SET CMP0168 NEW)
 endif()
 
 include(FetchContent)
+include(GoogleTest)
+
 FetchContent_Declare(
-  googletest
-  GIT_REPOSITORY https://gitee.com/mirrors/googletest.git
-  GIT_TAG v1.17.0)
+    googletest
+    GIT_REPOSITORY https://gitee.com/mirrors/googletest.git
+    GIT_TAG v1.17.0
+)
 
-set(gtest_force_shared_crt
-    ON
-    CACHE BOOL "" FORCE)
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 
-if(NOT DEFINED FETCHCONTENT_SOURCE_DIR_GOOGLETEST OR
-   FETCHCONTENT_SOURCE_DIR_GOOGLETEST STREQUAL "")
-  foreach(_hps_googletest_seed_dir
-      "${PROJECT_SOURCE_DIR}/build_review/_deps/googletest-src"
-      "${PROJECT_SOURCE_DIR}/build_tidy/_deps/googletest-src")
-    if(EXISTS "${_hps_googletest_seed_dir}/CMakeLists.txt")
-      set(FETCHCONTENT_SOURCE_DIR_GOOGLETEST
-          "${_hps_googletest_seed_dir}"
-          CACHE PATH "Pre-seeded googletest source directory" FORCE)
-      break()
-    endif()
-  endforeach()
+if(NOT DEFINED FETCHCONTENT_SOURCE_DIR_GOOGLETEST OR FETCHCONTENT_SOURCE_DIR_GOOGLETEST STREQUAL "")
+    foreach(_hps_googletest_seed_dir
+        "${PROJECT_SOURCE_DIR}/build_review/_deps/googletest-src"
+        "${PROJECT_SOURCE_DIR}/build_tidy/_deps/googletest-src")
+        if(EXISTS "${_hps_googletest_seed_dir}/CMakeLists.txt")
+            set(
+                FETCHCONTENT_SOURCE_DIR_GOOGLETEST
+                "${_hps_googletest_seed_dir}"
+                CACHE PATH "Pre-seeded googletest source directory" FORCE
+            )
+            break()
+        endif()
+    endforeach()
 endif()
 
 set(_hps_googletest_source_dir "${FETCHCONTENT_BASE_DIR}/googletest-src")
 set(_hps_googletest_build_dir "${FETCHCONTENT_BASE_DIR}/googletest-build")
 set(_hps_googletest_tmp_dir "${FETCHCONTENT_BASE_DIR}/googletest-tmp")
-if(EXISTS "${_hps_googletest_source_dir}" AND
-   NOT EXISTS "${_hps_googletest_source_dir}/CMakeLists.txt")
-  file(REMOVE_RECURSE
-    "${_hps_googletest_source_dir}"
-    "${_hps_googletest_build_dir}"
-    "${_hps_googletest_tmp_dir}")
+
+if(EXISTS "${_hps_googletest_source_dir}" AND NOT EXISTS "${_hps_googletest_source_dir}/CMakeLists.txt")
+    file(
+        REMOVE_RECURSE
+        "${_hps_googletest_source_dir}"
+        "${_hps_googletest_build_dir}"
+        "${_hps_googletest_tmp_dir}"
+    )
 endif()
+
 FetchContent_MakeAvailable(googletest)
 
-enable_testing()
-
 if(TARGET GTest::gtest_main)
-  set(HPS_GTEST_MAIN_TARGET GTest::gtest_main)
+    set(HPS_GTEST_MAIN_TARGET GTest::gtest_main)
 elseif(TARGET gtest_main)
-  set(HPS_GTEST_MAIN_TARGET gtest_main)
+    set(HPS_GTEST_MAIN_TARGET gtest_main)
 else()
-  message(FATAL_ERROR "googletest was populated, but neither GTest::gtest_main nor gtest_main is available")
+    message(FATAL_ERROR "googletest was populated, but neither GTest::gtest_main nor gtest_main is available")
 endif()
 
 function(add_hps_test name source)
-  add_executable(${name} ${source})
-  target_link_libraries(${name} PRIVATE $<IF:$<TARGET_EXISTS:hps_static>,hps_static,hps> ${HPS_GTEST_MAIN_TARGET})
-  target_compile_definitions(${name} PRIVATE HPS_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
-  hps_enable_clang_tidy(${name})
-  add_test(NAME ${name} COMMAND ${name})
+    add_executable(${name} ${source})
+    target_link_libraries(${name} PRIVATE hps::hps ${HPS_GTEST_MAIN_TARGET})
+    target_compile_definitions(${name} PRIVATE HPS_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+    hps_apply_target_defaults(${name})
+    gtest_discover_tests(${name})
 endfunction()
 
 # Core tests
@@ -64,6 +67,8 @@ add_hps_test(core_document_tests core/document_test.cpp)
 add_hps_test(core_document_resource_tests core/document_resource_test.cpp)
 add_hps_test(core_text_node_tests core/text_node_test.cpp)
 add_hps_test(core_comment_node_tests core/comment_node_test.cpp)
+add_hps_test(core_serialization_tests core/serialization_test.cpp)
+add_hps_test(core_url_resolution_tests core/url_resolution_test.cpp)
 
 # Parsing tests
 add_hps_test(parsing_entity_tests parsing/entity_test.cpp)
@@ -83,6 +88,8 @@ add_hps_test(query_element_query_tests query/element_query_test.cpp)
 add_hps_test(query_element_query_advanced_tests query/element_query_advanced_test.cpp)
 add_hps_test(query_query_tests query/query_test.cpp)
 add_hps_test(query_nth_of_type_tests query/nth_of_type_test.cpp)
+add_hps_test(query_nth_child_tests query/nth_child_test.cpp)
+add_hps_test(query_text_attr_tests query/text_attr_test.cpp)
 add_hps_test(query_advanced_pseudo_tests query/advanced_pseudo_test.cpp)
 
 # Query CSS tests
@@ -94,6 +101,7 @@ add_hps_test(query_css_utils_tests query/css/css_utils_test.cpp)
 
 # Utils tests
 add_hps_test(utils_encoding_tests utils/encoding_test.cpp)
+add_hps_test(utils_url_tests utils/url_test.cpp)
 add_hps_test(utils_exception_tests utils/exception_test.cpp)
 add_hps_test(utils_string_pool_tests utils/string_pool_test.cpp)
 add_hps_test(utils_string_utils_tests utils/string_utils_test.cpp)

@@ -65,14 +65,32 @@ class HTMLParser : public NonCopyable {
         std::string_view context_tag,
         const Options& options = {});
 
+    // 原始字节解析功能（爬虫场景：输入编码未知，自动嗅探并转码为 UTF-8）
+    /**
+     * @brief 解析未知编码的原始字节（如 HTTP 响应体）
+     *
+     * 先确定输入编码——若 options.encoding 非空则以其为准，否则按
+     * BOM → <meta charset> → UTF-8 启发式 的顺序嗅探——再用系统原生 codec
+     * （Windows: MultiByteToWideChar；POSIX: iconv）转码为 UTF-8 后解析。
+     * 当编码无法识别或不受支持时记录 UnsupportedEncoding 错误（严格模式下抛出）。
+     *
+     * @param bytes 原始字节
+     * @param options 解析选项（可选）
+     * @return 解析后的文档对象智能指针
+     */
+    [[nodiscard]] std::shared_ptr<Document> parse_bytes(std::string_view bytes, const Options& options = {});
+
     // 文件解析功能（扩展功能）
     /**
      * @brief 解析HTML文件
-     * @param filePath HTML文件路径
+     *
+     * 以二进制读取文件后，与 parse_bytes 一致地嗅探/转码为 UTF-8 再解析。
+     *
+     * @param file_path HTML文件路径
      * @param options 解析选项（可选，默认为宽松模式）
      * @return 解析后的文档对象智能指针
      */
-    [[nodiscard]] std::shared_ptr<Document> parse_file(std::string_view filePath, const Options& options = {});
+    [[nodiscard]] std::shared_ptr<Document> parse_file(std::string_view file_path, const Options& options = {});
 
     // 错误信息访问（诊断功能）
     /**

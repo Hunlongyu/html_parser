@@ -3,6 +3,8 @@
 #include "hps/core/attribute.hpp"
 #include "hps/core/node.hpp"
 
+#include <optional>
+#include <string_view>
 #include <unordered_set>
 
 namespace hps {
@@ -41,13 +43,40 @@ class Element : public Node {
      */
     [[nodiscard]] std::string own_text() const;
 
+    // HTML Serialization
+    /**
+     * @brief 序列化元素的内部 HTML（不含元素自身的起止标签）
+     *
+     * 适合爬虫提取某节点的原始标记。raw text 元素（如 script/style）的文本原样
+     * 输出；普通元素的文本会做实体感知转义。默认（未解码实体）解析模式下可忠实
+     * 还原源码片段。
+     * @return 子节点序列化而成的 HTML 字符串
+     */
+    [[nodiscard]] std::string inner_html() const;
+
+    /**
+     * @brief 序列化元素自身及其子树为 HTML
+     * @return 包含自身起止标签的完整 HTML 字符串（void 元素无闭合标签）
+     */
+    [[nodiscard]] std::string outer_html() const;
+
     // Element Specific Properties
     /**
      * @brief 获取元素标签名
      * @return 元素的标签名（例如 "div", "p", "a"）。
      */
     [[nodiscard]] const std::string& tag_name() const noexcept;
+
+    /**
+     * @brief 获取元素所属命名空间
+     * @return 命名空间种类（HTML/SVG/MathML）
+     */
     [[nodiscard]] NamespaceKind namespace_kind() const noexcept;
+
+    /**
+     * @brief 获取元素命名空间的 URI
+     * @return 命名空间 URI（如 HTML 为 "http://www.w3.org/1999/xhtml"）
+     */
     [[nodiscard]] std::string_view namespace_uri() const noexcept;
 
     // Attribute Management
@@ -64,6 +93,16 @@ class Element : public Node {
      * @return 属性值，如果属性不存在则返回空字符串
      */
     [[nodiscard]] const std::string& get_attribute(std::string_view name) const noexcept;
+
+    /**
+     * @brief 获取指定属性的值（可区分“不存在”与“空值”）
+     * @param name 属性名（忽略大小写）
+     * @return 存在则返回其值视图（无值属性如 disabled 返回空视图）；不存在返回 std::nullopt
+     *
+     * 与 get_attribute 不同：后者对“缺失”和 `attr=""` 都返回空字符串，无法区分。
+     * 返回的视图在文档存活且该属性未被修改期间有效。
+     */
+    [[nodiscard]] std::optional<std::string_view> attr(std::string_view name) const noexcept;
 
     /**
      * @brief 获取所有属性
@@ -108,14 +147,14 @@ class Element : public Node {
      * @param selector CSS 选择器字符串
      * @return 第一个匹配的子元素的原始指针，如果没有匹配则返回 nullptr
      */
-    [[nodiscard]] const Element* querySelector(std::string_view selector) const;
+    [[nodiscard]] const Element* query_selector(std::string_view selector) const;
 
     /**
      * @brief 使用 CSS 选择器查询所有匹配的子元素
      * @param selector CSS 选择器字符串
      * @return 所有匹配的子元素的原始指针列表
      */
-    [[nodiscard]] std::vector<const Element*> querySelectorAll(std::string_view selector) const;
+    [[nodiscard]] std::vector<const Element*> query_selector_all(std::string_view selector) const;
 
     /**
      * @brief 按 ID 获取子元素

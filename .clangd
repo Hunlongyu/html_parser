@@ -1,0 +1,23 @@
+CompileFlags:
+  Compiler: cl.exe
+  BuiltinHeaders: QueryDriver
+  Add:
+    - /EHsc
+    - /Zc:__cplusplus
+    - /permissive-
+    - /std:c++20
+    - /D_HAS_EXCEPTIONS=1
+    - /Iinclude
+    - /Ibuild/generated/include
+    - /Iout/build/x64-Debug/generated/include
+    - /Iout/build/x64-Release/generated/include
+Diagnostics:
+  ClangTidy:
+    FastCheckFilter: Strict
+  UnusedIncludes: Strict
+Completion:
+  AllScopes: Yes
+Hover:
+  ShowAKA: Yes
+InlayHints:
+  Enabled: Yes

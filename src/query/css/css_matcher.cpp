@@ -4,7 +4,6 @@
 #include "hps/core/element.hpp"
 
 #include <algorithm>
-#include <regex>
 #include <unordered_set>
 
 namespace hps {

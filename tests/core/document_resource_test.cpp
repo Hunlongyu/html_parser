@@ -49,8 +49,8 @@ TEST(DocumentResourceTest, MetaAndResourcesCanBeExtracted) {
     const auto c2s = doc->get_elements_by_class_name("c2");
     EXPECT_EQ(c2s.size(), 2u);
 
-    EXPECT_NE(doc->querySelector("#x"), nullptr);
-    EXPECT_EQ(doc->querySelectorAll(".c2").size(), 2u);
+    EXPECT_NE(doc->query_selector("#x"), nullptr);
+    EXPECT_EQ(doc->query_selector_all(".c2").size(), 2u);
 }
 
 }  // namespace hps::tests

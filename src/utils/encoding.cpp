@@ -4,9 +4,12 @@
 
 #include <algorithm>
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <span>
 #include <stdexcept>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -21,6 +24,9 @@
 namespace hps {
 namespace {
 
+// 预扫描 <meta charset> 的字节窗口（覆盖绝大多数真实页面的头部声明）。
+constexpr std::size_t meta_prescan_bytes = 4096;
+
 struct CharsetAliasMapping {
     std::string_view alias;
     std::string_view canonical;
@@ -32,7 +38,7 @@ struct CharsetBackendMapping {
     std::string_view iconv_name;
 };
 
-constexpr std::array<CharsetAliasMapping, 28> kSupportedCharsetAliases = {{
+constexpr std::array<CharsetAliasMapping, 28> supported_charset_aliases = {{
     {"utf-8", "utf-8"},
     {"utf8", "utf-8"},
     {"unicode-1-1-utf-8", "utf-8"},
@@ -63,17 +69,22 @@ constexpr std::array<CharsetAliasMapping, 28> kSupportedCharsetAliases = {{
     {"cp932", "shift_jis"},
 }};
 
-constexpr std::array<CharsetAliasMapping, 4> kSupportedCharsetAliasesTail = {{
+constexpr std::array<CharsetAliasMapping, 8> supported_charset_aliases_tail = {{
     {"ms932", "shift_jis"},
     {"windows-31j", "shift_jis"},
     {"x-sjis", "shift_jis"},
     {"csshiftjis", "shift_jis"},
+    {"big5", "big5"},
+    {"big5-hkscs", "big5"},
+    {"cn-big5", "big5"},
+    {"csbig5", "big5"},
 }};
 
-constexpr std::array<CharsetBackendMapping, 5> kSupportedCharsetBackends = {{
+constexpr std::array<CharsetBackendMapping, 6> supported_charset_backends = {{
     {"gbk", 936U, "GBK"},
     {"windows-1252", 1252U, "WINDOWS-1252"},
     {"shift_jis", 932U, "SHIFT_JIS"},
+    {"big5", 950U, "BIG5"},
     {"utf-16le", 1200U, "UTF-16LE"},
     {"utf-16be", 1201U, "UTF-16BE"},
 }};
@@ -273,10 +284,10 @@ template <typename Range>
         }
     }
 
-    if (const auto alias = lookup_alias(kSupportedCharsetAliases, normalized); alias.has_value()) {
+    if (const auto alias = lookup_alias(supported_charset_aliases, normalized); alias.has_value()) {
         return std::string(*alias);
     }
-    if (const auto alias = lookup_alias(kSupportedCharsetAliasesTail, normalized); alias.has_value()) {
+    if (const auto alias = lookup_alias(supported_charset_aliases_tail, normalized); alias.has_value()) {
         return std::string(*alias);
     }
     return normalized;
@@ -297,7 +308,7 @@ template <typename Range>
 
 [[nodiscard]] auto backend_mapping_for_charset(
     const std::string_view canonical) -> std::optional<CharsetBackendMapping> {
-    return lookup_backend(kSupportedCharsetBackends, canonical);
+    return lookup_backend(supported_charset_backends, canonical);
 }
 
 [[nodiscard]] auto is_helper_supported_encoding(
@@ -356,8 +367,9 @@ template <typename Range>
     return {};
 }
 
-[[nodiscard]] auto sniff_meta_charset(const std::string_view raw_html) -> EncodingHint {
-    const auto prefix = raw_html.substr(0, std::min<size_t>(raw_html.size(), 4096));
+// 预扫描文档头部的 <meta charset>，返回规范化编码标签（未找到则为空）。
+[[nodiscard]] auto sniff_meta_charset(const std::string_view raw_html) -> std::string {
+    const auto prefix = raw_html.substr(0, std::min<size_t>(raw_html.size(), meta_prescan_bytes));
 
     std::string lowered(prefix);
     std::ranges::transform(lowered, lowered.begin(), [](const unsigned char ch) {
@@ -379,13 +391,7 @@ template <typename Range>
         const std::string detected_label = extract_charset_from_meta_tag(
             std::string_view(lowered).substr(meta_pos, end_pos - meta_pos));
         if (!detected_label.empty()) {
-            const std::string canonical = normalize_encoding_label(detected_label);
-            return EncodingHint{
-                .detected_label   = detected_label,
-                .canonical_label  = canonical,
-                .source           = EncodingHintSource::MetaCharset,
-                .helper_supported = is_helper_supported_encoding(canonical),
-            };
+            return normalize_encoding_label(detected_label);
         }
 
         cursor = end_pos + 1;
@@ -475,61 +481,14 @@ template <typename Range>
 #endif
 }
 
-}  // namespace
-
-EncodingHint sniff_html_encoding(const std::string_view raw_bytes) {
-    if (raw_bytes.empty()) {
-        return {};
-    }
-
-    if (has_utf8_bom(raw_bytes)) {
-        return EncodingHint{
-            .detected_label   = "utf-8",
-            .canonical_label  = "utf-8",
-            .source           = EncodingHintSource::Utf8Bom,
-            .helper_supported = true,
-        };
-    }
-    if (has_utf16le_bom(raw_bytes)) {
-        return EncodingHint{
-            .detected_label   = "utf-16le",
-            .canonical_label  = "utf-16le",
-            .source           = EncodingHintSource::Utf16LeBom,
-            .helper_supported = true,
-        };
-    }
-    if (has_utf16be_bom(raw_bytes)) {
-        return EncodingHint{
-            .detected_label   = "utf-16be",
-            .canonical_label  = "utf-16be",
-            .source           = EncodingHintSource::Utf16BeBom,
-            .helper_supported = true,
-        };
-    }
-
-    if (auto meta_hint = sniff_meta_charset(raw_bytes); meta_hint.has_encoding()) {
-        return meta_hint;
-    }
-
-    if (is_valid_utf8(raw_bytes)) {
-        return EncodingHint{
-            .detected_label   = "utf-8",
-            .canonical_label  = "utf-8",
-            .source           = EncodingHintSource::Utf8Heuristic,
-            .helper_supported = true,
-        };
-    }
-
-    return {};
-}
-
-std::optional<std::string> decode_html_bytes_to_utf8(
+// 按给定的“已规范化”编码标签将字节转码为 UTF-8。
+[[nodiscard]] auto decode_as_canonical(
     const std::string_view raw_bytes,
-    const std::string_view encoding_label) {
-    const std::string canonical = normalize_encoding_label(encoding_label);
-    if (canonical.empty()) {
-        return std::nullopt;
-    }
+    const std::string_view canonical,
+    const EncodingSource source) -> DecodeResult {
+    DecodeResult result;
+    result.encoding = std::string(canonical);
+    result.source   = source;
 
     if (canonical == "utf-8") {
         std::string_view bytes = raw_bytes;
@@ -537,14 +496,18 @@ std::optional<std::string> decode_html_bytes_to_utf8(
             bytes.remove_prefix(3);
         }
         if (!is_valid_utf8(bytes)) {
-            return std::nullopt;
+            result.status = DecodeStatus::InvalidBytes;
+            return result;
         }
-        return std::string(bytes);
+        result.text   = std::string(bytes);
+        result.status = DecodeStatus::Ok;
+        return result;
     }
 
     const auto mapping = backend_mapping_for_charset(canonical);
     if (!mapping.has_value()) {
-        return std::nullopt;
+        result.status = DecodeStatus::UnsupportedEncoding;
+        return result;
     }
 
     std::string_view bytes = raw_bytes;
@@ -556,10 +519,108 @@ std::optional<std::string> decode_html_bytes_to_utf8(
     }
 
     try {
-        return decode_code_page_to_utf8(bytes, *mapping);
+        result.text   = decode_code_page_to_utf8(bytes, *mapping);
+        result.status = DecodeStatus::Ok;
     } catch (const std::exception&) {
-        return std::nullopt;
+        result.status = DecodeStatus::InvalidBytes;
     }
+    return result;
+}
+
+}  // namespace
+
+EncodingDetection detect_encoding(const std::string_view raw_bytes) {
+    EncodingDetection detection;
+    if (raw_bytes.empty()) {
+        return detection;  // Unknown
+    }
+
+    if (has_utf8_bom(raw_bytes)) {
+        detection.label      = "utf-8";
+        detection.source     = EncodingSource::ByteOrderMark;
+        detection.supported  = true;
+        detection.bom_length = 3;
+        return detection;
+    }
+    if (has_utf16le_bom(raw_bytes)) {
+        detection.label      = "utf-16le";
+        detection.source     = EncodingSource::ByteOrderMark;
+        detection.supported  = true;
+        detection.bom_length = 2;
+        return detection;
+    }
+    if (has_utf16be_bom(raw_bytes)) {
+        detection.label      = "utf-16be";
+        detection.source     = EncodingSource::ByteOrderMark;
+        detection.supported  = true;
+        detection.bom_length = 2;
+        return detection;
+    }
+
+    if (auto meta_label = sniff_meta_charset(raw_bytes); !meta_label.empty()) {
+        detection.label     = meta_label;
+        detection.source    = EncodingSource::MetaCharset;
+        detection.supported = is_helper_supported_encoding(meta_label);
+        return detection;
+    }
+
+    if (is_valid_utf8(raw_bytes)) {
+        detection.label    = "utf-8";
+        detection.source   = EncodingSource::Utf8Heuristic;
+        detection.supported = true;
+        return detection;
+    }
+
+    return detection;  // Unknown
+}
+
+DecodeResult decode_to_utf8(
+    const std::string_view raw_bytes,
+    const std::string_view override_label) {
+    // 空输入：视为成功的空 UTF-8。
+    if (raw_bytes.empty()) {
+        DecodeResult result;
+        result.status = DecodeStatus::Ok;
+        if (override_label.empty()) {
+            result.encoding = "utf-8";
+            result.source   = EncodingSource::Utf8Heuristic;
+        } else {
+            result.encoding = normalize_encoding_label(override_label);
+            result.source   = EncodingSource::UserOverride;
+        }
+        return result;
+    }
+
+    // 显式编码：视为权威，直接据此转码（不再嗅探）。
+    if (!override_label.empty()) {
+        const std::string canonical = normalize_encoding_label(override_label);
+        if (canonical.empty()) {
+            DecodeResult result;
+            result.status = DecodeStatus::UnsupportedEncoding;
+            return result;
+        }
+        return decode_as_canonical(raw_bytes, canonical, EncodingSource::UserOverride);
+    }
+
+    // 自动检测后转码。
+    const auto detection = detect_encoding(raw_bytes);
+    if (!detection.found()) {
+        DecodeResult result;
+        result.status = DecodeStatus::UnknownEncoding;
+        return result;
+    }
+    return decode_as_canonical(raw_bytes, detection.label, detection.source);
+}
+
+bool is_encoding_supported(const std::string_view label) {
+    return is_helper_supported_encoding(normalize_encoding_label(label));
+}
+
+std::span<const std::string_view> supported_encodings() {
+    static constexpr std::array<std::string_view, 7> supported_encoding_labels = {
+        "utf-8", "utf-16le", "utf-16be", "gbk", "big5", "shift_jis", "windows-1252",
+    };
+    return supported_encoding_labels;
 }
 
 }  // namespace hps

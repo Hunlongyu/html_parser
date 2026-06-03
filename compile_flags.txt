@@ -1,0 +1,9 @@
+/EHsc
+/Zc:__cplusplus
+/permissive-
+/std:c++20
+/D_HAS_EXCEPTIONS=1
+/Iinclude
+/Ibuild/generated/include
+/Iout/build/x64-Debug/generated/include
+/Iout/build/x64-Release/generated/include

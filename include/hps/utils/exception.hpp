@@ -68,10 +68,6 @@ enum class ErrorCode {
 
     // Query 错误
     InvalidSelector,
-    // XPath 错误
-    InvalidXPath,
-    XPathParseError,
-    XPathEvaluationError,
 };
 
 // 错误信息结构体

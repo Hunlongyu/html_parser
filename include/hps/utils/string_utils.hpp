@@ -4,7 +4,6 @@
 #include <array>
 #include <cstdint>
 #include <optional>
-#include <regex>
 #include <vector>
 
 #ifdef _WIN32

@@ -16,28 +16,16 @@ class TextNode : public Node {
     [[nodiscard]] NodeType type() const noexcept override;
 
     /**
-     * @brief 节点名称
-     * @return 节点名称
-     */
-    [[nodiscard]] std::string name() const;
-
-    /**
-     * @brief 文本内容
-     * @return 文本内容
+     * @brief 获取文本内容（原始字符串引用）
+     * @return 该文本节点的内容
      */
     [[nodiscard]] const std::string& value() const;
 
     /**
-     * @brief 递归所有的文本内容
+     * @brief 获取文本内容（Node 多态接口；对文本节点即其自身内容）
      * @return 文本内容
      */
     [[nodiscard]] std::string text_content() const override;
-
-    /**
-     * @brief 获取文本内容
-     * @return 文本内容
-     */
-    [[nodiscard]] const std::string& text() const;
 
     /**
      * @brief 获取文本内容 移除两端空白字符

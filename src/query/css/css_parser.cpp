@@ -8,8 +8,8 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <ranges>
-#include <regex>
 
 namespace {
 
@@ -181,6 +181,99 @@ hps::SelectorSpecificity calculate_has_specificity(const std::string_view argume
     }
 
     return max_specificity;
+}
+
+// 解析有符号整数（允许前导 +/-）；要求整段均为数字，否则失败。
+[[nodiscard]] bool parse_signed_int(std::string_view text, int& out) {
+    if (text.empty()) {
+        return false;
+    }
+    bool   negative = false;
+    size_t i        = 0;
+    if (text[0] == '+' || text[0] == '-') {
+        negative = (text[0] == '-');
+        i        = 1;
+    }
+    if (i >= text.size()) {
+        return false;
+    }
+    int value = 0;
+    for (; i < text.size(); ++i) {
+        if (!hps::is_digit(text[i])) {
+            return false;
+        }
+        value = value * 10 + (text[i] - '0');
+    }
+    out = negative ? -value : value;
+    return true;
+}
+
+// 解析 CSS An+B 微语法（替代 std::regex）。
+// 支持：odd / even / 纯整数 b / [±a]n[±b]（n 大小写不敏感，允许空白）。
+// 成功时写入系数 a 与偏移 b。
+[[nodiscard]] bool parse_nth_expression(std::string_view expr, int& a, int& b) {
+    expr = hps::trim_whitespace(expr);
+    if (expr.empty()) {
+        return false;
+    }
+
+    if (hps::equals_ignore_case(expr, "odd")) {
+        a = 2;
+        b = 1;
+        return true;
+    }
+    if (hps::equals_ignore_case(expr, "even")) {
+        a = 2;
+        b = 0;
+        return true;
+    }
+
+    // 定位 'n'/'N'
+    size_t n_pos = std::string_view::npos;
+    for (size_t i = 0; i < expr.size(); ++i) {
+        if (expr[i] == 'n' || expr[i] == 'N') {
+            n_pos = i;
+            break;
+        }
+    }
+
+    // 无 n：纯整数偏移（a = 0）
+    if (n_pos == std::string_view::npos) {
+        if (!parse_signed_int(expr, b)) {
+            return false;
+        }
+        a = 0;
+        return true;
+    }
+
+    // 左部系数 a：""/"+" → 1，"-" → -1，否则按整数解析
+    const std::string_view left = hps::trim_whitespace(expr.substr(0, n_pos));
+    if (left.empty() || left == "+") {
+        a = 1;
+    } else if (left == "-") {
+        a = -1;
+    } else if (!parse_signed_int(left, a)) {
+        return false;
+    }
+
+    // 右部偏移 b：n 之后若存在内容必须带显式符号
+    std::string_view right = hps::trim_whitespace(expr.substr(n_pos + 1));
+    if (right.empty()) {
+        b = 0;
+        return true;
+    }
+    const char sign = right.front();
+    if (sign != '+' && sign != '-') {
+        return false;
+    }
+    right.remove_prefix(1);
+    right = hps::trim_whitespace(right);
+    int magnitude = 0;
+    if (!parse_signed_int(right, magnitude) || magnitude < 0) {
+        return false;  // 符号已单独处理，幅度部分不应再带符号
+    }
+    b = (sign == '-') ? -magnitude : magnitude;
+    return true;
 }
 
 }  // namespace
@@ -372,7 +465,9 @@ std::unique_ptr<TypeSelector> CSSParser::parse_type_selector() {
     
     // Normalize to lowercase and store in pool
     std::string tag(token.value);
-    std::ranges::transform(tag, tag.begin(), [](unsigned char c){ return std::tolower(c); });
+    std::ranges::transform(tag, tag.begin(), [](const unsigned char ch) {
+        return static_cast<char>(std::tolower(ch));
+    });
     
     return std::make_unique<TypeSelector>(m_pool->add(tag));
 }
@@ -412,7 +507,9 @@ std::unique_ptr<AttributeSelector> CSSParser::parse_attribute_selector() {
 
     // Normalize attribute name to lowercase
     std::string attr_name(attr_token.value);
-    std::ranges::transform(attr_name, attr_name.begin(), [](unsigned char c){ return std::tolower(c); });
+    std::ranges::transform(attr_name, attr_name.begin(), [](const unsigned char ch) {
+        return static_cast<char>(std::tolower(ch));
+    });
     std::string_view attr_name_view = m_pool->add(attr_name);
 
     AttributeOperator op = AttributeOperator::Exists;
@@ -986,68 +1083,20 @@ SelectorSpecificity PseudoClassSelector::calculate_specificity() const {
 }
 
 bool PseudoClassSelector::matches_nth_expression(std::string_view expression, const int index) {
-    if (expression.empty()) {
+    int a = 0;
+    int b = 0;
+    if (!parse_nth_expression(expression, a, b)) {
         return false;
     }
 
-    // 处理特殊关键字
-    if (expression == "odd") {
-        return index % 2 == 1;
+    // index 为基于 1 的位置（由调用方提供）。
+    if (a == 0) {
+        return index == b;
     }
-    if (expression == "even") {
-        return index % 2 == 0;
+    if (a > 0) {
+        return index >= b && (index - b) % a == 0;
     }
-    
-    std::string expr_str(expression);
-
-    // 处理纯数字
-    if (std::ranges::all_of(expr_str, is_digit)) {
-        return index == std::stoi(expr_str);
-    }
-
-    // 处理an+b格式
-    // 简化的解析器，支持如"2n+1"、"3n"、"-n+6"等格式
-    const std::regex nth_regex(R"(^\s*([+-]?\d*)n\s*([+-]\s*\d+)?\s*$)");
-    std::smatch      match;
-
-    if (std::regex_match(expr_str, match, nth_regex)) {
-        int a = 1;  // 默认系数
-        int b = 0;  // 默认偏移
-
-        // 解析系数a
-        const std::string a_str = match[1].str();
-        if (!a_str.empty()) {
-            if (a_str == "+" || a_str.empty()) {
-                a = 1;
-            } else if (a_str == "-") {
-                a = -1;
-            } else {
-                a = std::stoi(a_str);
-            }
-        }
-
-        // 解析偏移b
-        std::string b_str = match[2].str();
-        if (!b_str.empty()) {
-            // 移除空格
-            b_str.erase(std::ranges::remove_if(b_str, is_whitespace).begin(), b_str.end());
-            b = std::stoi(b_str);
-        }
-
-        // 检查是否匹配an+b公式
-        if (a == 0) {
-            return index == b;
-        }
-
-        // 对于正系数，检查(index - b) % a == 0 且 index >= b
-        // 对于负系数，需要特殊处理
-        if (a > 0) {
-            return index >= b && (index - b) % a == 0;
-        }
-        return index <= b && (b - index) % (-a) == 0;
-    }
-
-    return false;
+    return index <= b && (b - index) % (-a) == 0;
 }
 
 int PseudoClassSelector::count_siblings_of_type(const Element& element) {

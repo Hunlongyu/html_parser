@@ -3,6 +3,7 @@
 
 namespace hps {
 
+/** @brief DOM 节点类型 */
 enum class NodeType : std::uint8_t {
     Undefined, /**< 未定义节点 */
     Element,   /**< 元素节点 <div> */
@@ -11,10 +12,11 @@ enum class NodeType : std::uint8_t {
     Document,  /**< 文档节点 整个文档的根节点 */
 };
 
+/** @brief 元素命名空间 */
 enum class NamespaceKind : std::uint8_t {
-    Html,
-    Svg,
-    MathML,
+    Html,    /**< HTML 命名空间 */
+    Svg,     /**< SVG 命名空间 */
+    MathML,  /**< MathML 命名空间 */
 };
 
 enum class TokenType : std::uint8_t {

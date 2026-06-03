@@ -156,35 +156,12 @@ ElementQuery ElementQuery::containing_text(const std::string_view text) const {
     return ElementQuery(std::move(filtered));
 }
 
-ElementQuery ElementQuery::matching_text(const std::function<bool(std::string_view)>& predicate) const {
-    std::vector<const Element*> filtered;
-    for (const auto& element : m_elements) {
-        if (element && predicate(element->text_content())) {
-            filtered.push_back(element);
-        }
-    }
-    return ElementQuery(std::move(filtered));
-}
-
 ElementQuery ElementQuery::has_attribute_contains(const std::string_view name, const std::string_view text) const {
     std::vector<const Element*> filtered;
     for (const auto& element : m_elements) {
         if (element && element->has_attribute(name)) {
             const auto& attr_value = element->get_attribute(name);
             if (attr_value.find(text) != std::string::npos) {
-                filtered.push_back(element);
-            }
-        }
-    }
-    return ElementQuery(std::move(filtered));
-}
-
-ElementQuery ElementQuery::has_text_contains(const std::string_view text) const {
-    std::vector<const Element*> filtered;
-    for (const auto& element : m_elements) {
-        if (element) {
-            const auto element_text = element->text_content();
-            if (element_text.find(text) != std::string::npos) {
                 filtered.push_back(element);
             }
         }
@@ -223,10 +200,6 @@ ElementQuery ElementQuery::skip(const size_t n) const {
         return {};
     }
     return slice(n, m_elements.size());
-}
-
-ElementQuery ElementQuery::limit(const size_t n) const {
-    return first(n);
 }
 
 // 导航方法
@@ -481,17 +454,6 @@ ElementQuery ElementQuery::find(const std::string_view selector) const {
     return css(selector);
 }
 
-// 高级查询方法
-ElementQuery ElementQuery::filter(const std::function<bool(const Element&)>& predicate) const {
-    std::vector<const Element*> filtered;
-    for (const auto& element : m_elements) {
-        if (element && predicate(*element)) {
-            filtered.push_back(element);
-        }
-    }
-    return ElementQuery(std::move(filtered));
-}
-
 ElementQuery ElementQuery::not_(const std::string_view selector) const {
     if (selector.empty()) {
         return *this;
@@ -539,6 +501,24 @@ ElementQuery ElementQuery::lt(const size_t index) const {
 }
 
 // 聚合方法
+std::string ElementQuery::text() const {
+    std::string combined;
+    for (const auto& element : m_elements) {
+        if (element) {
+            combined += element->text_content();
+        }
+    }
+    return combined;
+}
+
+std::optional<std::string_view> ElementQuery::attr(const std::string_view name) const {
+    const Element* element = first_element();
+    if (element == nullptr) {
+        return std::nullopt;
+    }
+    return element->attr(name);
+}
+
 std::vector<std::string> ElementQuery::extract_attributes(const std::string_view attr_name) const {
     std::vector<std::string> attributes;
     for (const auto& element : m_elements) {
@@ -569,22 +549,20 @@ std::vector<std::string> ElementQuery::extract_own_texts() const {
     return texts;
 }
 
-ElementQuery ElementQuery::each(const std::function<void(const Element&)>& callback) const {
-    for (const auto& element : m_elements) {
-        if (element) {
-            callback(*element);
-        }
-    }
-    return *this;
+std::string ElementQuery::html() const {
+    const Element* element = first_element();
+    return element ? element->inner_html() : std::string{};
 }
 
-ElementQuery ElementQuery::each(const std::function<void(size_t, const Element&)>& callback) const {
-    for (size_t i = 0; i < m_elements.size(); ++i) {
-        if (m_elements[i]) {
-            callback(i, *m_elements[i]);
+std::vector<std::string> ElementQuery::extract_outer_html() const {
+    std::vector<std::string> result;
+    result.reserve(m_elements.size());
+    for (const auto& element : m_elements) {
+        if (element) {
+            result.push_back(element->outer_html());
         }
     }
-    return *this;
+    return result;
 }
 
 bool ElementQuery::is(const std::string_view selector) const {

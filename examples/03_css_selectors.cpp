@@ -73,32 +73,32 @@ int main() {
     auto doc = hps::parse(html);
 
     // 1. 基础选择器 / Basic Selectors
-    print_elements("Tag Selector (p)", doc->querySelectorAll("p"));
-    print_elements("Class Selector (.menu)", doc->querySelectorAll(".menu"));
-    print_elements("ID Selector (#app)", doc->querySelectorAll("#app"));
+    print_elements("Tag Selector (p)", doc->query_selector_all("p"));
+    print_elements("Class Selector (.menu)", doc->query_selector_all(".menu"));
+    print_elements("ID Selector (#app)", doc->query_selector_all("#app"));
 
     // 2. 层级组合选择器 / Hierarchy Combinators
     // 后代选择器 (Descendant): div a
-    print_elements("Descendant Selector (div a)", doc->querySelectorAll("div a"));
+    print_elements("Descendant Selector (div a)", doc->query_selector_all("div a"));
 
     // 子元素选择器 (Child): ul > li
-    print_elements("Child Selector (ul > li)", doc->querySelectorAll("ul > li"));
+    print_elements("Child Selector (ul > li)", doc->query_selector_all("ul > li"));
 
     // 3. 属性选择器 / Attribute Selectors
     // 存在属性
-    print_elements("Attribute Exists ([required])", doc->querySelectorAll("[required]"));
+    print_elements("Attribute Exists ([required])", doc->query_selector_all("[required]"));
 
     // 属性值匹配
-    print_elements("Attribute Value ([type=\"submit\"])", doc->querySelectorAll("[type=\"submit\"]"));
+    print_elements("Attribute Value ([type=\"submit\"])", doc->query_selector_all("[type=\"submit\"]"));
 
     // 4. 伪类选择器 / Pseudo-class Selectors
     // :first-child
-    print_elements("First Child (li:first-child)", doc->querySelectorAll("li:first-child"));
+    print_elements("First Child (li:first-child)", doc->query_selector_all("li:first-child"));
 
     // :nth-child
     // 注意：具体支持的伪类取决于 hps 的实现
     // Note: Supported pseudo-classes depend on hps implementation
-    print_elements("Nth Child (li:nth-child(2))", doc->querySelectorAll("li:nth-child(2)"));
+    print_elements("Nth Child (li:nth-child(2))", doc->query_selector_all("li:nth-child(2)"));
 
     // 5. 链式查询 (Query Object) / Chained Query
     // 使用 .css() 方法获取 ElementQuery 对象

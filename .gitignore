@@ -3,6 +3,7 @@
 .vs/
 build/
 enc_temp_folder/
+/out/
 /build_vs
 /build_x64
 /build_*

@@ -20,10 +20,6 @@ std::string CommentNode::text_content() const {
     return {};
 }
 
-const std::string& CommentNode::comment() const {
-    return m_comment;
-}
-
 std::string CommentNode::trim() const {
     const auto trimmed = trim_whitespace(m_comment);
     return std::string(trimmed);

@@ -1,13 +1,15 @@
 #pragma once
 
-#include <functional>
-#include <memory>
+#include "hps/core/element.hpp"
+
+#include <cstddef>
+#include <optional>
 #include <string>
-#include <vector>
 #include <string_view>
+#include <type_traits>
+#include <vector>
 
 namespace hps {
-class Element;
 
 class ElementQuery {
   public:
@@ -168,7 +170,16 @@ class ElementQuery {
      * @param predicate 谓词函数 Predicate function
      * @return 新的 ElementQuery New ElementQuery
      */
-    [[nodiscard]] ElementQuery matching_text(const std::function<bool(std::string_view)>& predicate) const;
+    template <typename Predicate>
+    [[nodiscard]] ElementQuery matching_text(Predicate predicate) const {
+        std::vector<const Element*> filtered;
+        for (const Element* element : m_elements) {
+            if (element && predicate(element->text_content())) {
+                filtered.push_back(element);
+            }
+        }
+        return ElementQuery(std::move(filtered));
+    }
 
     /**
      * @brief 过滤属性值包含指定文本的元素 Filter elements whose attribute value contains specified text
@@ -178,12 +189,6 @@ class ElementQuery {
      */
     [[nodiscard]] ElementQuery has_attribute_contains(std::string_view name, std::string_view text) const;
 
-    /**
-     * @brief 过滤文本内容包含指定文本的元素 Filter elements whose text content contains specified text
-     * @param text 包含的文本 Text to contain
-     * @return 新的 ElementQuery New ElementQuery
-     */
-    [[nodiscard]] ElementQuery has_text_contains(std::string_view text) const;
 
     // 索引和范围操作 Index and range operations
 
@@ -216,12 +221,6 @@ class ElementQuery {
      */
     [[nodiscard]] ElementQuery skip(size_t n) const;
 
-    /**
-     * @brief 限制元素数量 Limit number of elements
-     * @param n 最大元素数量 Maximum number of elements
-     * @return 新的 ElementQuery New ElementQuery
-     */
-    [[nodiscard]] ElementQuery limit(size_t n) const;
 
     // 导航方法 Navigation methods
 
@@ -287,7 +286,7 @@ class ElementQuery {
      */
     [[nodiscard]] ElementQuery siblings() const;
 
-    // CSS 和 XPath 选择器 CSS and XPath selectors
+    // CSS 选择器 CSS selectors
 
     /**
      * @brief 使用 CSS 选择器过滤元素 Filter elements using CSS selector
@@ -310,7 +309,16 @@ class ElementQuery {
      * @param predicate 谓词函数 Predicate function
      * @return 新的 ElementQuery New ElementQuery
      */
-    [[nodiscard]] ElementQuery filter(const std::function<bool(const Element&)>& predicate) const;
+    template <typename Predicate>
+    [[nodiscard]] ElementQuery filter(Predicate predicate) const {
+        std::vector<const Element*> filtered;
+        for (const Element* element : m_elements) {
+            if (element && predicate(*element)) {
+                filtered.push_back(element);
+            }
+        }
+        return ElementQuery(std::move(filtered));
+    }
 
     /**
      * @brief 排除匹配选择器的元素 Exclude elements matching selector
@@ -354,6 +362,27 @@ class ElementQuery {
 
     // 聚合方法 Aggregation methods
 
+    // 标量取值（cheerio / jQuery 风格的便捷接口）
+
+    /**
+     * @brief 获取（合并的）文本内容 Get the combined text content
+     * @return 所有匹配元素 text_content 的顺序拼接；结果集为空时返回空字符串
+     *
+     * 语义与 cheerio/jQuery 的 `.text()` 一致（递归、按文档顺序拼接、无分隔符）。
+     * 需要逐元素文本时请用 extract_texts()。
+     */
+    [[nodiscard]] std::string text() const;
+
+    /**
+     * @brief 获取首个匹配元素的指定属性 Get an attribute of the first matched element
+     * @param name 属性名（忽略大小写）
+     * @return 首个元素存在该属性则返回其值视图；结果集为空或首个元素无该属性返回 std::nullopt
+     *
+     * 语义与 cheerio/jQuery 的 `.attr(name)` 一致（取首个元素）。需要逐元素属性时请用
+     * extract_attributes()。返回的视图在文档存活期间有效。
+     */
+    [[nodiscard]] std::optional<std::string_view> attr(std::string_view name) const;
+
     /**
      * @brief 提取所有元素的指定属性值 Extract specified attribute values from all elements
      * @param attr_name 属性名 Attribute name
@@ -374,29 +403,59 @@ class ElementQuery {
     [[nodiscard]] std::vector<std::string> extract_own_texts() const;
 
     /**
-     * @brief 对每个元素应用映射函数并收集结果 Apply mapping function to each element and collect results
-     * @tparam T 结果类型 Result type
-     * @param mapper 映射函数 Mapping function
-     * @return 映射结果向量 Vector of mapping results
+     * @brief 获取首个匹配元素的内部 HTML（cheerio 风格的 .html()）
+     * @return 首个元素的 inner_html；结果集为空时返回空字符串
      */
-    template <typename T>
-    std::vector<T> map(std::function<T(const Element&)> mapper) const;
+    [[nodiscard]] std::string html() const;
+
+    /**
+     * @brief 提取所有元素的外部 HTML（含自身标签）
+     * @return 各元素 outer_html 组成的向量
+     */
+    [[nodiscard]] std::vector<std::string> extract_outer_html() const;
+
+    /**
+     * @brief 对每个元素应用映射函数并收集结果 Apply mapping function to each element and collect results
+     * @tparam Mapper 任意可调用对象，签名为 `R(const Element&)`
+     * @param mapper 映射函数 Mapping function
+     * @return 映射结果向量，元素类型为 mapper 的返回类型
+     */
+    template <typename Mapper>
+    [[nodiscard]] auto map(Mapper mapper) const {
+        using Result = std::invoke_result_t<Mapper, const Element&>;
+        std::vector<Result> results;
+        results.reserve(m_elements.size());
+        for (const Element* element : m_elements) {
+            if (element) {
+                results.push_back(mapper(*element));
+            }
+        }
+        return results;
+    }
 
     // 遍历方法 Traversal methods
 
     /**
-     * @brief 遍历每个元素并执行回调函数 Iterate over each element and execute callback function
-     * @param callback 回调函数 Callback function
-     * @return 当前 ElementQuery Current ElementQuery
+     * @brief 遍历每个元素并执行回调函数（回调可选地接收索引）
+     *
+     * 回调签名可为 `void(const Element&)` 或 `void(size_t, const Element&)`，
+     * 按可调用性自动分派。
+     * @return 当前 ElementQuery（拷贝）
      */
-    ElementQuery each(const std::function<void(const Element&)>& callback) const;
-
-    /**
-     * @brief 遍历每个元素并执行带索引的回调函数 Iterate over each element and execute callback function with index
-     * @param callback 回调函数 Callback function
-     * @return 当前 ElementQuery Current ElementQuery
-     */
-    ElementQuery each(const std::function<void(size_t, const Element&)>& callback) const;
+    template <typename Callback>
+    ElementQuery each(Callback callback) const {
+        for (size_t i = 0; i < m_elements.size(); ++i) {
+            if (m_elements[i] == nullptr) {
+                continue;
+            }
+            if constexpr (std::is_invocable_v<Callback, size_t, const Element&>) {
+                callback(i, *m_elements[i]);
+            } else {
+                callback(*m_elements[i]);
+            }
+        }
+        return *this;
+    }
 
     // 布尔检查方法 Boolean check methods
 
@@ -424,20 +483,5 @@ class ElementQuery {
   private:
     std::vector<const Element*> m_elements;
 };
-
-// 模板方法实现 Template method implementation
-template <typename T>
-std::vector<T> ElementQuery::map(std::function<T(const Element&)> mapper) const {
-    std::vector<T> results;
-    results.reserve(m_elements.size());
-
-    for (const auto& element : m_elements) {
-        if (element) {
-            results.push_back(mapper(*element));
-        }
-    }
-
-    return results;
-}
 
 }  // namespace hps

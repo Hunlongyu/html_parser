@@ -52,7 +52,7 @@ TEST_F(TreeBuilderTest, BasicStructure) {
 
     auto text = p->first_child(); // text
     ASSERT_NE(text, nullptr);
-    EXPECT_EQ(text->as_text()->text(), "text");
+    EXPECT_EQ(text->as_text()->value(), "text");
 }
 
 TEST_F(TreeBuilderTest, ImplicitClose) {
@@ -69,18 +69,18 @@ TEST_F(TreeBuilderTest, ImplicitClose) {
     const auto* html = doc->html();
     ASSERT_NE(html, nullptr);
 
-    const auto* body = html->querySelector("body");
+    const auto* body = html->query_selector("body");
     ASSERT_NE(body, nullptr);
 
     auto p1 = body->first_child();
     ASSERT_NE(p1, nullptr);
     EXPECT_EQ(p1->as_element()->tag_name(), "p");
-    EXPECT_EQ(p1->first_child()->as_text()->text(), "text1");
+    EXPECT_EQ(p1->first_child()->as_text()->value(), "text1");
 
     auto p2 = p1->next_sibling();
     ASSERT_NE(p2, nullptr);
     EXPECT_EQ(p2->as_element()->tag_name(), "p");
-    EXPECT_EQ(p2->first_child()->as_text()->text(), "text2");
+    EXPECT_EQ(p2->first_child()->as_text()->value(), "text2");
 }
 
 TEST_F(TreeBuilderTest, AutoInsertsHtmlHeadAndBodyForBodyContent) {
@@ -92,12 +92,12 @@ TEST_F(TreeBuilderTest, AutoInsertsHtmlHeadAndBodyForBodyContent) {
     const auto* html = doc->html();
     ASSERT_NE(html, nullptr);
 
-    const auto* head = html->querySelector("head");
-    const auto* body = html->querySelector("body");
+    const auto* head = html->query_selector("head");
+    const auto* body = html->query_selector("body");
     ASSERT_NE(head, nullptr);
     ASSERT_NE(body, nullptr);
 
-    const auto* div = body->querySelector("div");
+    const auto* div = body->query_selector("div");
     ASSERT_NE(div, nullptr);
     EXPECT_EQ(div->text_content(), "hello");
 }
@@ -114,17 +114,17 @@ TEST_F(TreeBuilderTest, HeadContentBeforeBodyIsRoutedIntoHead) {
     const auto* html = doc->html();
     ASSERT_NE(html, nullptr);
 
-    const auto* head = html->querySelector("head");
-    const auto* body = html->querySelector("body");
+    const auto* head = html->query_selector("head");
+    const auto* body = html->query_selector("body");
     ASSERT_NE(head, nullptr);
     ASSERT_NE(body, nullptr);
 
-    ASSERT_NE(head->querySelector("meta"), nullptr);
-    const auto* title = head->querySelector("title");
+    ASSERT_NE(head->query_selector("meta"), nullptr);
+    const auto* title = head->query_selector("title");
     ASSERT_NE(title, nullptr);
     EXPECT_EQ(title->text_content(), "Example");
 
-    const auto* paragraph = body->querySelector("p");
+    const auto* paragraph = body->query_selector("p");
     ASSERT_NE(paragraph, nullptr);
     EXPECT_EQ(paragraph->text_content(), "Body");
 }
@@ -141,7 +141,7 @@ TEST_F(TreeBuilderTest, VoidElements) {
     const auto* html = doc->html();
     ASSERT_NE(html, nullptr);
 
-    const auto* body = html->querySelector("body");
+    const auto* body = html->query_selector("body");
     ASSERT_NE(body, nullptr);
 
     auto div = body->first_child();
@@ -167,16 +167,16 @@ TEST_F(TreeBuilderTest, TableRowsAutoInsertTbody) {
     EXPECT_TRUE(builder->process_token(Token(TokenType::CLOSE, "table", "")));
     EXPECT_TRUE(builder->finish());
 
-    const auto* table = doc->querySelector("table");
+    const auto* table = doc->query_selector("table");
     ASSERT_NE(table, nullptr);
 
-    const auto* tbody = table->querySelector("tbody");
+    const auto* tbody = table->query_selector("tbody");
     ASSERT_NE(tbody, nullptr);
 
-    const auto* row = tbody->querySelector("tr");
+    const auto* row = tbody->query_selector("tr");
     ASSERT_NE(row, nullptr);
 
-    const auto* cell = row->querySelector("td");
+    const auto* cell = row->query_selector("td");
     ASSERT_NE(cell, nullptr);
     EXPECT_EQ(cell->text_content(), "x");
 }
@@ -190,10 +190,10 @@ TEST_F(TreeBuilderTest, TableCellsAutoInsertRowAndClosePreviousCell) {
     EXPECT_TRUE(builder->process_token(Token(TokenType::CLOSE, "table", "")));
     EXPECT_TRUE(builder->finish());
 
-    const auto* row = doc->querySelector("table tbody tr");
+    const auto* row = doc->query_selector("table tbody tr");
     ASSERT_NE(row, nullptr);
 
-    const auto cells = row->querySelectorAll("td");
+    const auto cells = row->query_selector_all("td");
     ASSERT_EQ(cells.size(), 2u);
     EXPECT_EQ(cells[0]->text_content(), "a");
     EXPECT_EQ(cells[1]->text_content(), "b");
@@ -208,7 +208,7 @@ TEST_F(TreeBuilderTest, SelectOptionsImplicitlyClosePreviousOption) {
     EXPECT_TRUE(builder->process_token(Token(TokenType::CLOSE, "select", "")));
     EXPECT_TRUE(builder->finish());
 
-    const auto* select = doc->querySelector("select");
+    const auto* select = doc->query_selector("select");
     ASSERT_NE(select, nullptr);
 
     const auto children = select->children();
@@ -232,7 +232,7 @@ TEST_F(TreeBuilderTest, SelectOptgroupClosesOpenOptionAndPreviousOptgroup) {
     EXPECT_TRUE(builder->process_token(Token(TokenType::CLOSE, "select", "")));
     EXPECT_TRUE(builder->finish());
 
-    const auto* select = doc->querySelector("select");
+    const auto* select = doc->query_selector("select");
     ASSERT_NE(select, nullptr);
 
     const auto children = select->children();
@@ -255,7 +255,7 @@ TEST_F(TreeBuilderTest, ButtonStartTagImplicitlyClosesOpenButton) {
     EXPECT_TRUE(builder->process_token(Token(TokenType::CLOSE, "div", "")));
     EXPECT_TRUE(builder->finish());
 
-    const auto* div = doc->querySelector("div");
+    const auto* div = doc->query_selector("div");
     ASSERT_NE(div, nullptr);
 
     const auto children = div->children();
@@ -281,7 +281,7 @@ TEST_F(TreeBuilderTest, DuplicateAnchorStartTagClosesPreviousAnchor) {
     EXPECT_TRUE(builder->process_token(Token(TokenType::CLOSE, "div", "")));
     EXPECT_TRUE(builder->finish());
 
-    const auto* div = doc->querySelector("div");
+    const auto* div = doc->query_selector("div");
     ASSERT_NE(div, nullptr);
 
     const auto children = div->children();
@@ -308,9 +308,9 @@ TEST_F(TreeBuilderTest, NestedFormStartTagIsIgnored) {
     EXPECT_TRUE(builder->process_token(Token(TokenType::CLOSE, "div", "")));
     EXPECT_TRUE(builder->finish());
 
-    const auto forms = doc->querySelectorAll("form");
+    const auto forms = doc->query_selector_all("form");
     ASSERT_EQ(forms.size(), 1u);
-    EXPECT_EQ(forms[0]->querySelectorAll("input").size(), 2u);
+    EXPECT_EQ(forms[0]->query_selector_all("input").size(), 2u);
     EXPECT_FALSE(builder->errors().empty());
 }
 
@@ -324,7 +324,7 @@ TEST_F(TreeBuilderTest, TableCaptionClosesBeforeBodyRows) {
     EXPECT_TRUE(builder->process_token(Token(TokenType::CLOSE, "table", "")));
     EXPECT_TRUE(builder->finish());
 
-    const auto* table = doc->querySelector("table");
+    const auto* table = doc->query_selector("table");
     ASSERT_NE(table, nullptr);
 
     const auto children = table->children();
@@ -354,10 +354,10 @@ TEST_F(TreeBuilderTest, NestedTableInsideCellRemainsInsideCell) {
     EXPECT_TRUE(builder->process_token(Token(TokenType::CLOSE, "table", "")));
     EXPECT_TRUE(builder->finish());
 
-    const auto* outer_table = doc->querySelector("table");
+    const auto* outer_table = doc->query_selector("table");
     ASSERT_NE(outer_table, nullptr);
 
-    const auto* outer_row = outer_table->querySelector("tbody > tr");
+    const auto* outer_row = outer_table->query_selector("tbody > tr");
     ASSERT_NE(outer_row, nullptr);
 
     const auto row_children = outer_row->children();
@@ -383,7 +383,7 @@ TEST_F(TreeBuilderTest, TableColImpliesColgroup) {
     EXPECT_TRUE(builder->process_token(Token(TokenType::CLOSE, "table", "")));
     EXPECT_TRUE(builder->finish());
 
-    const auto* table = doc->querySelector("table");
+    const auto* table = doc->query_selector("table");
     ASSERT_NE(table, nullptr);
 
     const auto children = table->children();
@@ -413,7 +413,7 @@ TEST_F(TreeBuilderTest, ColgroupFallbackReprocessesNonColTokensInTableMode) {
     EXPECT_TRUE(builder->process_token(Token(TokenType::CLOSE, "section", "")));
     EXPECT_TRUE(builder->finish());
 
-    const auto* section = doc->querySelector("section");
+    const auto* section = doc->query_selector("section");
     ASSERT_NE(section, nullptr);
 
     const auto children = section->children();
@@ -439,7 +439,7 @@ TEST_F(TreeBuilderTest, TableTextIsFosterParentedBeforeTable) {
     EXPECT_TRUE(builder->process_token(Token(TokenType::CLOSE, "div", "")));
     EXPECT_TRUE(builder->finish());
 
-    const auto* div = doc->querySelector("div");
+    const auto* div = doc->query_selector("div");
     ASSERT_NE(div, nullptr);
 
     const auto children = div->children();
@@ -462,7 +462,7 @@ TEST_F(TreeBuilderTest, TableElementIsFosterParentedBeforeTable) {
     EXPECT_TRUE(builder->process_token(Token(TokenType::CLOSE, "div", "")));
     EXPECT_TRUE(builder->finish());
 
-    const auto* div = doc->querySelector("div");
+    const auto* div = doc->query_selector("div");
     ASSERT_NE(div, nullptr);
 
     const auto children = div->children();
@@ -485,7 +485,7 @@ TEST_F(TreeBuilderTest, RecoversMisnestedFormattingElements) {
     EXPECT_TRUE(builder->process_token(Token(TokenType::TEXT, "", "z")));
     EXPECT_TRUE(builder->finish());
 
-    const auto* paragraph = doc->querySelector("p");
+    const auto* paragraph = doc->query_selector("p");
     ASSERT_NE(paragraph, nullptr);
 
     const auto children = paragraph->children();

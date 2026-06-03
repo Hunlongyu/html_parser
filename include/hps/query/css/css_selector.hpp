@@ -2,7 +2,6 @@
 
 #include "hps/utils/string_pool.hpp"
 
-#include <algorithm>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -79,12 +78,12 @@ class CSSSelector {
         return m_type;
     }
 
-    [[nodiscard]] virtual bool                matches(const Element& element) const = 0;
+    [[nodiscard]] virtual bool                matches(const Element&) const = 0;
     [[nodiscard]] virtual std::string         to_string() const                     = 0;
     [[nodiscard]] virtual SelectorSpecificity calculate_specificity() const         = 0;
 
     // 快速匹配检查（可选优化）
-    [[nodiscard]] virtual bool can_quick_reject(const Element& element) const {
+    [[nodiscard]] virtual bool can_quick_reject(const Element&) const {
         return false;
     }
 
@@ -98,7 +97,7 @@ class UniversalSelector : public CSSSelector {
     UniversalSelector()
         : CSSSelector(SelectorType::Universal) {}
 
-    [[nodiscard]] bool matches(const Element& element) const override {
+    [[nodiscard]] bool matches(const Element&) const override {
         return true;  // 通用选择器匹配所有元素
     }
 

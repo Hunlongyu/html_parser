@@ -14,7 +14,6 @@ TEST(CommentNodeTest, BasicPropertiesAndTrim) {
     EXPECT_FALSE(node.empty());
     EXPECT_EQ(node.length(), std::string("  hello  ").length());
     EXPECT_EQ(node.value(), "  hello  ");
-    EXPECT_EQ(node.comment(), "  hello  ");
     EXPECT_EQ(node.text_content(), "");
     EXPECT_EQ(node.trim(), "hello");
 }

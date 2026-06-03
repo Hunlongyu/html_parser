@@ -4,6 +4,9 @@
 #include "hps/query/element_query.hpp"
 #include "hps/query/query.hpp"
 #include "hps/utils/string_utils.hpp"
+#include "hps/utils/url.hpp"
+
+#include "serializer.hpp"
 
 #include <algorithm>
 #include <sstream>
@@ -18,9 +21,10 @@ std::string normalize_tag_key(const std::string_view tag_name) {
 
 }  // namespace
 
-Document::Document(std::string html_content)
+Document::Document(std::string html_content, std::string base_url)
     : Node(NodeType::Document),
-      m_html_source(std::move(html_content)) {}
+      m_html_source(std::move(html_content)),
+      m_base_url(std::move(base_url)) {}
 
 NodeType Document::type() const noexcept {
     return NodeType::Document;
@@ -33,6 +37,7 @@ void Document::invalidate_query_indexes() noexcept {
     m_query_index_cache.valid = false;
     m_cached_title.reset();
     m_cached_charset.reset();
+    m_cached_base_url.reset();
 }
 
 void Document::index_element_subtree(const Element& element) const {
@@ -129,6 +134,12 @@ std::string_view Document::source_html() const noexcept {
     return m_html_source;
 }
 
+std::string Document::outer_html() const {
+    std::string out;
+    detail::serialize_children(*this, out);
+    return out;
+}
+
 std::string Document::get_meta_content(const std::string_view name) const {
     const auto meta_elements = get_elements_by_tag_name("meta");
     for (const auto& meta : meta_elements) {
@@ -151,12 +162,40 @@ std::string Document::get_meta_property(const std::string_view property) const {
     return {};
 }
 
+const std::string& Document::base_url() const {
+    if (!m_cached_base_url.has_value()) {
+        std::string effective = m_base_url;
+        // <base href> 覆盖/补全文档基准（自身相对 Options::base_url 解析）。
+        if (const Element* base = query_selector("base"); base != nullptr) {
+            if (const auto href = base->attr("href"); href.has_value() && !href->empty()) {
+                effective = hps::resolve_url(m_base_url, *href);
+            }
+        }
+        m_cached_base_url = std::move(effective);
+    }
+    return *m_cached_base_url;
+}
+
+std::string Document::resolve_url(const std::string_view reference) const {
+    return hps::resolve_url(base_url(), reference);
+}
+
 std::vector<std::string> Document::get_all_links() const {
-    return Query::css(*this, "a[href]").extract_attributes("href");
+    const std::string& base  = base_url();
+    auto               links = Query::css(*this, "a[href]").extract_attributes("href");
+    for (auto& link : links) {
+        link = hps::resolve_url(base, link);
+    }
+    return links;
 }
 
 std::vector<std::string> Document::get_all_images() const {
-    return Query::css(*this, "img[src]").extract_attributes("src");
+    const std::string& base   = base_url();
+    auto               images = Query::css(*this, "img[src]").extract_attributes("src");
+    for (auto& image : images) {
+        image = hps::resolve_url(base, image);
+    }
+    return images;
 }
 
 const Element* Document::root() const {
@@ -183,11 +222,11 @@ const Element* Document::html() const {
     return nullptr;
 }
 
-const Element* Document::querySelector(const std::string_view selector) const {
+const Element* Document::query_selector(const std::string_view selector) const {
     return Query::css_first(*this, selector);
 }
 
-std::vector<const Element*> Document::querySelectorAll(const std::string_view selector) const {
+std::vector<const Element*> Document::query_selector_all(const std::string_view selector) const {
     return Query::css(*this, selector).elements();
 }
 

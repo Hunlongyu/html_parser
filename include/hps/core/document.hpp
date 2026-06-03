@@ -23,8 +23,9 @@ class Document : public Node {
     /**
      * @brief 构造函数
      * @param html_content HTML 源代码字符串
+     * @param base_url 文档来源 URL（页面地址），用于相对链接解析；可为空
      */
-    explicit Document(std::string html_content);
+    explicit Document(std::string html_content, std::string base_url = {});
 
     /**
      * @brief 虚析构函数
@@ -63,6 +64,15 @@ class Document : public Node {
      */
     [[nodiscard]] std::string_view source_html() const noexcept;
 
+    /**
+     * @brief 将整个文档树序列化为 HTML
+     *
+     * 反映解析后的 DOM（可能与 source_html 不同：如编码已转码、容错已修复）；
+     * 不包含 DOCTYPE（本库不将其表示为节点）。
+     * @return 文档全部子节点序列化而成的 HTML 字符串
+     */
+    [[nodiscard]] std::string outer_html() const;
+
     // Meta Information Extraction
     /**
      * @brief 获取指定 name 属性的 meta 标签内容
@@ -78,16 +88,30 @@ class Document : public Node {
      */
     [[nodiscard]] std::string get_meta_property(std::string_view property) const;
 
+    // URL Resolution
+    /**
+     * @brief 获取文档的有效基准 URL（用于相对链接解析）
+     * @return 若存在 `<base href>` 则返回其相对 Options::base_url 解析后的结果，否则返回 Options::base_url；均未提供时为空串
+     */
+    [[nodiscard]] const std::string& base_url() const;
+
+    /**
+     * @brief 将一个（可能是相对的）引用解析为绝对 URL
+     * @param reference href/src 等引用
+     * @return 基于 base_url() 解析的结果（base_url 为空时原样返回 reference）
+     */
+    [[nodiscard]] std::string resolve_url(std::string_view reference) const;
+
     // Resource Extraction
     /**
      * @brief 获取文档中所有链接
-     * @return 包含所有 a 标签 href 属性值的字符串向量
+     * @return 所有 a[href] 的 href；当已知 base_url() 时解析为绝对地址，否则为原始值
      */
     [[nodiscard]] std::vector<std::string> get_all_links() const;
 
     /**
      * @brief 获取文档中所有图片链接
-     * @return 包含所有 img 标签 src 属性值的字符串向量
+     * @return 所有 img[src] 的 src；当已知 base_url() 时解析为绝对地址，否则为原始值
      */
     [[nodiscard]] std::vector<std::string> get_all_images() const;
 
@@ -110,14 +134,14 @@ class Document : public Node {
      * @param selector CSS 选择器字符串（例如 "#id", ".class", "tag"）
      * @return 第一个匹配的元素，如果没有找到则返回 nullptr
      */
-    [[nodiscard]] const Element* querySelector(std::string_view selector) const;
+    [[nodiscard]] const Element* query_selector(std::string_view selector) const;
 
     /**
      * @brief 使用 CSS 选择器查找所有匹配的元素
      * @param selector CSS 选择器字符串
      * @return 包含所有匹配元素的向量，如果没有找到则返回空向量
      */
-    [[nodiscard]] std::vector<const Element*> querySelectorAll(std::string_view selector) const;
+    [[nodiscard]] std::vector<const Element*> query_selector_all(std::string_view selector) const;
 
     /**
      * @brief 根据 ID 查找元素
@@ -178,10 +202,12 @@ class Document : public Node {
     void index_element_subtree(const Element& element) const;
 
     std::string m_html_source; /**< 原始 HTML 源代码 */
+    std::string m_base_url;     /**< 文档来源 URL（页面地址），来自 Options::base_url */
 
-    mutable QueryIndexCache           m_query_index_cache;
-    mutable std::optional<std::string> m_cached_title;   /**< 缓存的文档标题 */
-    mutable std::optional<std::string> m_cached_charset; /**< 缓存的字符编码 */
+    mutable QueryIndexCache            m_query_index_cache;
+    mutable std::optional<std::string> m_cached_title;    /**< 缓存的文档标题 */
+    mutable std::optional<std::string> m_cached_charset;  /**< 缓存的字符编码 */
+    mutable std::optional<std::string> m_cached_base_url; /**< 缓存的有效基准 URL（含 <base href>） */
 
     friend class Node;
 };

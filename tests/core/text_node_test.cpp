@@ -14,18 +14,8 @@ TEST(TextNodeTest, BasicPropertiesAndTrim) {
     EXPECT_FALSE(node.empty());
     EXPECT_EQ(node.length(), std::string("  hello  ").length());
     EXPECT_EQ(node.value(), "  hello  ");
-    EXPECT_EQ(node.text(), "  hello  ");
     EXPECT_EQ(node.text_content(), "  hello  ");
     EXPECT_EQ(node.trim(), "hello");
-}
-
-TEST(TextNodeTest, NameIsParentTagNameWhenParentIsElement) {
-    auto parent = std::make_unique<Element>("p");
-    auto text   = std::make_unique<TextNode>("x");
-    const auto* text_ptr = text.get();
-
-    parent->add_child(std::move(text));
-    EXPECT_EQ(text_ptr->name(), "p");
 }
 
 }  // namespace hps::tests

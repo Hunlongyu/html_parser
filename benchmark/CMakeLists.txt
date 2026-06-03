@@ -1,7 +1,8 @@
 function(hps_add_benchmark target_name source_file)
 	add_executable(${target_name} ${source_file})
-	target_link_libraries(${target_name} PRIVATE hps_static)
+	target_link_libraries(${target_name} PRIVATE hps::hps)
 	target_compile_definitions(${target_name} PRIVATE HPS_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+	hps_apply_target_defaults(${target_name})
 endfunction()
 
 hps_add_benchmark(tokenizer_bench tokenizer_bench.cpp)

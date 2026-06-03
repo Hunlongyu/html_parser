@@ -9,6 +9,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iterator>
+#include <optional>
 
 namespace hps {
 namespace {
@@ -62,34 +63,30 @@ namespace {
     return NamespaceKind::Html;
 }
 
-[[nodiscard]] auto normalize_utf8_file_input(const std::string_view raw_bytes) -> std::string {
-    if (raw_bytes.empty()) {
-        return {};
+// 把转码结果映射为解析诊断；成功（含空输入）返回 std::nullopt。
+// 编码细分原因（未知/不支持/非法字节）统一归到 UnsupportedEncoding 错误码，
+// 但消息中给出精确语义；需要按状态分支处理的调用方应直接使用 hps::decode_to_utf8。
+[[nodiscard]] auto decode_status_to_error(const DecodeResult& decoded)
+    -> std::optional<HPSError> {
+    const std::string label = decoded.encoding.empty() ? std::string("<unknown>") : decoded.encoding;
+    switch (decoded.status) {
+        case DecodeStatus::Ok:
+            return std::nullopt;
+        case DecodeStatus::UnknownEncoding:
+            return HPSError{
+                ErrorCode::UnsupportedEncoding,
+                "Unable to detect input encoding; set Options::encoding "
+                "or convert the input to UTF-8 first"};
+        case DecodeStatus::UnsupportedEncoding:
+            return HPSError{
+                ErrorCode::UnsupportedEncoding,
+                "Detected encoding is not supported for transcoding: " + label};
+        case DecodeStatus::InvalidBytes:
+            return HPSError{
+                ErrorCode::UnsupportedEncoding,
+                "Input bytes are not valid for encoding: " + label};
     }
-
-    const auto hint = sniff_html_encoding(raw_bytes);
-    if (!hint.has_encoding()) {
-        throw HPSException(
-            ErrorCode::UnsupportedEncoding,
-            "HTML file input must already be UTF-8");
-    }
-
-    if (hint.canonical_label != "utf-8") {
-        const std::string detected =
-            hint.detected_label.empty() ? hint.canonical_label : hint.detected_label;
-        throw HPSException(
-            ErrorCode::UnsupportedEncoding,
-            "HTML file input must already be UTF-8; detected encoding: " + detected);
-    }
-
-    auto utf8 = decode_html_bytes_to_utf8(raw_bytes, hint.canonical_label);
-    if (!utf8.has_value()) {
-        throw HPSException(
-            ErrorCode::UnsupportedEncoding,
-            "HTML file input is not valid UTF-8");
-    }
-
-    return std::move(*utf8);
+    return std::nullopt;
 }
 
 }  // namespace
@@ -127,10 +124,10 @@ std::shared_ptr<Document> HTMLParser::parse_owned(std::string html, const Option
         if (error_handling == ErrorHandlingMode::Strict) {
             throw HPSException(ErrorCode::InvalidHTML, "Invalid parser options");
         }
-        return std::make_shared<Document>(std::move(html));
+        return std::make_shared<Document>(std::move(html), options.base_url);
     }
 
-    auto document = std::make_shared<Document>(std::move(html));
+    auto document = std::make_shared<Document>(std::move(html), options.base_url);
     try {
         TreeBuilder builder(document, options);
         Tokenizer   tokenizer(document->source_html(), options);
@@ -217,10 +214,10 @@ std::shared_ptr<Document> HTMLParser::parse_fragment_owned(
         if (error_handling == ErrorHandlingMode::Strict) {
             throw HPSException(ErrorCode::InvalidHTML, "Invalid parser options");
         }
-        return std::make_shared<Document>(std::move(html));
+        return std::make_shared<Document>(std::move(html), options.base_url);
     }
 
-    auto working_document = std::make_shared<Document>(std::move(html));
+    auto working_document = std::make_shared<Document>(std::move(html), options.base_url);
     const std::string normalized_context =
         normalize_tag_name(context_tag, options.preserve_case);
 
@@ -295,7 +292,7 @@ std::shared_ptr<Document> HTMLParser::parse_fragment_owned(
             std::make_move_iterator(builder_errors.end()));
 
         auto result_document =
-            std::make_shared<Document>(std::string(working_document->source_html()));
+            std::make_shared<Document>(std::string(working_document->source_html()), options.base_url);
         auto fragment_children = fragment_element->take_children();
         for (auto& child : fragment_children) {
             result_document->add_child(std::move(child));
@@ -312,16 +309,37 @@ std::shared_ptr<Document> HTMLParser::parse_fragment_owned(
             throw HPSException(ErrorCode::UnknownError, e.what());
         }
     }
-    return std::make_shared<Document>(std::string(working_document->source_html()));
+    return std::make_shared<Document>(std::string(working_document->source_html()), options.base_url);
 }
 
-std::shared_ptr<Document> HTMLParser::parse_file(
-    const std::string_view filePath,
+std::shared_ptr<Document> HTMLParser::parse_bytes(
+    const std::string_view bytes,
     const Options& options) {
     m_errors.clear();
     const auto mode = options.error_handling;
+
+    auto decoded = decode_to_utf8(bytes, options.encoding);
+    if (auto error = decode_status_to_error(decoded)) {
+        m_errors.push_back(*error);
+        if (mode == ErrorHandlingMode::Strict) {
+            throw HPSException(*error);
+        }
+        return std::make_shared<Document>("");
+    }
+
+    // parse_owned 会重新 clear m_errors，此处转码已成功无需保留诊断。
+    return parse_owned(std::move(decoded.text), options);
+}
+
+std::shared_ptr<Document> HTMLParser::parse_file(
+    const std::string_view file_path,
+    const Options& options) {
+    m_errors.clear();
+    const auto mode = options.error_handling;
+
+    std::string raw_bytes;
     try {
-        const std::filesystem::path path(filePath);
+        const std::filesystem::path path(file_path);
         if (!std::filesystem::exists(path)) {
             throw std::runtime_error("File does not exist: " + path.string());
         }
@@ -335,29 +353,19 @@ std::shared_ptr<Document> HTMLParser::parse_file(
             throw std::runtime_error("Cannot open file: " + path.string());
         }
 
-        std::string html_content;
         {
             std::error_code ec;
             const auto      file_size = std::filesystem::file_size(path, ec);
             if (!ec && file_size > 0) {
-                html_content.reserve(static_cast<size_t>(file_size));
+                raw_bytes.reserve(static_cast<size_t>(file_size));
             }
         }
-        html_content.assign(
+        raw_bytes.assign(
             std::istreambuf_iterator<char>(file),
             std::istreambuf_iterator<char>());
         if (!file.eof() && file.fail()) {
             throw std::runtime_error("Cannot read file: " + path.string());
         }
-        html_content = normalize_utf8_file_input(html_content);
-        return parse_owned(std::move(html_content), options);
-
-    } catch (const HPSException& e) {
-        m_errors.push_back(e.error());
-        if (mode == ErrorHandlingMode::Strict) {
-            throw;
-        }
-        return std::make_shared<Document>("");
     } catch (const std::exception& e) {
         m_errors.emplace_back(
             ErrorCode::FileReadError,
@@ -366,10 +374,22 @@ std::shared_ptr<Document> HTMLParser::parse_file(
         if (mode == ErrorHandlingMode::Strict) {
             throw HPSException(
                 ErrorCode::FileReadError,
-                "Cannot read file: " + std::string(filePath));
+                "Cannot read file: " + std::string(file_path));
         }
         return std::make_shared<Document>("");
     }
+
+    // 检测/转码为 UTF-8（失败时记录 UnsupportedEncoding，严格模式下抛出）。
+    auto decoded = decode_to_utf8(raw_bytes, options.encoding);
+    if (auto error = decode_status_to_error(decoded)) {
+        m_errors.push_back(*error);
+        if (mode == ErrorHandlingMode::Strict) {
+            throw HPSException(*error);
+        }
+        return std::make_shared<Document>("");
+    }
+
+    return parse_owned(std::move(decoded.text), options);
 }
 
 const std::vector<HPSError>& HTMLParser::get_errors() const noexcept {
