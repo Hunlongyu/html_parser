@@ -2,6 +2,8 @@
 
 #include "hps/core/document.hpp"
 #include "hps/core/element.hpp"
+#include "hps/parsing/tokenizer.hpp"
+#include "hps/parsing/tree_builder.hpp"
 #include "hps/utils/encoding.hpp"
 #include "hps/utils/string_utils.hpp"
 

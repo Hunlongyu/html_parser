@@ -1,6 +1,7 @@
 # HPS HTML 解析库
 
 ![GitHub Release](https://img.shields.io/github/v/release/Hunlongyu/html_parser)
+[![CI](https://github.com/Hunlongyu/html_parser/actions/workflows/ci.yml/badge.svg)](https://github.com/Hunlongyu/html_parser/actions/workflows/ci.yml)
 ![C++](https://img.shields.io/badge/C++-20-blue.svg)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 

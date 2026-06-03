@@ -6,6 +6,7 @@
 #include "hps/utils/exception.hpp"
 
 #include <optional>
+#include <string_view>
 
 namespace hps {
 
@@ -28,9 +29,9 @@ namespace hps {
  * auto tokens = tokenizer.tokenize_all();
  * @endcode
  *
- * @note 该类继承自NonCopyable，不支持拷贝操作，但支持移动语义
+ * @note 不支持拷贝（显式删除）
  */
-class Tokenizer : public NonCopyable {
+class Tokenizer {
   public:
     // ==================== 构造函数和析构函数 ====================
 
@@ -41,6 +42,9 @@ class Tokenizer : public NonCopyable {
      */
     explicit Tokenizer(std::string_view source, const Options& options);
     Tokenizer(std::string_view source, const Options& options, TokenizerState initial_state, std::string_view last_start_tag);
+
+    Tokenizer(const Tokenizer&)            = delete;
+    Tokenizer& operator=(const Tokenizer&) = delete;
 
     /**
      * @brief 析构函数

@@ -3,7 +3,6 @@
 #include "hps/core/element.hpp"
 #include "hps/parsing/options.hpp"
 #include "hps/utils/exception.hpp"
-#include "hps/utils/noncopyable.hpp"
 
 #include <utility>
 
@@ -15,9 +14,9 @@ namespace hps {
  * TreeBuilder负责将Token序列转换为DOM树结构。它维护一个元素栈来跟踪
  * 当前的嵌套结构，并处理各种HTML标签的开始、结束和文本内容。
  *
- * 该类继承自NonCopyable，确保树构建器实例不能被复制，避免状态混乱。
+ * 显式删除拷贝，确保树构建器实例不能被复制，避免状态混乱。
  */
-class TreeBuilder : public NonCopyable {
+class TreeBuilder {
   public:
     /**
      * @brief 构造函数
@@ -26,6 +25,9 @@ class TreeBuilder : public NonCopyable {
      */
     explicit TreeBuilder(const std::shared_ptr<Document>& document, const Options& options);
     TreeBuilder(const std::shared_ptr<Document>& document, const Options& options, Element* fragment_context);
+
+    TreeBuilder(const TreeBuilder&)            = delete;
+    TreeBuilder& operator=(const TreeBuilder&) = delete;
 
     /**
      * @brief 析构函数

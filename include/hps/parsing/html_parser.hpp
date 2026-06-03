@@ -1,10 +1,16 @@
 #pragma once
 
 #include "hps/parsing/options.hpp"
-#include "hps/parsing/tokenizer.hpp"
-#include "hps/parsing/tree_builder.hpp"
+#include "hps/utils/exception.hpp"
+
+#include <memory>
+#include <string>
+#include <string_view>
+#include <vector>
 
 namespace hps {
+
+class Document;
 
 /**
  * @brief HTML解析器类
@@ -12,7 +18,7 @@ namespace hps {
  * HTMLParser是HTML解析的协调器，负责整合词法分析器(Tokenizer)和语法分析器(TreeBuilder)，
  * 将HTML字符串解析为DOM文档树。支持完整HTML文档和文件解析，提供灵活的错误处理选项。
  */
-class HTMLParser : public NonCopyable {
+class HTMLParser {
   public:
     /**
      * @brief 默认构造函数
@@ -23,6 +29,9 @@ class HTMLParser : public NonCopyable {
      * @brief 析构函数
      */
     ~HTMLParser() = default;
+
+    HTMLParser(const HTMLParser&)            = delete;
+    HTMLParser& operator=(const HTMLParser&) = delete;
 
     // 核心解析功能（最重要的基础功能）
     /**

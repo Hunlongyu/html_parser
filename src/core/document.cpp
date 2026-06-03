@@ -46,8 +46,8 @@ void Document::index_element_subtree(const Element& element) const {
     }
     m_query_index_cache.tag_lookup[normalize_tag_key(element.tag_name())].push_back(&element);
 
-    for (const auto& class_name : element.class_names()) {
-        m_query_index_cache.class_lookup[class_name].push_back(&element);
+    for (const std::string_view class_name : element.class_names()) {
+        m_query_index_cache.class_lookup[std::string(class_name)].push_back(&element);
     }
 
     for (auto child = element.first_child(); child; child = child->next_sibling()) {

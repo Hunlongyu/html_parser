@@ -16,10 +16,12 @@ set(hps_sources
     query/element_query.cpp
     query/query.cpp
     utils/encoding.cpp
+    utils/string_utils.cpp
     utils/url.cpp
     hps.cpp
 )
 
+# 对外公开、随安装导出的头文件（最小公共接口面）
 set(hps_public_headers
     "${PROJECT_SOURCE_DIR}/include/hps/core/attribute.hpp"
     "${PROJECT_SOURCE_DIR}/include/hps/core/comment_node.hpp"
@@ -31,8 +33,17 @@ set(hps_public_headers
     "${PROJECT_SOURCE_DIR}/include/hps/hps_fwd.hpp"
     "${PROJECT_SOURCE_DIR}/include/hps/parsing/html_parser.hpp"
     "${PROJECT_SOURCE_DIR}/include/hps/parsing/options.hpp"
-    "${PROJECT_SOURCE_DIR}/include/hps/parsing/token.hpp"
     "${PROJECT_SOURCE_DIR}/include/hps/parsing/token_attribute.hpp"
+    "${PROJECT_SOURCE_DIR}/include/hps/query/element_query.hpp"
+    "${PROJECT_SOURCE_DIR}/include/hps/query/query.hpp"
+    "${PROJECT_SOURCE_DIR}/include/hps/utils/encoding.hpp"
+    "${PROJECT_SOURCE_DIR}/include/hps/utils/exception.hpp"
+    "${PROJECT_SOURCE_DIR}/include/hps/utils/url.hpp"
+)
+
+# 内部实现头文件：参与本库编译，但不随安装导出（不属于公共 ABI 面）
+set(hps_internal_headers
+    "${PROJECT_SOURCE_DIR}/include/hps/parsing/token.hpp"
     "${PROJECT_SOURCE_DIR}/include/hps/parsing/token_builder.hpp"
     "${PROJECT_SOURCE_DIR}/include/hps/parsing/tokenizer.hpp"
     "${PROJECT_SOURCE_DIR}/include/hps/parsing/tree_builder.hpp"
@@ -41,14 +52,8 @@ set(hps_public_headers
     "${PROJECT_SOURCE_DIR}/include/hps/query/css/css_parser.hpp"
     "${PROJECT_SOURCE_DIR}/include/hps/query/css/css_selector.hpp"
     "${PROJECT_SOURCE_DIR}/include/hps/query/css/css_utils.hpp"
-    "${PROJECT_SOURCE_DIR}/include/hps/query/element_query.hpp"
-    "${PROJECT_SOURCE_DIR}/include/hps/query/query.hpp"
-    "${PROJECT_SOURCE_DIR}/include/hps/utils/encoding.hpp"
-    "${PROJECT_SOURCE_DIR}/include/hps/utils/exception.hpp"
-    "${PROJECT_SOURCE_DIR}/include/hps/utils/noncopyable.hpp"
     "${PROJECT_SOURCE_DIR}/include/hps/utils/string_pool.hpp"
     "${PROJECT_SOURCE_DIR}/include/hps/utils/string_utils.hpp"
-    "${PROJECT_SOURCE_DIR}/include/hps/utils/url.hpp"
 )
 
 set(hps_generated_include_dir "${PROJECT_BINARY_DIR}/generated/include")
@@ -107,4 +112,4 @@ endif()
 hps_apply_target_defaults(hps)
 
 source_group(TREE "${PROJECT_SOURCE_DIR}/src" PREFIX "Source Files" FILES ${hps_sources})
-source_group(TREE "${PROJECT_SOURCE_DIR}/include" PREFIX "Header Files" FILES ${hps_public_headers})
+source_group(TREE "${PROJECT_SOURCE_DIR}/include" PREFIX "Header Files" FILES ${hps_public_headers} ${hps_internal_headers})

@@ -8,7 +8,6 @@
 #include "serializer.hpp"
 
 #include <algorithm>
-#include <sstream>
 
 namespace hps {
 namespace {
@@ -52,6 +51,31 @@ void collect_descendants_by_class(const Element& element, const std::string_view
     }
 }
 
+// 按空白把 class 属性值切成各个类名（零拷贝），对每个非空类名调用 visit(token)；
+// visit 返回 true 表示命中并提前结束，返回值即“是否提前停止”。
+template <typename Visit>
+bool for_each_class_token(const std::string_view classes, Visit visit) {
+    size_t       pos = 0;
+    const size_t len = classes.size();
+    while (pos < len) {
+        while (pos < len && is_whitespace(classes[pos])) {
+            ++pos;
+        }
+        if (pos >= len) {
+            break;
+        }
+        size_t end = pos;
+        while (end < len && !is_whitespace(classes[end])) {
+            ++end;
+        }
+        if (visit(classes.substr(pos, end - pos))) {
+            return true;
+        }
+        pos = end;
+    }
+    return false;
+}
+
 }  // namespace
 
 Element::Element(const std::string_view name, const NamespaceKind namespace_kind)
@@ -64,21 +88,21 @@ NodeType Element::type() const noexcept {
 }
 
 std::string Element::text_content() const {
-    std::stringstream ss;
+    std::string out;
     for (auto child = first_child(); child; child = child->next_sibling()) {
-        ss << child->text_content();
+        out += child->text_content();
     }
-    return ss.str();
+    return out;
 }
 
 std::string Element::own_text() const {
-    std::stringstream ss;
+    std::string out;
     for (auto child = first_child(); child; child = child->next_sibling()) {
         if (child->is_text()) {
-            ss << child->as_text()->value();
+            out += child->as_text()->value();
         }
     }
-    return ss.str();
+    return out;
 }
 
 std::string Element::inner_html() const {
@@ -147,43 +171,21 @@ const std::string& Element::class_name() const noexcept {
     return get_attribute("class");
 }
 
-std::unordered_set<std::string> Element::class_names() const noexcept {
-    const std::string& cls = get_attribute("class");
-    if (!cls.empty()) {
-        return split_class_names(cls);
-    }
-    return {};
+std::vector<std::string_view> Element::class_names() const noexcept {
+    std::vector<std::string_view> names;
+    for_each_class_token(get_attribute("class"), [&names](const std::string_view token) {
+        names.push_back(token);
+        return false;  // 收集全部，不提前停止
+    });
+    return names;
 }
 
 bool Element::has_class(const std::string_view class_name) const noexcept {
     if (class_name.empty()) {
         return false;
     }
-    const std::string& attr_val = get_attribute("class");
-    if (attr_val.empty()) {
-        return false;
-    }
-    const std::string_view val = attr_val;
-    size_t                 pos = 0;
-    const size_t           len = val.length();
-
-    while (pos < len) {
-        while (pos < len && is_whitespace(val[pos])) {
-            ++pos;
-        }
-        if (pos >= len) {
-            break;
-        }
-        size_t end = pos;
-        while (end < len && !is_whitespace(val[end])) {
-            ++end;
-        }
-        if (val.substr(pos, end - pos) == class_name) {
-            return true;
-        }
-        pos = end;
-    }
-    return false;
+    return for_each_class_token(get_attribute("class"),
+                                [class_name](const std::string_view token) { return token == class_name; });
 }
 
 const Element* Element::query_selector(const std::string_view selector) const {

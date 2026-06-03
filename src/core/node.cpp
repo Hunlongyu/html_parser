@@ -71,20 +71,22 @@ std::vector<const Node*> Node::siblings() const noexcept {
     return result;
 }
 
+// 节点层级是封闭的，且每个派生类在构造时写入了对应的 m_type，
+// 因此用类型标签 + static_cast 替代 dynamic_cast，避免 RTTI 开销（热路径）。
 const Document* Node::as_document() const noexcept {
-    return dynamic_cast<const Document*>(this);
+    return m_type == NodeType::Document ? static_cast<const Document*>(this) : nullptr;
 }
 
 const Element* Node::as_element() const noexcept {
-    return dynamic_cast<const Element*>(this);
+    return m_type == NodeType::Element ? static_cast<const Element*>(this) : nullptr;
 }
 
 const TextNode* Node::as_text() const noexcept {
-    return dynamic_cast<const TextNode*>(this);
+    return m_type == NodeType::Text ? static_cast<const TextNode*>(this) : nullptr;
 }
 
 const CommentNode* Node::as_comment() const noexcept {
-    return dynamic_cast<const CommentNode*>(this);
+    return m_type == NodeType::Comment ? static_cast<const CommentNode*>(this) : nullptr;
 }
 
 const Document* Node::owner_document() const noexcept {

@@ -479,7 +479,7 @@ void TreeBuilder::insert_text(std::string_view text) const {
     if (parent) {
         if (Node* last = parent->last_child_mut()) {
             if (last->type() == NodeType::Text) {
-                dynamic_cast<TextNode*>(last)->append_text(text);
+                static_cast<TextNode*>(last)->append_text(text);
                 return;
             }
         }
@@ -510,7 +510,7 @@ void TreeBuilder::insert_text_before(
     }
 
     if (previous != nullptr && previous->type() == NodeType::Text) {
-        dynamic_cast<TextNode*>(previous)->append_text(text);
+        static_cast<TextNode*>(previous)->append_text(text);
         return;
     }
 

@@ -2,53 +2,34 @@ if(POLICY CMP0168)
     cmake_policy(SET CMP0168 NEW)
 endif()
 
-include(FetchContent)
-include(GoogleTest)
+# 优先使用系统/包管理器提供的 GoogleTest；找不到再用 FetchContent 拉取。
+# 拉取源默认走 gitee 镜像，可用 -DHPS_GTEST_GIT_REPOSITORY=... 覆盖（如 CI 用官方源）。
+set(HPS_GTEST_GIT_REPOSITORY "https://gitee.com/mirrors/googletest.git"
+    CACHE STRING "Git repository used to fetch GoogleTest when not found via find_package")
+set(HPS_GTEST_GIT_TAG "v1.17.0"
+    CACHE STRING "Git tag used to fetch GoogleTest")
 
-FetchContent_Declare(
-    googletest
-    GIT_REPOSITORY https://gitee.com/mirrors/googletest.git
-    GIT_TAG v1.17.0
-)
+find_package(GTest QUIET)
 
-set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-
-if(NOT DEFINED FETCHCONTENT_SOURCE_DIR_GOOGLETEST OR FETCHCONTENT_SOURCE_DIR_GOOGLETEST STREQUAL "")
-    foreach(_hps_googletest_seed_dir
-        "${PROJECT_SOURCE_DIR}/build_review/_deps/googletest-src"
-        "${PROJECT_SOURCE_DIR}/build_tidy/_deps/googletest-src")
-        if(EXISTS "${_hps_googletest_seed_dir}/CMakeLists.txt")
-            set(
-                FETCHCONTENT_SOURCE_DIR_GOOGLETEST
-                "${_hps_googletest_seed_dir}"
-                CACHE PATH "Pre-seeded googletest source directory" FORCE
-            )
-            break()
-        endif()
-    endforeach()
-endif()
-
-set(_hps_googletest_source_dir "${FETCHCONTENT_BASE_DIR}/googletest-src")
-set(_hps_googletest_build_dir "${FETCHCONTENT_BASE_DIR}/googletest-build")
-set(_hps_googletest_tmp_dir "${FETCHCONTENT_BASE_DIR}/googletest-tmp")
-
-if(EXISTS "${_hps_googletest_source_dir}" AND NOT EXISTS "${_hps_googletest_source_dir}/CMakeLists.txt")
-    file(
-        REMOVE_RECURSE
-        "${_hps_googletest_source_dir}"
-        "${_hps_googletest_build_dir}"
-        "${_hps_googletest_tmp_dir}"
+if(NOT TARGET GTest::gtest_main)
+    include(FetchContent)
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+    FetchContent_Declare(
+        googletest
+        GIT_REPOSITORY "${HPS_GTEST_GIT_REPOSITORY}"
+        GIT_TAG "${HPS_GTEST_GIT_TAG}"
     )
+    FetchContent_MakeAvailable(googletest)
 endif()
 
-FetchContent_MakeAvailable(googletest)
+include(GoogleTest)
 
 if(TARGET GTest::gtest_main)
     set(HPS_GTEST_MAIN_TARGET GTest::gtest_main)
 elseif(TARGET gtest_main)
     set(HPS_GTEST_MAIN_TARGET gtest_main)
 else()
-    message(FATAL_ERROR "googletest was populated, but neither GTest::gtest_main nor gtest_main is available")
+    message(FATAL_ERROR "GoogleTest not found via find_package and could not be fetched")
 endif()
 
 function(add_hps_test name source)

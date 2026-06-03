@@ -3,7 +3,10 @@
 #include "hps/core/text_node.hpp"
 
 #include <gtest/gtest.h>
+
+#include <algorithm>
 #include <memory>
+#include <string_view>
 
 namespace hps::tests {
 
@@ -49,11 +52,12 @@ TEST(ElementTest, ClassHelpersWorkWithWhitespaceSeparatedTokens) {
     EXPECT_TRUE(el.has_class("c"));
     EXPECT_FALSE(el.has_class("d"));
 
-    const auto set = el.class_names();
-    EXPECT_EQ(set.size(), 3u);
-    EXPECT_TRUE(set.contains("a"));
-    EXPECT_TRUE(set.contains("b"));
-    EXPECT_TRUE(set.contains("c"));
+    const auto names = el.class_names();
+    EXPECT_EQ(names.size(), 3u);
+    const auto has = [&](std::string_view n) { return std::ranges::find(names, n) != names.end(); };
+    EXPECT_TRUE(has("a"));
+    EXPECT_TRUE(has("b"));
+    EXPECT_TRUE(has("c"));
 }
 
 TEST(ElementTest, OwnTextOnlyIncludesDirectTextNodes) {

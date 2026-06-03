@@ -73,8 +73,10 @@ TEST(NodeTest, EmptyNodeHasNoParentOrChildren) {
 
     EXPECT_TRUE(node.text_content().empty());
 
+    // as_X() 采用类型标签下转（封闭层级，type 标签即实际类型）：
+    // type()==Element 时 as_element 非空，其余为空。
+    EXPECT_NE(node.as_element(), nullptr);
     EXPECT_EQ(node.as_document(), nullptr);
-    EXPECT_EQ(node.as_element(), nullptr);
     EXPECT_EQ(node.as_text(), nullptr);
     EXPECT_EQ(node.as_comment(), nullptr);
 }

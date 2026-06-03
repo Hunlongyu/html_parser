@@ -5,7 +5,7 @@
 
 #include <optional>
 #include <string_view>
-#include <unordered_set>
+#include <vector>
 
 namespace hps {
 
@@ -130,9 +130,9 @@ class Element : public Node {
 
     /**
      * @brief 获取所有 CSS 类名
-     * @return 包含所有 CSS 类名的集合的常量引用
+     * @return 类名视图数组（零拷贝，视图指向 class 属性值；文档存活且属性未改期间有效）
      */
-    [[nodiscard]] std::unordered_set<std::string> class_names() const noexcept;
+    [[nodiscard]] std::vector<std::string_view> class_names() const noexcept;
 
     /**
      * @brief 检查元素是否包含指定 class 类

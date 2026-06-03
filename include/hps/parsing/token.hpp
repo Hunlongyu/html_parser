@@ -2,7 +2,6 @@
 
 #include "hps/hps_fwd.hpp"
 #include "hps/parsing/token_attribute.hpp"
-#include "hps/utils/noncopyable.hpp"
 
 #include <vector>
 
@@ -14,9 +13,9 @@ namespace hps {
  * 表示HTML解析过程中的一个词法单元，包含类型、名称、值和属性信息。
  * Token是词法分析器(Tokenizer)的输出，也是语法分析器(TreeBuilder)的输入。
  *
- * @note 继承自NonCopyable，禁止拷贝但允许移动，确保性能和资源安全
+ * @note 仅声明移动语义，拷贝由此被隐式删除，确保性能和资源安全
  */
-class Token : public NonCopyable {
+class Token {
   public:
     // === 构造和析构函数 ===
 

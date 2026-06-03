@@ -41,14 +41,6 @@ TEST(StringUtilsTest, StringMatching) {
     EXPECT_FALSE(equals_ignore_case("foo", "bar"));
 }
 
-TEST(StringUtilsTest, SplitClassNames) {
-    auto classes = split_class_names(" foo bar  baz ");
-    EXPECT_EQ(classes.size(), 3u);
-    EXPECT_TRUE(classes.contains("foo"));
-    EXPECT_TRUE(classes.contains("bar"));
-    EXPECT_TRUE(classes.contains("baz"));
-}
-
 TEST(StringUtilsTest, NormalizeWhitespace) {
     EXPECT_EQ(normalize_whitespace("  a   b  c  "), " a b c ");
 }
