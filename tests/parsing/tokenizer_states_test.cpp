@@ -237,7 +237,9 @@ TEST(TokenizerStatesTest, EndTagNameInvalidCharacterStillEmitsEndTagToken) {
     EXPECT_EQ(errors[0].code, ErrorCode::InvalidToken);
 }
 
-TEST(TokenizerStatesTest, BeforeAttributeNameEmbeddedNullIsTreatedAsEOF) {
+// 嵌入的 NUL 不是 EOF：HTML5 规定其为 unexpected-null-character 解析错误，
+// 仍按“anything else”并入属性名（绝不回退到 before-attribute-name 造成死循环）。
+TEST(TokenizerStatesTest, BeforeAttributeNameEmbeddedNullRecordsError) {
     std::string html = "<div ";
     html.push_back('\0');
     Tokenizer tz(std::string_view(html.data(), html.size()), Options());
@@ -245,7 +247,7 @@ TEST(TokenizerStatesTest, BeforeAttributeNameEmbeddedNullIsTreatedAsEOF) {
     (void)tokens;
     const auto errors = tz.consume_errors();
     ASSERT_FALSE(errors.empty());
-    EXPECT_EQ(errors[0].code, ErrorCode::UnexpectedEOF);
+    EXPECT_EQ(errors[0].code, ErrorCode::InvalidToken);
 }
 
 TEST(TokenizerStatesTest, BeforeAttributeNameInvalidCharacterRecordsError) {
@@ -278,7 +280,7 @@ TEST(TokenizerStatesTest, AttributeNameSlashTransitionsToSelfClosingStartTag) {
     EXPECT_EQ(tokens[0].attrs()[0].name, "a");
 }
 
-TEST(TokenizerStatesTest, AttributeNameEmbeddedNullIsTreatedAsEOF) {
+TEST(TokenizerStatesTest, AttributeNameEmbeddedNullRecordsError) {
     std::string html = "<div a";
     html.push_back('\0');
     Tokenizer tz(std::string_view(html.data(), html.size()), Options());
@@ -286,14 +288,19 @@ TEST(TokenizerStatesTest, AttributeNameEmbeddedNullIsTreatedAsEOF) {
     (void)tokens;
     const auto errors = tz.consume_errors();
     ASSERT_FALSE(errors.empty());
-    EXPECT_EQ(errors[0].code, ErrorCode::UnexpectedEOF);
+    EXPECT_EQ(errors[0].code, ErrorCode::InvalidToken);
 }
 
-TEST(TokenizerStatesTest, AttributeNameUnexpectedCharacterGoesToBeforeAttributeName) {
+// '"' 在属性名中是 unexpected-character-in-attribute-name：记错误但仍并入属性名，
+// 故 a"b 合成单一属性名（旧实现会回退到 before-attribute-name 并死循环）。
+TEST(TokenizerStatesTest, AttributeNameUnexpectedCharacterRecordsErrorAndAppends) {
     Tokenizer tz("<div a\"b=1>", Options());
     const auto tokens = tz.tokenize_all();
-    (void)tokens;
     const auto errors = tz.consume_errors();
     ASSERT_FALSE(errors.empty());
     EXPECT_EQ(errors[0].code, ErrorCode::InvalidToken);
+    ASSERT_EQ(tokens.size(), 1u);
+    ASSERT_EQ(tokens[0].attrs().size(), 1u);
+    EXPECT_EQ(tokens[0].attrs()[0].name, "a\"b");
+    EXPECT_EQ(tokens[0].attrs()[0].value, "1");
 }

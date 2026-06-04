@@ -246,19 +246,28 @@ std::optional<Token> Tokenizer::consume_tag_name_state() {
         }
     }
 
-    if (is_whitespace(current_char())) {
+    if (!has_more()) {
+        handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in tag name");
+        return {};
+    }
+
+    const char c = current_char();
+    if (is_whitespace(c)) {
         skip_whitespace();
         m_state = TokenizerState::BeforeAttributeName;
-    } else if (current_char() == '>') {
+    } else if (c == '>') {
         advance();
         m_state = TokenizerState::Data;
         return create_start_tag_token();
-    } else if (current_char() == '/') {
+    } else if (c == '/') {
         advance();
         m_state = TokenizerState::SelfClosingStartTag;
-    } else if (current_char() == '\0') {
-        handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in tag name");
-        return {};
+    } else {
+        // HTML5 “tag name state”的 “anything else”：把当前字符并入标签名并前进。
+        // 否则遇到 '<'（如 <div<div>）、'-'（自定义元素 <my-el>）等非字母数字字符，
+        // 会在标签名状态原地不前进 → 死循环（DoS）。
+        m_token_builder.tag_name += m_options.preserve_case ? c : to_lower(c);
+        advance();
     }
     return {};
 }
@@ -297,7 +306,7 @@ std::optional<Token> Tokenizer::consume_end_tag_name_state() {
         m_state = TokenizerState::Data;
         return create_end_tag_token();
     }
-    if (current_char() == '\0') {
+    if (!has_more()) {
         handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in end tag name");
         return {};
     }
@@ -330,7 +339,7 @@ std::optional<Token> Tokenizer::consume_before_attribute_name_state() {
         return {};
     }
 
-    if (current_char() == '\0') {
+    if (!has_more()) {
         handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF before attribute name");
         return {};
     }
@@ -368,27 +377,37 @@ std::optional<Token> Tokenizer::consume_attribute_name_state() {
         }
     }
 
-    if (is_whitespace(current_char())) {
+    if (!has_more()) {
+        handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in attribute name");
+        return {};
+    }
+
+    const char c = current_char();
+    if (is_whitespace(c)) {
         skip_whitespace();
         m_state = TokenizerState::AfterAttributeName;
-    } else if (current_char() == '=') {
+    } else if (c == '=') {
         advance();
         m_state = TokenizerState::BeforeAttributeValue;
-    } else if (current_char() == '>') {
+    } else if (c == '>') {
         finish_boolean_attribute();
         advance();
         m_state = TokenizerState::Data;
         return create_start_tag_token();
-    } else if (current_char() == '/') {
+    } else if (c == '/') {
         finish_boolean_attribute();
         advance();
         m_state = TokenizerState::SelfClosingStartTag;
-    } else if (current_char() == '\0') {
-        handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in attribute name");
-        return {};
     } else {
-        finish_boolean_attribute();
-        m_state = TokenizerState::BeforeAttributeName;
+        // HTML5 “attribute name state”的 “anything else”：并入属性名并前进。
+        // '"' / '\'' / '<' 为 unexpected-character-in-attribute-name，'\0' 为
+        // unexpected-null-character —— 均记为可恢复错误但仍并入。绝不回退到
+        // before-attribute-name，否则会与该状态来回死循环（DoS，html5lib 套件触发）。
+        if (c == '"' || c == '\'' || c == '<' || c == '\0') {
+            record_recoverable_error(ErrorCode::InvalidToken, "Unexpected character in attribute name");
+        }
+        m_token_builder.attr_name += m_options.preserve_case ? c : to_lower(c);
+        advance();
     }
     return {};
 }
@@ -408,7 +427,7 @@ std::optional<Token> Tokenizer::consume_after_attribute_name_state() {
         finish_boolean_attribute();
         advance();
         m_state = TokenizerState::SelfClosingStartTag;
-    } else if (current_char() == '\0') {
+    } else if (!has_more()) {
         handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF after attribute name");
         return {};
     } else {

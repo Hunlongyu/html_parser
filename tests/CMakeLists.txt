@@ -78,6 +78,7 @@ add_hps_test(query_css_lexer_tests query/css/css_lexer_test.cpp)
 add_hps_test(query_css_parser_tests query/css/css_parser_test.cpp)
 add_hps_test(query_css_matcher_tests query/css/css_matcher_test.cpp)
 add_hps_test(query_css_selector_tests query/css/css_selector_test.cpp)
+add_hps_test(query_css_attribute_tests query/css/css_attribute_test.cpp)
 add_hps_test(query_css_utils_tests query/css/css_utils_test.cpp)
 
 # Utils tests
@@ -89,3 +90,33 @@ add_hps_test(utils_string_utils_tests utils/string_utils_test.cpp)
 
 # Public API tests
 add_hps_test(hps_api_tests hps/hps_api_test.cpp)
+
+# ==================== 完整 html5lib tree-construction 一致性套件 ====================
+# 拉取上游 html5lib-tests，跑完整 tree-construction 套件并“报告”通过率（与 parse5/lexbor 同口径）。
+# 默认开启；置 OFF 可跳过网络拉取。源默认 github，可用 -DHPS_HTML5LIB_TESTS_GIT_REPOSITORY=<mirror> 覆盖。
+option(HPS_HTML5LIB_CONFORMANCE "Fetch full html5lib-tests and run the tree-construction conformance suite" ON)
+
+if(HPS_HTML5LIB_CONFORMANCE)
+    set(HPS_HTML5LIB_TESTS_GIT_REPOSITORY "https://github.com/html5lib/html5lib-tests.git"
+        CACHE STRING "Git repository for html5lib-tests data (override for a mirror)")
+    set(HPS_HTML5LIB_TESTS_GIT_TAG "master"
+        CACHE STRING "Git tag/branch for html5lib-tests data")
+
+    include(FetchContent)
+    FetchContent_Declare(
+        html5lib_tests
+        GIT_REPOSITORY "${HPS_HTML5LIB_TESTS_GIT_REPOSITORY}"
+        GIT_TAG "${HPS_HTML5LIB_TESTS_GIT_TAG}"
+        GIT_SHALLOW TRUE
+    )
+    FetchContent_MakeAvailable(html5lib_tests)
+
+    add_executable(parsing_html5lib_tree_construction_conformance_tests
+        parsing/html5lib_tree_construction_conformance_test.cpp)
+    target_link_libraries(parsing_html5lib_tree_construction_conformance_tests
+        PRIVATE hps::hps ${HPS_GTEST_MAIN_TARGET})
+    target_compile_definitions(parsing_html5lib_tree_construction_conformance_tests
+        PRIVATE HPS_HTML5LIB_TREE_DIR="${html5lib_tests_SOURCE_DIR}/tree-construction")
+    hps_apply_target_defaults(parsing_html5lib_tree_construction_conformance_tests)
+    gtest_discover_tests(parsing_html5lib_tree_construction_conformance_tests)
+endif()

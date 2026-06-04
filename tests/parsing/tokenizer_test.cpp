@@ -259,7 +259,9 @@ TEST_F(TokenizerTest, AfterAttributeNameGreaterThanFinishesBooleanAttribute) {
     EXPECT_TRUE(tokens[0].attrs()[0].value.empty());
 }
 
-TEST_F(TokenizerTest, AfterAttributeNameUnexpectedEOFRecordsError) {
+// after-attribute-name 的 “anything else” 会以 NUL 重新进入 attribute-name；
+// 该 NUL 是 unexpected-null-character 解析错误（非 EOF），仍并入属性名。
+TEST_F(TokenizerTest, AfterAttributeNameEmbeddedNullRecordsError) {
     std::string html = "<div a ";
     html.push_back('\0');
     Tokenizer tokenizer(std::string_view(html.data(), html.size()), Options());
@@ -267,7 +269,7 @@ TEST_F(TokenizerTest, AfterAttributeNameUnexpectedEOFRecordsError) {
     (void)tokens;
     const auto errors = tokenizer.consume_errors();
     ASSERT_FALSE(errors.empty());
-    EXPECT_EQ(errors[0].code, ErrorCode::UnexpectedEOF);
+    EXPECT_EQ(errors[0].code, ErrorCode::InvalidToken);
 }
 
 TEST_F(TokenizerTest, BeforeAttributeValueSkipsWhitespace) {
