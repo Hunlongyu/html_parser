@@ -481,8 +481,7 @@ std::unique_ptr<ClassSelector> CSSParser::parse_class_selector() {
         return nullptr;
     }
 
-    // Class names are case-sensitive in CSS, but check HTML spec?
-    // Generally treated as case-sensitive.
+    // 类名大小写敏感，原样保留。token.value 已由词法器驻留进 StringPool（见 css_lexer 的 preprocess）。
     return std::make_unique<ClassSelector>(token.value);
 }
 
@@ -493,6 +492,7 @@ std::unique_ptr<IdSelector> CSSParser::parse_id_selector() {
         return nullptr;
     }
 
+    // id 大小写敏感，原样保留（token.value 已由词法器驻留进 StringPool）。
     return std::make_unique<IdSelector>(token.value);
 }
 
@@ -522,6 +522,7 @@ std::unique_ptr<AttributeSelector> CSSParser::parse_attribute_selector() {
 
         const auto value_token = m_lexer.next_token();
         if (value_token.type == CSSLexer::CSSTokenType::String || value_token.type == CSSLexer::CSSTokenType::Identifier) {
+            // 属性值大小写敏感，原样保留（token.value 已由词法器驻留进 StringPool）。
             value = value_token.value;
         } else {
             add_error("Expected value after attribute operator");

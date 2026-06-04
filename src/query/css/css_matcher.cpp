@@ -3,9 +3,6 @@
 #include "hps/core/document.hpp"
 #include "hps/core/element.hpp"
 
-#include <algorithm>
-#include <unordered_set>
-
 namespace hps {
 
 std::vector<const Element*> CSSMatcher::find_all(const Element& element, const CSSSelector& selector) {
@@ -19,16 +16,13 @@ std::vector<const Element*> CSSMatcher::find_all(const Element& element, const C
 }
 
 std::vector<const Element*> CSSMatcher::find_all(const Element& element, const SelectorList& selector_list) {
+    // 单次 DFS 中每个元素至多被 push 一次，结果天然按文档序且无重复，无需去重。
     std::vector<const Element*> results;
     for (auto child = element.first_child(); child; child = child->next_sibling()) {
         if (child->is_element()) {
             traverse_and_match(*child->as_element(), selector_list, results);
         }
     }
-    std::unordered_set<const Element*> seen;
-    const auto                         it = std::ranges::remove_if(results, [&seen](const Element* elem) { return !seen.insert(elem).second; }).begin();
-    results.erase(it, results.end());
-
     return results;
 }
 
@@ -49,10 +43,6 @@ std::vector<const Element*> CSSMatcher::find_all(const Document& document, const
             traverse_and_match(*child->as_element(), selector_list, results);
         }
     }
-
-    std::unordered_set<const Element*> seen;
-    const auto                         it = std::ranges::remove_if(results, [&seen](const Element* elem) { return !seen.insert(elem).second; }).begin();
-    results.erase(it, results.end());
     return results;
 }
 

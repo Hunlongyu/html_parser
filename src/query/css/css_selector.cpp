@@ -30,11 +30,12 @@ bool ClassSelector::can_quick_reject(const Element& element) const {
 // ==================== IdSelector Implementation ====================
 
 bool IdSelector::matches(const Element& element) const {
-    return element.has_attribute("id") && element.get_attribute("id") == m_id_name;
+    const auto id = element.attr("id");
+    return id.has_value() && *id == m_id_name;
 }
 
 bool IdSelector::can_quick_reject(const Element& element) const {
-    return !element.has_attribute("id") || element.get_attribute("id") != m_id_name;
+    return !matches(element);
 }
 
 // ==================== AttributeSelector Implementation ====================
@@ -103,14 +104,15 @@ bool AttributeSelector::matches_attribute_value(const std::string_view attr_valu
         case AttributeOperator::Equals:
             return attr_value == m_value;
 
+        // 按 CSS 规范：*= / ^= / $= 的目标值为空时永不匹配。
         case AttributeOperator::Contains:
-            return attr_value.find(m_value) != std::string_view::npos;
+            return !m_value.empty() && attr_value.find(m_value) != std::string_view::npos;
 
         case AttributeOperator::StartsWith:
-            return attr_value.starts_with(m_value);
+            return !m_value.empty() && attr_value.starts_with(m_value);
 
         case AttributeOperator::EndsWith:
-            return attr_value.ends_with(m_value);
+            return !m_value.empty() && attr_value.ends_with(m_value);
 
         case AttributeOperator::WordMatch: {
             size_t pos = 0;
