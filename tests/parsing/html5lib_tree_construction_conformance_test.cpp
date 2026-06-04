@@ -29,6 +29,7 @@ TEST(HTML5LibTreeConstructionConformance, FullUpstreamSuitePassRate) {
     hps::Options options;
     options.comment_mode    = hps::CommentMode::Preserve;
     options.whitespace_mode = hps::WhitespaceMode::Preserve;
+    options.decode_entities = true;  // html5lib 期望树按规范解码字符引用
 
     size_t total = 0;
     size_t passed = 0;

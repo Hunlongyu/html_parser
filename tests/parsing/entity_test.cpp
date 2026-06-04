@@ -25,7 +25,7 @@ TEST(HTMLEntityDecodingTest, DecodeModeDecodesNbsp) {
 
     const auto* div = doc->query_selector("div");
     ASSERT_NE(div, nullptr);
-    EXPECT_EQ(div->text_content(), "A B");
+    EXPECT_EQ(div->text_content(), "A\xC2\xA0" "B");  // &nbsp; 解码为 U+00A0（非普通空格）
 }
 
 TEST(HTMLEntityDecodingTest, DecodeModeDecodesNamedAndNumericEntities) {

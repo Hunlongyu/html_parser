@@ -1,0 +1,55 @@
+#data
+FOO&gt;BAR
+#document
+| <html>
+|   <head>
+|   <body>
+|     "FOO>BAR"
+
+#data
+FOO&gtBAR
+#document
+| <html>
+|   <head>
+|   <body>
+|     "FOO>BAR"
+
+#data
+FOO&gt BAR
+#document
+| <html>
+|   <head>
+|   <body>
+|     "FOO> BAR"
+
+#data
+FOO&gt;;;BAR
+#document
+| <html>
+|   <head>
+|   <body>
+|     "FOO>;;BAR"
+
+#data
+&ammmp;
+#document
+| <html>
+|   <head>
+|   <body>
+|     "&ammmp;"
+
+#data
+I'm &notin; I tell you
+#document
+| <html>
+|   <head>
+|   <body>
+|     "I'm ∉ I tell you"
+
+#data
+I'm &notit; I tell you
+#document
+| <html>
+|   <head>
+|   <body>
+|     "I'm ¬it; I tell you"

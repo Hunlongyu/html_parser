@@ -724,7 +724,7 @@ TEST(HTMLParser, DecodeEntitiesOptionDecodesNamedAndNumericEntities) {
 
     const auto* paragraph = document->query_selector("p");
     ASSERT_NE(paragraph, nullptr);
-    EXPECT_EQ(paragraph->text_content(), "&<>\"' AA");
+    EXPECT_EQ(paragraph->text_content(), "&<>\"'\xC2\xA0" "AA");  // &nbsp; → U+00A0
 }
 
 TEST(HTMLParser, EnforcesMaxDepthBySkippingTooDeepSubtrees) {
