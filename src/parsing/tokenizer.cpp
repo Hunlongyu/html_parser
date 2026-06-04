@@ -182,7 +182,7 @@ std::optional<Token> Tokenizer::consume_data_state() {
 std::optional<Token> Tokenizer::consume_tag_open_state() {
     if (current_char() == '!') {
         advance();
-        if (starts_with("DOCTYPE") || starts_with("doctype")) {
+        if (starts_with_ci("DOCTYPE")) {
             m_state = TokenizerState::DOCTYPE;
         } else if (starts_with("[CDATA[")) {
             for (int i = 0; i < 7 && has_more(); i++) {
@@ -578,7 +578,7 @@ std::optional<Token> Tokenizer::consume_comment_state() {
 }
 
 std::optional<Token> Tokenizer::consume_doctype_state() {
-    if (starts_with("DOCTYPE") || starts_with("doctype")) {
+    if (starts_with_ci("DOCTYPE")) {
         m_pos += 7;
     } else {
         handle_parse_error(ErrorCode::InvalidToken, "Expected DOCTYPE keyword");
@@ -610,6 +610,47 @@ std::optional<Token> Tokenizer::consume_doctype_state() {
     }
 
     skip_whitespace();
+
+    // 解析可选的 PUBLIC / SYSTEM 标识符（HTML5 DOCTYPE 标识符各状态的精简实现）。
+    const auto match_keyword_ci = [this](const std::string_view keyword) -> bool {
+        if (m_pos + keyword.size() > m_source.length()) {
+            return false;
+        }
+        for (size_t i = 0; i < keyword.size(); ++i) {
+            if (to_lower(m_source[m_pos + i]) != to_lower(keyword[i])) {
+                return false;
+            }
+        }
+        m_pos += keyword.size();
+        return true;
+    };
+    const auto read_quoted_id = [this](std::string& out) {
+        const char quote = current_char();
+        if (quote != '"' && quote != '\'') {
+            return;
+        }
+        advance();
+        while (has_more() && current_char() != quote && current_char() != '>') {
+            out += current_char();
+            advance();
+        }
+        if (has_more() && current_char() == quote) {
+            advance();
+        }
+    };
+
+    if (match_keyword_ci("PUBLIC")) {
+        m_token_builder.doctype_has_identifiers = true;
+        skip_whitespace();
+        read_quoted_id(m_token_builder.doctype_public_id);
+        skip_whitespace();
+        read_quoted_id(m_token_builder.doctype_system_id);
+    } else if (match_keyword_ci("SYSTEM")) {
+        m_token_builder.doctype_has_identifiers = true;
+        skip_whitespace();
+        read_quoted_id(m_token_builder.doctype_system_id);
+    }
+
     while (has_more() && current_char() != '>') {
         advance();
     }
@@ -957,6 +998,18 @@ bool Tokenizer::starts_with(std::string_view s) const noexcept {
     return m_source.substr(m_pos, s.length()) == s;
 }
 
+bool Tokenizer::starts_with_ci(std::string_view s) const noexcept {
+    if (m_pos + s.length() > m_source.length()) {
+        return false;
+    }
+    for (size_t i = 0; i < s.length(); ++i) {
+        if (to_lower(m_source[m_pos + i]) != to_lower(s[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+
 Token Tokenizer::create_start_tag_token() {
     Token token(TokenType::OPEN, m_token_builder.tag_name, "");
     for (auto& attr : m_token_builder.attrs) {
@@ -1043,7 +1096,10 @@ Token Tokenizer::create_owned_comment_token(std::string&& comment) {
 
 Token Tokenizer::create_doctype_token() {
     Token token(TokenType::DOCTYPE, m_token_builder.tag_name, "");
-    token.set_doctype_identifiers(m_token_builder.doctype_public_id, m_token_builder.doctype_system_id);
+    token.set_doctype_identifiers(
+        m_token_builder.doctype_public_id,
+        m_token_builder.doctype_system_id,
+        m_token_builder.doctype_has_identifiers);
     token.set_doctype_force_quirks(m_token_builder.force_quirks);
     m_token_builder.reset();
     return token;

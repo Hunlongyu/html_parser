@@ -10,6 +10,7 @@ enum class NodeType : std::uint8_t {
     Text,      /**< 文本节点 <p>Hello</p> 包括 <![CDATA[hello world]]> */
     Comment,   /**< <!-- 注释 --> */
     Document,  /**< 文档节点 整个文档的根节点 */
+    Doctype,   /**< 文档类型声明 <!DOCTYPE html> */
 };
 
 /** @brief 元素命名空间 */
@@ -67,6 +68,7 @@ class Element;
 class Node;
 class TextNode;
 class CommentNode;
+class DoctypeNode;
 
 // 解析模块
 class HTMLParser;

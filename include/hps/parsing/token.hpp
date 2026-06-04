@@ -90,6 +90,12 @@ class Token {
      */
     [[nodiscard]] bool doctype_force_quirks() const noexcept;
 
+    /**
+     * @brief DOCTYPE 是否声明了 PUBLIC/SYSTEM 标识符
+     * @return true 表示声明了标识符（即便其内容为空串）；用于区分“缺失”与“空串”
+     */
+    [[nodiscard]] bool doctype_has_identifiers() const noexcept;
+
     // === 类型修改器 ===
 
     /**
@@ -111,8 +117,9 @@ class Token {
 
     /**
      * @brief 设置DOCTYPE public/system identifiers
+     * @param has_identifiers 是否声明了 PUBLIC/SYSTEM（用于区分“缺失”与“空串”）
      */
-    void set_doctype_identifiers(std::string_view public_id, std::string_view system_id);
+    void set_doctype_identifiers(std::string_view public_id, std::string_view system_id, bool has_identifiers);
 
     /**
      * @brief 设置DOCTYPE force-quirks 标志
@@ -242,6 +249,7 @@ class Token {
     std::string                 m_doctype_public_id;  ///< DOCTYPE public identifier
     std::string                 m_doctype_system_id;  ///< DOCTYPE system identifier
     bool                        m_doctype_force_quirks{false}; ///< DOCTYPE quirks flag
+    bool                        m_doctype_has_identifiers{false}; ///< 是否声明了 PUBLIC/SYSTEM
     std::vector<TokenAttribute> m_attrs;       ///< 属性列表，存储标签的所有属性信息
 };
 

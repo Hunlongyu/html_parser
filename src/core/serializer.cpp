@@ -2,6 +2,7 @@
 
 #include "hps/core/attribute.hpp"
 #include "hps/core/comment_node.hpp"
+#include "hps/core/doctype_node.hpp"
 #include "hps/core/element.hpp"
 #include "hps/core/node.hpp"
 #include "hps/core/text_node.hpp"
@@ -180,6 +181,13 @@ void serialize_node(const Node& node, std::string& out) {
         out += "<!--";
         out += comment->value();
         out += "-->";
+        return;
+    }
+    if (const auto* doctype = node.as_doctype()) {
+        // HTML 序列化算法：仅输出 "<!DOCTYPE " + 名称 + ">"（不含 public/system）。
+        out += "<!DOCTYPE ";
+        out += doctype->name();
+        out += '>';
         return;
     }
     if (node.is_document()) {

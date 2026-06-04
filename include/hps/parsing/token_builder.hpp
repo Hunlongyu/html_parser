@@ -22,9 +22,10 @@ struct TokenBuilder {
     std::string attr_name;  ///< 当前正在构建的属性名
 
     // === 标签类型标志 ===
-    bool is_void_element = false;  ///< 是否为空元素（如<br>, <img>等）
-    bool is_self_closing = false;  ///< 是否为自闭合标签（如<tag />）
-    bool force_quirks    = false;  ///< DOCTYPE quirks flag
+    bool is_void_element        = false;  ///< 是否为空元素（如<br>, <img>等）
+    bool is_self_closing        = false;  ///< 是否为自闭合标签（如<tag />）
+    bool force_quirks           = false;  ///< DOCTYPE quirks flag
+    bool doctype_has_identifiers = false;  ///< DOCTYPE 是否声明了 PUBLIC/SYSTEM 标识符
 
     // === 属性集合 ===
     std::vector<TokenAttribute> attrs;  ///< 已完成的属性列表
@@ -67,9 +68,10 @@ struct TokenBuilder {
         doctype_public_id.clear();
         doctype_system_id.clear();
         attr_name.clear();
-        is_void_element = false;
-        is_self_closing = false;
-        force_quirks    = false;
+        is_void_element         = false;
+        is_self_closing         = false;
+        force_quirks            = false;
+        doctype_has_identifiers = false;
         attrs.clear();
     }
 

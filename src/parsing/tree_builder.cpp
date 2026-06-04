@@ -1,6 +1,7 @@
 #include "hps/parsing/tree_builder.hpp"
 
 #include "hps/core/comment_node.hpp"
+#include "hps/core/doctype_node.hpp"
 #include "hps/core/document.hpp"
 #include "hps/core/text_node.hpp"
 #include "hps/parsing/token.hpp"
@@ -95,6 +96,7 @@ bool TreeBuilder::process_token(const Token& token, const size_t position) {
                 parse_error(ErrorCode::InvalidNesting, "Force quirks mode detected");
                 break;
             case TokenType::DOCTYPE:
+                process_doctype(token);
                 break;
         }
         return true;
@@ -413,6 +415,22 @@ void TreeBuilder::process_comment(const Token& token) const {
         case CommentMode::ProcessOnly:
             break;
     }
+}
+
+void TreeBuilder::process_doctype(const Token& token) {
+    // 仅在“初始”插入模式接受 DOCTYPE：尚无根元素、且非 fragment。
+    // 其余位置（已有内容/根元素，或片段解析）按 HTML5 视为解析错误并忽略。
+    if (m_fragment_context != nullptr || m_html_element != nullptr) {
+        parse_error(ErrorCode::InvalidToken, "Unexpected DOCTYPE", m_last_position);
+        return;
+    }
+
+    auto doctype = std::make_unique<DoctypeNode>(
+        token.name(),
+        token.doctype_public_id(),
+        token.doctype_system_id(),
+        token.doctype_has_identifiers());
+    insert_node(std::move(doctype), m_document.get());
 }
 
 std::unique_ptr<Element> TreeBuilder::create_element(const Token& token) {

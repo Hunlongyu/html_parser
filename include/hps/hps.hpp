@@ -1,6 +1,7 @@
 #pragma once
 
 #include "hps/core/comment_node.hpp"
+#include "hps/core/doctype_node.hpp"
 #include "hps/core/document.hpp"
 #include "hps/hps_fwd.hpp"
 #include "hps/parsing/options.hpp"

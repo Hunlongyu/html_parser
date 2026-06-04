@@ -103,12 +103,13 @@ TEST(TokenTest, ForceQuirks) {
 
 TEST(TokenTest, DoctypeMetadata) {
     Token token(TokenType::DOCTYPE, "html", "");
-    token.set_doctype_identifiers("-//W3C//DTD HTML 4.01//EN", "about:legacy-compat");
+    token.set_doctype_identifiers("-//W3C//DTD HTML 4.01//EN", "about:legacy-compat", true);
     token.set_doctype_force_quirks(true);
 
     EXPECT_EQ(token.name(), "html");
     EXPECT_EQ(token.doctype_public_id(), "-//W3C//DTD HTML 4.01//EN");
     EXPECT_EQ(token.doctype_system_id(), "about:legacy-compat");
+    EXPECT_TRUE(token.doctype_has_identifiers());
     EXPECT_TRUE(token.doctype_force_quirks());
 }
 

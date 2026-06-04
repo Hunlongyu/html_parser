@@ -15,9 +15,11 @@ Token::Token(Token&& other) noexcept
       m_doctype_public_id(std::move(other.m_doctype_public_id)),
       m_doctype_system_id(std::move(other.m_doctype_system_id)),
       m_doctype_force_quirks(other.m_doctype_force_quirks),
+      m_doctype_has_identifiers(other.m_doctype_has_identifiers),
       m_attrs(std::move(other.m_attrs)) {
     other.m_value = {};
-    other.m_doctype_force_quirks = false;
+    other.m_doctype_force_quirks    = false;
+    other.m_doctype_has_identifiers = false;
 }
 
 Token& Token::operator=(Token&& other) noexcept {
@@ -29,9 +31,11 @@ Token& Token::operator=(Token&& other) noexcept {
         m_doctype_public_id    = std::move(other.m_doctype_public_id);
         m_doctype_system_id    = std::move(other.m_doctype_system_id);
         m_doctype_force_quirks = other.m_doctype_force_quirks;
+        m_doctype_has_identifiers = other.m_doctype_has_identifiers;
         m_attrs                = std::move(other.m_attrs);
         other.m_value          = {};
-        other.m_doctype_force_quirks = false;
+        other.m_doctype_force_quirks    = false;
+        other.m_doctype_has_identifiers = false;
     }
     return *this;
 }
@@ -63,13 +67,21 @@ bool Token::doctype_force_quirks() const noexcept {
     return m_doctype_force_quirks;
 }
 
+bool Token::doctype_has_identifiers() const noexcept {
+    return m_doctype_has_identifiers;
+}
+
 void Token::set_owned_value(std::string value) {
     m_value_owned = std::move(value);
 }
 
-void Token::set_doctype_identifiers(const std::string_view public_id, const std::string_view system_id) {
-    m_doctype_public_id = public_id;
-    m_doctype_system_id = system_id;
+void Token::set_doctype_identifiers(
+    const std::string_view public_id,
+    const std::string_view system_id,
+    const bool has_identifiers) {
+    m_doctype_public_id       = public_id;
+    m_doctype_system_id       = system_id;
+    m_doctype_has_identifiers = has_identifiers;
 }
 
 void Token::set_doctype_force_quirks(const bool force_quirks) noexcept {

@@ -1,6 +1,7 @@
 #include "hps/core/node.hpp"
 
 #include "hps/core/comment_node.hpp"
+#include "hps/core/doctype_node.hpp"
 #include "hps/core/document.hpp"
 #include "hps/core/element.hpp"
 #include "hps/core/text_node.hpp"
@@ -87,6 +88,10 @@ const TextNode* Node::as_text() const noexcept {
 
 const CommentNode* Node::as_comment() const noexcept {
     return m_type == NodeType::Comment ? static_cast<const CommentNode*>(this) : nullptr;
+}
+
+const DoctypeNode* Node::as_doctype() const noexcept {
+    return m_type == NodeType::Doctype ? static_cast<const DoctypeNode*>(this) : nullptr;
 }
 
 const Document* Node::owner_document() const noexcept {

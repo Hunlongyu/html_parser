@@ -68,7 +68,7 @@ class Document : public Node {
      * @brief 将整个文档树序列化为 HTML
      *
      * 反映解析后的 DOM（可能与 source_html 不同：如编码已转码、容错已修复）；
-     * 不包含 DOCTYPE（本库不将其表示为节点）。
+     * 若文档含 DOCTYPE 声明，则以 `<!DOCTYPE name>` 形式输出于最前。
      * @return 文档全部子节点序列化而成的 HTML 字符串
      */
     [[nodiscard]] std::string outer_html() const;

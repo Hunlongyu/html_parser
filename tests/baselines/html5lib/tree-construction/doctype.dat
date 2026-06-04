@@ -1,0 +1,62 @@
+#data
+<!DOCTYPE html>Hello
+#document
+| <!DOCTYPE html>
+| <html>
+|   <head>
+|   <body>
+|     "Hello"
+
+#data
+<!dOctYpE HtMl>Hello
+#document
+| <!DOCTYPE html>
+| <html>
+|   <head>
+|   <body>
+|     "Hello"
+
+#data
+<!DOCTYPE>Hello
+#document
+| <!DOCTYPE >
+| <html>
+|   <head>
+|   <body>
+|     "Hello"
+
+#data
+<!DOCTYPE potato>Hello
+#document
+| <!DOCTYPE potato>
+| <html>
+|   <head>
+|   <body>
+|     "Hello"
+
+#data
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">x
+#document
+| <!DOCTYPE html "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+| <html>
+|   <head>
+|   <body>
+|     "x"
+
+#data
+<!DOCTYPE html SYSTEM "about:legacy-compat">x
+#document
+| <!DOCTYPE html "" "about:legacy-compat">
+| <html>
+|   <head>
+|   <body>
+|     "x"
+
+#data
+<!DOCTYPE potato PUBLIC "go" "">x
+#document
+| <!DOCTYPE potato "go" "">
+| <html>
+|   <head>
+|   <body>
+|     "x"

@@ -1,5 +1,6 @@
 set(hps_sources
     core/comment_node.cpp
+    core/doctype_node.cpp
     core/document.cpp
     core/element.cpp
     core/node.cpp
@@ -25,6 +26,7 @@ set(hps_sources
 set(hps_public_headers
     "${PROJECT_SOURCE_DIR}/include/hps/core/attribute.hpp"
     "${PROJECT_SOURCE_DIR}/include/hps/core/comment_node.hpp"
+    "${PROJECT_SOURCE_DIR}/include/hps/core/doctype_node.hpp"
     "${PROJECT_SOURCE_DIR}/include/hps/core/document.hpp"
     "${PROJECT_SOURCE_DIR}/include/hps/core/element.hpp"
     "${PROJECT_SOURCE_DIR}/include/hps/core/node.hpp"

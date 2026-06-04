@@ -260,6 +260,13 @@ class Tokenizer {
      */
     [[nodiscard]] bool starts_with(std::string_view s) const noexcept;
 
+    /**
+     * @brief 检查当前位置是否以指定字符串开头（ASCII 大小写不敏感）
+     * @param s 要匹配的字符串
+     * @return 如果当前位置（忽略大小写）以指定字符串开头则返回true
+     */
+    [[nodiscard]] bool starts_with_ci(std::string_view s) const noexcept;
+
     // ==================== Token创建方法 ====================
 
     /**

@@ -5,6 +5,7 @@
 
 #include "hps/hps.hpp"
 #include "hps/core/comment_node.hpp"
+#include "hps/core/doctype_node.hpp"
 #include "hps/core/document.hpp"
 #include "hps/core/element.hpp"
 #include "hps/core/text_node.hpp"
@@ -231,6 +232,16 @@ inline void serialize_node(const hps::Node& node, std::vector<std::string>& line
         case hps::NodeType::Comment:
             lines.push_back("| " + indent + "<!-- " + escape_tree_text(node.as_comment()->value()) + " -->");
             return;
+        case hps::NodeType::Doctype: {
+            const auto* doctype = node.as_doctype();
+            std::string line    = "| " + indent + "<!DOCTYPE " + doctype->name();
+            if (doctype->has_identifiers()) {
+                line += " \"" + doctype->public_id() + "\" \"" + doctype->system_id() + "\"";
+            }
+            line += ">";
+            lines.push_back(line);
+            return;
+        }
         case hps::NodeType::Undefined:
             return;
     }

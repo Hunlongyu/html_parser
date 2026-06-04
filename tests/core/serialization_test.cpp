@@ -55,6 +55,44 @@ TEST(Serialization, CommentsAreSerialized) {
     EXPECT_EQ(div->inner_html(), "<!-- hi -->");
 }
 
+// ==================== DOCTYPE 节点 ====================
+
+TEST(Serialization, DoctypeNodeIsExposedAndTyped) {
+    const auto doc = hps::parse("<!DOCTYPE html><p>x</p>");
+    const auto* first_node = doc->first_child();
+    ASSERT_NE(first_node, nullptr);
+    ASSERT_TRUE(first_node->is_doctype());
+    const auto* doctype = first_node->as_doctype();
+    ASSERT_NE(doctype, nullptr);
+    EXPECT_EQ(doctype->name(), "html");
+    EXPECT_FALSE(doctype->has_identifiers());
+    EXPECT_TRUE(doctype->public_id().empty());
+    EXPECT_TRUE(doctype->system_id().empty());
+}
+
+TEST(Serialization, DoctypeParsesPublicAndSystemIdentifiers) {
+    const auto doc = hps::parse(
+        R"(<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://x/strict.dtd">)");
+    const auto* doctype = doc->first_child() ? doc->first_child()->as_doctype() : nullptr;
+    ASSERT_NE(doctype, nullptr);
+    EXPECT_EQ(doctype->name(), "html");
+    EXPECT_TRUE(doctype->has_identifiers());
+    EXPECT_EQ(doctype->public_id(), "-//W3C//DTD HTML 4.01//EN");
+    EXPECT_EQ(doctype->system_id(), "http://x/strict.dtd");
+}
+
+TEST(Serialization, DoctypeKeywordIsCaseInsensitive) {
+    const auto doc = hps::parse("<!dOcTyPe HtMl>");
+    const auto* doctype = doc->first_child() ? doc->first_child()->as_doctype() : nullptr;
+    ASSERT_NE(doctype, nullptr);
+    EXPECT_EQ(doctype->name(), "html");  // 名称按 HTML5 规范小写化
+}
+
+TEST(Serialization, OuterHtmlIncludesDoctype) {
+    const auto doc = hps::parse("<!DOCTYPE html><html><head></head><body>hi</body></html>");
+    EXPECT_EQ(doc->outer_html(), "<!DOCTYPE html><html><head></head><body>hi</body></html>");
+}
+
 TEST(Serialization, NestedStructureRoundTrips) {
     const auto doc = hps::parse(
         R"(<ul class="m"><li>1</li><li><b>2</b></li></ul>)");

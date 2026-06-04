@@ -68,6 +68,14 @@ class Node {
         return m_type == NodeType::Comment;
     }
 
+    /**
+     * @brief 判断是否为 DOCTYPE 节点
+     * @return 如果是 DOCTYPE 节点则返回 true
+     */
+    [[nodiscard]] bool is_doctype() const noexcept {
+        return m_type == NodeType::Doctype;
+    }
+
     // Tree traversal
     /**
      * @brief 获取父节点
@@ -165,6 +173,12 @@ class Node {
      * @return CommentNode 节点的原始指针，如果转换失败则为 nullptr
      */
     [[nodiscard]] const CommentNode* as_comment() const noexcept;
+
+    /**
+     * @brief 尝试将节点转换为 DoctypeNode 类型
+     * @return DoctypeNode 节点的原始指针，如果转换失败则为 nullptr
+     */
+    [[nodiscard]] const DoctypeNode* as_doctype() const noexcept;
 
   protected:
     /**

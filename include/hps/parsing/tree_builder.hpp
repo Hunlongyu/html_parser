@@ -114,6 +114,15 @@ class TreeBuilder {
      */
     void process_comment(const Token& token) const;
 
+    /**
+     * @brief 处理 DOCTYPE Token
+     * @param token DOCTYPE Token
+     *
+     * 仅在文档开头（尚无根元素、非 fragment）时，将其作为 DoctypeNode
+     * 追加到 Document；其余位置按 HTML5 视为解析错误并忽略。
+     */
+    void process_doctype(const Token& token);
+
     // === 元素操作方法 ===
 
     /**
