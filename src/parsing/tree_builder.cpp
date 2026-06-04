@@ -282,6 +282,17 @@ void TreeBuilder::process_end_tag(const Token& token) {
         close_head_element_if_open();
         return;
     }
+    // 表格上下文里的 </body> / </html>：HTML5 的 in-table “anything else” 把它们委派给
+    // in-body 处理，仅切换插入模式（after-body / after-after-body），并不弹出已打开的
+    // 表格内容。对我们的简化构建器而言等价于“忽略”——若照常拆栈会毁掉 foster parenting
+    // 的插入点（例如 <table><td>...</html>foo 中的 foo 应留在 <td> 内）。
+    if (m_fragment_context == nullptr &&
+        (equals_ignore_case(tag_name, "body") || equals_ignore_case(tag_name, "html")) &&
+        find_open_element("table", false) != nullptr) {
+        parse_error(ErrorCode::MismatchedTag,
+                    "Ignoring </" + std::string(tag_name) + "> while a table is open", m_last_position);
+        return;
+    }
     if (m_fragment_context == nullptr && equals_ignore_case(tag_name, "body")) {
         close_head_element_if_open();
         if (!m_body_element) {

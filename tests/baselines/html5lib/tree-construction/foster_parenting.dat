@@ -1,0 +1,90 @@
+#data
+<table>foo
+#document
+| <html>
+|   <head>
+|   <body>
+|     "foo"
+|     <table>
+
+#data
+<table><div>x</div>
+#document
+| <html>
+|   <head>
+|   <body>
+|     <div>
+|       "x"
+|     <table>
+
+#data
+<table>foo<tr><td>x
+#document
+| <html>
+|   <head>
+|   <body>
+|     "foo"
+|     <table>
+|       <tbody>
+|         <tr>
+|           <td>
+|             "x"
+
+#data
+a<table>b<tr><td>c
+#document
+| <html>
+|   <head>
+|   <body>
+|     "ab"
+|     <table>
+|       <tbody>
+|         <tr>
+|           <td>
+|             "c"
+
+#data
+<table></table><p>foo
+#document
+| <html>
+|   <head>
+|   <body>
+|     <table>
+|     <p>
+|       "foo"
+
+#data
+<table> <tr> <td>x
+#document
+| <html>
+|   <head>
+|   <body>
+|     <table>
+|       " "
+|       <tbody>
+|         <tr>
+|           " "
+|           <td>
+|             "x"
+
+#data
+<table><colgroup></html>foo
+#document
+| <html>
+|   <head>
+|   <body>
+|     "foo"
+|     <table>
+|       <colgroup>
+
+#data
+<table><td></body></caption></col></colgroup></html>foo
+#document
+| <html>
+|   <head>
+|   <body>
+|     <table>
+|       <tbody>
+|         <tr>
+|           <td>
+|             "foo"
