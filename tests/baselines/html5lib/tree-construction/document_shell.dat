@@ -1,0 +1,36 @@
+#data
+<!doctype html>
+#document
+| <!DOCTYPE html>
+| <html>
+|   <head>
+|   <body>
+
+#data
+<!doctype html><script>
+#document
+| <!DOCTYPE html>
+| <html>
+|   <head>
+|     <script>
+|   <body>
+
+#data
+<!doctype html><script>a</script>
+#document
+| <!DOCTYPE html>
+| <html>
+|   <head>
+|     <script>
+|       "a"
+|   <body>
+
+#data
+<!doctype html><title>hi</title>
+#document
+| <!DOCTYPE html>
+| <html>
+|   <head>
+|     <title>
+|       "hi"
+|   <body>

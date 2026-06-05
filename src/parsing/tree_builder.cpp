@@ -109,6 +109,12 @@ bool TreeBuilder::process_token(const Token& token, const size_t position) {
 }
 
 bool TreeBuilder::finish() {
+    // HTML5：非片段文档总是产出 html/head/body 外壳——即便输入为空，或只有 head 内容
+    // （如 <script> 后无 body 内容）也必须补出一个空 body。已存在时为幂等空操作。
+    if (m_fragment_context == nullptr) {
+        ensure_body_element();
+    }
+
     while (m_element_stack.size() > m_stack_floor) {
         const auto element = m_element_stack.back();
         m_element_stack.pop_back();
