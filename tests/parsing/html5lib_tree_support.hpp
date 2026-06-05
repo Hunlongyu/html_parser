@@ -206,7 +206,14 @@ inline void serialize_node(const hps::Node& node, std::vector<std::string>& line
             return;
         case hps::NodeType::Element: {
             const auto* element = node.as_element();
-            lines.push_back("| " + indent + "<" + element->tag_name() + ">");
+            // html5lib：非 HTML 命名空间的元素带命名空间前缀（"svg "/"math "）。
+            std::string ns_prefix;
+            switch (element->namespace_kind()) {
+                case hps::NamespaceKind::Svg:    ns_prefix = "svg "; break;
+                case hps::NamespaceKind::MathML: ns_prefix = "math "; break;
+                case hps::NamespaceKind::Html:   break;
+            }
+            lines.push_back("| " + indent + "<" + ns_prefix + element->tag_name() + ">");
             for (const auto& attribute : element->attributes()) {
                 lines.push_back("| " + std::string((depth + 1) * 2, ' ') + attribute.name() +
                                 "=\"" + escape_tree_text(attribute.value()) + "\"");
