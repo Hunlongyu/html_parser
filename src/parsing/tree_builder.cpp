@@ -612,8 +612,13 @@ void TreeBuilder::check_implicit_close(const std::string_view tag_name) {
         const auto             current     = current_element();
         const std::string_view current_tag = current->tag_name();
 
-        // <p> implies closing by block elements
-        static constexpr std::array<std::string_view, 26> p_closers = {"address", "article", "aside", "blockquote", "div", "dl", "fieldset", "footer", "form", "h1", "h2", "h3", "h4", "h5", "h6", "header", "hgroup", "hr", "main", "nav", "ol", "p", "pre", "section", "table", "ul"};
+        // <p> 会被这些块级起始标签隐式关闭（HTML5「have a p element in button scope」组，
+        // 含 h1–h6/pre/listing/form/plaintext/xmp/table/hr 等）。数组必须保持字典序以便二分。
+        static constexpr std::array<std::string_view, 39> p_closers = {
+            "address", "article", "aside", "blockquote", "center", "dd", "details", "dialog",
+            "dir", "div", "dl", "dt", "fieldset", "figcaption", "figure", "footer", "form",
+            "h1", "h2", "h3", "h4", "h5", "h6", "header", "hgroup", "hr", "listing", "main",
+            "menu", "nav", "ol", "p", "plaintext", "pre", "section", "summary", "table", "ul", "xmp"};
         const bool closes_paragraph =
             current_tag == "p" && std::ranges::binary_search(p_closers, tag_name);
         const bool closes_list_item =
