@@ -191,19 +191,9 @@ inline void append_section_line(std::string& section, const std::string& line) {
 }
 
 [[nodiscard]] inline std::string escape_tree_text(std::string_view text) {
-    std::string escaped;
-    escaped.reserve(text.size());
-    for (const char ch : text) {
-        switch (ch) {
-            case '\\': escaped += "\\\\"; break;
-            case '"':  escaped += "\\\""; break;
-            case '\n': escaped += "\\n"; break;
-            case '\r': escaped += "\\r"; break;
-            case '\t': escaped += "\\t"; break;
-            default:   escaped.push_back(ch); break;
-        }
-    }
-    return escaped;
+    // html5lib tree-dump 格式不转义任何字符（README 明确「Newlines aren't escaped」，
+    // 引号/反斜杠/制表/回车同样原样输出），逐字节照搬即可。
+    return std::string(text);
 }
 
 inline void serialize_node(const hps::Node& node, std::vector<std::string>& lines, const size_t depth) {
@@ -235,7 +225,8 @@ inline void serialize_node(const hps::Node& node, std::vector<std::string>& line
         case hps::NodeType::Doctype: {
             const auto* doctype = node.as_doctype();
             std::string line    = "| " + indent + "<!DOCTYPE " + doctype->name();
-            if (doctype->has_identifiers()) {
+            // README：public 或 system 任一非空时才输出带引号形式。
+            if (!doctype->public_id().empty() || !doctype->system_id().empty()) {
                 line += " \"" + doctype->public_id() + "\" \"" + doctype->system_id() + "\"";
             }
             line += ">";
