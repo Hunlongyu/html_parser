@@ -217,6 +217,7 @@ class TreeBuilder {
 
     [[nodiscard]] static bool is_head_content_tag(std::string_view tag_name) noexcept;
     [[nodiscard]] static bool is_table_section_tag(std::string_view tag_name) noexcept;
+    [[nodiscard]] static bool is_heading_tag(std::string_view tag_name) noexcept;
     [[nodiscard]] static bool is_table_cell_tag(std::string_view tag_name) noexcept;
     [[nodiscard]] static bool is_table_structure_tag(std::string_view tag_name) noexcept;
     [[nodiscard]] static bool is_table_container_tag(std::string_view tag_name) noexcept;

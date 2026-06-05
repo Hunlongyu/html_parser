@@ -623,6 +623,9 @@ void TreeBuilder::check_implicit_close(const std::string_view tag_name) {
         const bool closes_button =
             equals_ignore_case(current_tag, "button") &&
             equals_ignore_case(tag_name, "button");
+        // 一个 h1–h6 起始标签会关闭当前打开的 h1–h6（标题不可嵌套）。
+        const bool closes_heading =
+            is_heading_tag(current_tag) && is_heading_tag(tag_name);
         const bool closes_table_cell =
             is_table_cell_tag(current_tag) &&
             (is_table_cell_tag(tag_name) || equals_ignore_case(tag_name, "tr") ||
@@ -635,8 +638,8 @@ void TreeBuilder::check_implicit_close(const std::string_view tag_name) {
             is_table_section_tag(current_tag) &&
             (is_table_section_tag(tag_name) || equals_ignore_case(tag_name, "table"));
         const bool should_pop_current =
-            closes_paragraph || closes_list_item || closes_button || closes_table_cell ||
-            closes_table_row || closes_table_section;
+            closes_paragraph || closes_list_item || closes_button || closes_heading ||
+            closes_table_cell || closes_table_row || closes_table_section;
 
         if (should_pop_current) {
             m_element_stack.pop_back();
@@ -989,6 +992,12 @@ bool TreeBuilder::is_table_section_tag(const std::string_view tag_name) noexcept
     static constexpr auto table_section_tags = sorted_string_view_array(
         std::array<std::string_view, 3>{"tbody", "tfoot", "thead"});
     return std::ranges::binary_search(table_section_tags, tag_name);
+}
+
+bool TreeBuilder::is_heading_tag(const std::string_view tag_name) noexcept {
+    static constexpr auto heading_tags = sorted_string_view_array(
+        std::array<std::string_view, 6>{"h1", "h2", "h3", "h4", "h5", "h6"});
+    return std::ranges::binary_search(heading_tags, tag_name);
 }
 
 bool TreeBuilder::is_table_cell_tag(const std::string_view tag_name) noexcept {
