@@ -175,20 +175,25 @@ TEST(HTMLParser, NonWhitespaceTextInsideHeadFallsBackToBody) {
     EXPECT_NE(body->text_content().find("Body"), std::string::npos);
 }
 
-TEST(HTMLParser, SvgIsPreservedAsOpaqueRawContent) {
+TEST(HTMLParser, SvgContentIsParsedAsForeignElements) {
+    // SVG 内容是外来标记，按标签解析为带 SVG 命名空间的子元素（非不透明原始文本）。
     const auto document = hps::parse("<svg viewBox='0 0 1 1'><g><title>x</title></g></svg><p>after</p>");
     ASSERT_NE(document, nullptr);
 
-    const auto* svg = document->query_selector("svg");
+    const auto* svg       = document->query_selector("svg");
+    const auto* g         = document->query_selector("svg g");
+    const auto* title     = document->query_selector("svg title");
     const auto* paragraph = document->query_selector("p");
     ASSERT_NE(svg, nullptr);
+    ASSERT_NE(g, nullptr);
+    ASSERT_NE(title, nullptr);
     ASSERT_NE(paragraph, nullptr);
 
     EXPECT_EQ(svg->namespace_kind(), hps::NamespaceKind::Svg);
+    EXPECT_EQ(g->namespace_kind(), hps::NamespaceKind::Svg);
+    EXPECT_EQ(title->namespace_kind(), hps::NamespaceKind::Svg);
     EXPECT_EQ(svg->get_attribute("viewbox"), "0 0 1 1");
-    EXPECT_EQ(svg->text_content(), "<g><title>x</title></g>");
-    EXPECT_EQ(document->query_selector("svg g"), nullptr);
-    EXPECT_EQ(document->query_selector("svg title"), nullptr);
+    EXPECT_EQ(title->text_content(), "x");
     EXPECT_EQ(paragraph->text_content(), "after");
 }
 

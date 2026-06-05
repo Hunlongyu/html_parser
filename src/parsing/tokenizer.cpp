@@ -9,9 +9,8 @@ namespace {
     if (hps::equals_ignore_case(tag_name, "script")) {
         return hps::TokenizerState::ScriptData;
     }
-    if (hps::equals_ignore_case(tag_name, "svg")) {
-        return hps::TokenizerState::RAWTEXT;
-    }
+    // 注意：<svg>/<math> 不是 RAWTEXT——其内容是外来标记，必须按标签词法化，
+    // 由 tree builder 以对应命名空间构建子树。
     if (hps::equals_ignore_case(tag_name, "style") || hps::equals_ignore_case(tag_name, "noscript")) {
         return hps::TokenizerState::RAWTEXT;
     }
