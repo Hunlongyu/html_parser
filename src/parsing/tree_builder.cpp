@@ -20,6 +20,16 @@ namespace {
     return array;
 }
 
+// HTML5 外来内容里会「跳出」回 HTML 的起始标签集合（数组保持字典序以便二分）。
+[[nodiscard]] bool is_foreign_breakout_tag(const std::string_view tag_name) noexcept {
+    static constexpr std::array<std::string_view, 44> breakout_tags = {
+        "b", "big", "blockquote", "body", "br", "center", "code", "dd", "div", "dl", "dt",
+        "em", "embed", "h1", "h2", "h3", "h4", "h5", "h6", "head", "hr", "i", "img", "li",
+        "listing", "menu", "meta", "nobr", "ol", "p", "pre", "ruby", "s", "small", "span",
+        "strike", "strong", "sub", "sup", "table", "tt", "u", "ul", "var"};
+    return std::ranges::binary_search(breakout_tags, tag_name);
+}
+
 [[nodiscard]] auto clone_element_shallow(const Element& source) -> std::unique_ptr<Element> {
     auto clone = std::make_unique<Element>(source.tag_name(), source.namespace_kind());
     for (const auto& attribute : source.attributes()) {
@@ -135,6 +145,16 @@ std::vector<HPSError> TreeBuilder::consume_errors() {
 }
 
 void TreeBuilder::process_start_tag(const Token& token) {
+    // 外来内容（SVG/MathML）中的 breakout 起始标签：弹出外来元素回到 HTML 上下文，
+    // 再按 HTML 规则继续处理该标签（如 <svg><g><p> 中的 <p> 应成为 HTML 段落）。
+    if (current_insertion_namespace() != NamespaceKind::Html &&
+        is_foreign_breakout_tag(token.name())) {
+        while (m_element_stack.size() > m_stack_floor && current_element() != nullptr &&
+               current_element()->namespace_kind() != NamespaceKind::Html) {
+            m_element_stack.pop_back();
+        }
+    }
+
     if (m_fragment_context == nullptr) {
         if (equals_ignore_case(token.name(), "html")) {
             process_html_start_tag(token);
