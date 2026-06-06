@@ -667,85 +667,87 @@ std::optional<Token> Tokenizer::consume_doctype_state() {
 }
 
 std::optional<Token> Tokenizer::consume_script_data_state() {
-    const std::string_view closing_tag = m_last_start_tag.empty() ? std::string_view("script") : std::string_view(m_last_start_tag);
-    const size_t start = m_pos;
+    const std::string closing = m_last_start_tag.empty() ? std::string("script") : std::string(m_last_start_tag);
+    const size_t      start   = m_pos;
+
+    // HTML5 script-data 转义层级：0=普通，1=escaped(<!-- 后)，2=double-escaped(<!-- … <script 后)。
+    // 仅在层级 0/1 时 </script> 才闭合脚本；层级 2 时 </script> 只退回层级 1。
+    int escape = 0;
+
     while (has_more()) {
+        // </script + 终止符（空白 / '/' / '>' / EOF）。
         if (current_char() == '<' && peek_char() == '/' &&
-            starts_with_ignore_case(m_source.substr(m_pos + 2), closing_tag)) {
+            starts_with_ignore_case(m_source.substr(m_pos + 2), closing)) {
             const size_t saved_pos = m_pos;
-            m_pos += 2 + closing_tag.size();
+            const size_t after     = m_pos + 2 + closing.size();
+            const bool   appropriate =
+                after >= m_source.size() || is_whitespace(m_source[after]) ||
+                m_source[after] == '/' || m_source[after] == '>';
 
-            if (!has_more()) {
-                m_pos = m_source.size();
-                break;
+            if (appropriate && escape == 2) {
+                escape = 1;  // double-escaped：</script> 不闭合，退回 escaped。
+                m_pos  = after;
+                continue;
             }
-
-            if (is_whitespace(current_char())) {
-                while (has_more() && is_whitespace(current_char())) {
+            if (appropriate) {
+                if (start < saved_pos) {
+                    // 先发出已收集的脚本内容；下次调用从 </script 处再出结束标签。
+                    m_pos = saved_pos;
+                    return emit_text_token(m_source.substr(start, saved_pos - start));
+                }
+                // 消费结束标签的属性/空白直到 '>'（引号内的 '>' 不算闭合）。
+                m_pos = after;
+                while (has_more() && current_char() != '>') {
+                    if (const char ch = current_char(); ch == '"' || ch == '\'') {
+                        advance();
+                        while (has_more() && current_char() != ch) {
+                            advance();
+                        }
+                    }
                     advance();
                 }
-                if (!has_more()) {
-                    if (start < saved_pos) {
-                        const std::string_view content = m_source.substr(start, saved_pos - start);
-                        record_recoverable_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in script end tag");
-                        m_state = TokenizerState::Data;
-                        return emit_text_token(content);
-                    }
-                    record_recoverable_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in script end tag");
-                    m_state = TokenizerState::Data;
-                    return {};
+                if (has_more() && current_char() == '>') {
+                    advance();
                 }
-            }
-
-            if (current_char() == '>') {
-                if (start < saved_pos) {
-                    m_pos                          = saved_pos;
-                    const std::string_view content = m_source.substr(start, saved_pos - start);
-                    return emit_text_token(content);
-                }
-                advance();
                 m_state   = TokenizerState::Data;
-                m_end_tag = std::string(closing_tag);
+                m_end_tag = closing;
                 return create_end_tag_token();
             }
-            if (current_char() == '/') {
-                advance();
-                while (has_more() && is_whitespace(current_char())) {
-                    advance();
-                }
-                if (!has_more()) {
-                    if (start < saved_pos) {
-                        const std::string_view content = m_source.substr(start, saved_pos - start);
-                        record_recoverable_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in script end tag");
-                        m_state = TokenizerState::Data;
-                        return emit_text_token(content);
-                    }
-                    record_recoverable_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in script end tag");
-                    m_state = TokenizerState::Data;
-                    return {};
-                }
-                if (current_char() == '>') {
-                    if (start < saved_pos) {
-                        m_pos                          = saved_pos;
-                        const std::string_view content = m_source.substr(start, saved_pos - start);
-                        return emit_text_token(content);
-                    }
-                    advance();
-                    m_state   = TokenizerState::Data;
-                    m_end_tag = std::string(closing_tag);
-                    return create_end_tag_token();
-                }
-            }
-            m_pos = saved_pos;
+            m_pos = saved_pos;  // 非合适结束标签（如 </scriptx）：当作内容。
             advance();
-        } else {
-            advance();
+            continue;
         }
+
+        // 进入 escaped：<!--（仅普通态）。
+        if (escape == 0 && current_char() == '<' && m_source.compare(m_pos, 4, "<!--") == 0) {
+            escape = 1;
+            m_pos += 4;
+            continue;
+        }
+        // escaped → double-escaped：<script + 终止符。
+        if (escape == 1 && current_char() == '<' &&
+            starts_with_ignore_case(m_source.substr(m_pos + 1), "script")) {
+            if (const size_t after = m_pos + 1 + 6;
+                after >= m_source.size() || is_whitespace(m_source[after]) ||
+                m_source[after] == '/' || m_source[after] == '>') {
+                escape = 2;
+                m_pos  = after;
+                continue;
+            }
+        }
+        // escaped / double-escaped → 普通：-->。
+        if (escape >= 1 && current_char() == '-' && m_source.compare(m_pos, 3, "-->") == 0) {
+            escape = 0;
+            m_pos += 3;
+            continue;
+        }
+
+        advance();
     }
+
     if (start < m_pos) {
-        const std::string_view content = m_source.substr(start, m_pos - start);
-        m_state                        = TokenizerState::Data;
-        return emit_text_token(content);
+        m_state = TokenizerState::Data;
+        return emit_text_token(m_source.substr(start, m_pos - start));
     }
     handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in script data");
     m_state = TokenizerState::Data;
