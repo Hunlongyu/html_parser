@@ -419,7 +419,33 @@ void TreeBuilder::process_end_tag(const Token& token) {
         }
         // run_adoption_agency 返回 false 表示活动格式化列表无此元素，按 “any other end tag” 继续。
     }
-    if (find_open_element(tag_name, false) != nullptr) {
+
+    // </template>：关闭最内层 template 本身。
+    if (equals_ignore_case(tag_name, "template")) {
+        if (find_open_element("template", false) != nullptr) {
+            close_elements_until("template", false);
+        } else {
+            parse_error(ErrorCode::MismatchedTag, "No matching opening tag for: template");
+        }
+        return;
+    }
+
+    // 其它结束标签只在最内层 template 的内容范围内匹配（模板隔离：</div> 跨不出 template）。
+    size_t scope_floor = m_stack_floor;
+    for (size_t i = m_element_stack.size(); i > 0; --i) {
+        if (equals_ignore_case(m_element_stack[i - 1]->tag_name(), "template")) {
+            scope_floor = i;
+            break;
+        }
+    }
+    bool found_in_scope = false;
+    for (size_t i = m_element_stack.size(); i > scope_floor; --i) {
+        if (equals_ignore_case(m_element_stack[i - 1]->tag_name(), tag_name)) {
+            found_in_scope = true;
+            break;
+        }
+    }
+    if (found_in_scope) {
         close_elements_until(tag_name);
     } else {
         parse_error(ErrorCode::MismatchedTag, "No matching opening tag for: " + std::string(tag_name));
