@@ -176,7 +176,8 @@ bool TreeBuilder::process_token(const Token& token, const size_t position) {
 bool TreeBuilder::finish() {
     // HTML5：非片段文档总是产出 html/head/body 外壳——即便输入为空，或只有 head 内容
     // （如 <script> 后无 body 内容）也必须补出一个空 body。已存在时为幂等空操作。
-    if (m_fragment_context == nullptr) {
+    // 例外：frameset 文档没有 body。
+    if (m_fragment_context == nullptr && !m_is_frameset_document) {
         ensure_body_element();
     }
 
@@ -249,9 +250,21 @@ void TreeBuilder::handle_nobr_start_tag() {
 void TreeBuilder::process_start_tag(const Token& token) {
     apply_foreign_content_breakout(token.name());
 
-    // template 内容隔离：有打开的 <template> 时，跳过文档外壳（html/head/body）管理，
-    // 内容直接落入 template 子树（近似 HTML5 “in template” 插入模式）。
-    if (m_fragment_context == nullptr && find_open_element("template", false) == nullptr) {
+    // <frameset> 起始标签（根或嵌套）由专门方法处理。
+    if (m_fragment_context == nullptr && equals_ignore_case(token.name(), "frameset")) {
+        process_frameset_start_tag(token);
+        return;
+    }
+
+    // 在 frameset 内：仅允许 frame / noframes，其余起始标签忽略，且不走文档外壳逻辑。
+    if (m_fragment_context == nullptr && find_open_element("frameset", false) != nullptr) {
+        if (!equals_ignore_case(token.name(), "frame") &&
+            !equals_ignore_case(token.name(), "noframes")) {
+            parse_error(ErrorCode::InvalidNesting, "Start tag ignored in frameset", m_last_position);
+            return;
+        }
+    } else if (m_fragment_context == nullptr && find_open_element("template", false) == nullptr) {
+        // template 内容隔离：有打开的 <template> 时跳过文档外壳管理，内容直接落入 template 子树。
         if (equals_ignore_case(token.name(), "html")) {
             process_html_start_tag(token);
             return;
@@ -418,11 +431,56 @@ void TreeBuilder::process_body_start_tag(const Token& token) {
     }
 }
 
+void TreeBuilder::process_frameset_start_tag(const Token& token) {
+    ensure_html_element();
+
+    // 嵌套 frameset：已在 frameset 内 → 原位插入。
+    if (find_open_element("frameset", false) != nullptr) {
+        auto* frameset = const_cast<Element*>(
+            insert_node(create_element(token), current_element())->as_element());
+        push_element(frameset);
+        return;
+    }
+
+    // 根 frameset：仅当 body 尚为空时接受（近似 HTML5 的 frameset-ok 标志）；否则忽略。
+    if (m_body_element != nullptr && m_body_element->has_children()) {
+        parse_error(ErrorCode::InvalidNesting, "Unexpected <frameset>", m_last_position);
+        return;
+    }
+
+    if (!m_head_element) {
+        ensure_head_element();
+    }
+    close_head_element_if_open();
+
+    // 移除已创建的空 body（frameset 文档无 body）。
+    if (m_body_element != nullptr) {
+        if (is_on_stack(m_body_element)) {
+            close_elements_until("body", false);
+        }
+        m_html_element->remove_child(m_body_element);
+        m_body_element = nullptr;
+    }
+
+    auto* frameset = const_cast<Element*>(
+        insert_node(create_element(token), m_html_element)->as_element());
+    push_element(frameset);
+    m_is_frameset_document = true;
+}
+
 void TreeBuilder::process_end_tag(const Token& token) {
     std::string_view tag_name = token.name();
 
     if (m_fragment_context == nullptr && equals_ignore_case(tag_name, "head")) {
         close_head_element_if_open();
+        return;
+    }
+    if (m_fragment_context == nullptr && equals_ignore_case(tag_name, "frameset")) {
+        if (find_open_element("frameset", false) != nullptr) {
+            close_elements_until("frameset", false);  // 弹出当前 frameset（树中保留）
+        } else {
+            parse_error(ErrorCode::MismatchedTag, "No matching opening tag for: frameset", m_last_position);
+        }
         return;
     }
     // 表格上下文里的 </body> / </html>：HTML5 的 in-table “anything else” 把它们委派给

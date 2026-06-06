@@ -89,6 +89,7 @@ class TreeBuilder {
     void process_html_start_tag(const Token& token);
     void process_head_start_tag(const Token& token);
     void process_body_start_tag(const Token& token);
+    void process_frameset_start_tag(const Token& token);
 
     // process_start_tag 的可拆分子步骤（保持主调度清晰）。
     void apply_foreign_content_breakout(std::string_view tag_name);
@@ -281,6 +282,7 @@ class TreeBuilder {
     Element*                  m_fragment_context = nullptr;  ///< fragment 解析上下文元素
     size_t                    m_stack_floor      = 0;        ///< fragment 栈底，不允许弹出
     bool                      m_head_closed  = false;    ///< head 是否已经结束
+    bool                      m_is_frameset_document = false;  ///< 是否为 frameset 文档（无 body）
 };
 
 }  // namespace hps
