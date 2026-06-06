@@ -1380,8 +1380,8 @@ bool TreeBuilder::has_element_in_scope(const Element* target) const noexcept {
 namespace {
 // 把 node 从当前父节点（应为元素）摘下，挂到 new_parent（before 非空则插于其前）。
 void move_node_into(Node* node, Element* new_parent, const Node* before) {
-    if (node == nullptr || new_parent == nullptr) {
-        return;
+    if (node == nullptr || new_parent == nullptr || node == new_parent) {
+        return;  // 防御：绝不把节点挂到自身之下（会形成环/二次释放）。
     }
     auto* old_parent = node->parent() ? const_cast<Element*>(node->parent()->as_element()) : nullptr;
     if (old_parent == nullptr) {
@@ -1448,9 +1448,11 @@ bool TreeBuilder::run_adoption_agency(const std::string_view subject) {
             }
         }
         Element* furthest_block = nullptr;
+        size_t   fb_stack_index = 0;
         for (size_t i = fe_stack_index + 1; i < m_element_stack.size(); ++i) {
             if (is_special_element(*m_element_stack[i])) {
                 furthest_block = m_element_stack[i];
+                fb_stack_index = i;
                 break;
             }
         }
@@ -1468,60 +1470,52 @@ bool TreeBuilder::run_adoption_agency(const std::string_view subject) {
         }
 
         // g. common ancestor：栈中 formatting_element 紧靠栈底一侧的元素。
+        if (fe_stack_index == 0) {
+            return true;  // 理论上 FE 之下总有 html/上下文元素；防御性返回。
+        }
         Element* common_ancestor = m_element_stack[fe_stack_index - 1];
 
         // h. bookmark：formatting_element 在活动格式化列表中的位置。
         size_t bookmark = fe_afe_index;
 
-        // i. 内循环：在 FE 与 furthest block 之间克隆格式化元素并重排。
-        Element* node      = furthest_block;
-        Element* last_node = furthest_block;
+        // i. 内循环：以下标跟踪，从 furthest block 向 formatting_element 方向（栈下方）遍历，
+        //    沿途克隆活动格式化元素、丢弃非活动格式化元素，并把子树逐层下挂。
+        Element* node       = furthest_block;
+        Element* last_node  = furthest_block;
+        size_t   node_index = fb_stack_index;
         for (int inner = 1;; ++inner) {
-            // 找 node 在栈中的下标，取其紧靠栈底一侧的元素作为新的 node。
-            size_t node_stack_index = 0;
-            for (size_t i = 0; i < m_element_stack.size(); ++i) {
-                if (m_element_stack[i] == node) {
-                    node_stack_index = i;
-                    break;
-                }
-            }
-            if (node_stack_index == 0) {
+            if (node_index == 0) {
                 break;
             }
-            node = m_element_stack[node_stack_index - 1];
+            --node_index;
+            node = m_element_stack[node_index];
 
             if (node == formatting_element) {
                 break;
             }
-
-            const bool node_in_afe = is_in_active_formatting(node);
-            if (inner > 3 && node_in_afe) {
+            if (inner > 3 && is_in_active_formatting(node)) {
                 remove_from_active_formatting(node);
             }
             if (!is_in_active_formatting(node)) {
-                m_element_stack.erase(m_element_stack.begin() + static_cast<std::ptrdiff_t>(node_stack_index));
+                // 非活动格式化元素：从开放栈摘除（仅影响其上方元素，不影响继续向下遍历）。
+                m_element_stack.erase(m_element_stack.begin() + static_cast<std::ptrdiff_t>(node_index));
                 continue;
             }
 
-            // 克隆 node，替换其在活动格式化列表与开放栈中的位置。
+            // 克隆 node，在活动格式化列表与开放栈中原位替换。
             auto* clone = const_cast<Element*>(
                 common_ancestor->add_child(clone_element_shallow(*node))->as_element());
-            const auto afe_it = std::ranges::find(m_active_formatting, node);
-            if (afe_it != m_active_formatting.end()) {
-                if (static_cast<size_t>(afe_it - m_active_formatting.begin()) == fe_afe_index) {
-                    // 不会发生（node != FE），保险。
-                }
+            if (const auto afe_it = std::ranges::find(m_active_formatting, node);
+                afe_it != m_active_formatting.end()) {
                 *afe_it = clone;
             }
-            const auto stk_it = std::ranges::find(m_element_stack, node);
-            if (stk_it != m_element_stack.end()) {
-                *stk_it = clone;
-            }
+            m_element_stack[node_index] = clone;
             node = clone;
 
             if (last_node == furthest_block) {
-                bookmark = static_cast<size_t>(std::ranges::find(m_active_formatting, node) -
-                                               m_active_formatting.begin()) + 1;
+                bookmark = static_cast<size_t>(
+                               std::ranges::find(m_active_formatting, node) - m_active_formatting.begin()) +
+                           1;
             }
 
             // 把 last_node 挂到 node 之下。
@@ -1560,6 +1554,10 @@ bool TreeBuilder::run_adoption_agency(const std::string_view subject) {
         // 11-13. 从活动格式化列表与开放栈中移除 formatting_element，于 bookmark 处插入 fe_clone，
         //         并把 fe_clone 放到 furthest block 紧上方（更靠栈顶一侧）。
         remove_from_active_formatting(formatting_element);
+        // FE 原位于 fe_afe_index；移除后其右侧的 bookmark 需左移一位。
+        if (bookmark > fe_afe_index) {
+            --bookmark;
+        }
         if (bookmark > m_active_formatting.size()) {
             bookmark = m_active_formatting.size();
         }
