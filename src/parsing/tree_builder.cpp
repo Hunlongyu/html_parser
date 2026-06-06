@@ -152,16 +152,55 @@ std::vector<HPSError> TreeBuilder::consume_errors() {
     return std::move(m_errors);
 }
 
-void TreeBuilder::process_start_tag(const Token& token) {
+void TreeBuilder::apply_foreign_content_breakout(const std::string_view tag_name) {
     // 外来内容（SVG/MathML）中的 breakout 起始标签：弹出外来元素回到 HTML 上下文，
     // 再按 HTML 规则继续处理该标签（如 <svg><g><p> 中的 <p> 应成为 HTML 段落）。
-    if (current_insertion_namespace() != NamespaceKind::Html &&
-        is_foreign_breakout_tag(token.name())) {
-        while (m_element_stack.size() > m_stack_floor && current_element() != nullptr &&
-               current_element()->namespace_kind() != NamespaceKind::Html) {
-            m_element_stack.pop_back();
+    if (current_insertion_namespace() == NamespaceKind::Html || !is_foreign_breakout_tag(tag_name)) {
+        return;
+    }
+    while (m_element_stack.size() > m_stack_floor && current_element() != nullptr &&
+           current_element()->namespace_kind() != NamespaceKind::Html) {
+        m_element_stack.pop_back();
+    }
+}
+
+void TreeBuilder::handle_a_start_tag() {
+    // <a> 起始：若活动格式化列表（最后一个 marker 之后）已有 <a>，先跑 AAA 并清理之。
+    Element* open_a = nullptr;
+    for (size_t i = m_active_formatting.size(); i > 0; --i) {
+        Element* entry = m_active_formatting[i - 1];
+        if (entry == nullptr) {
+            break;
+        }
+        if (equals_ignore_case(entry->tag_name(), "a")) {
+            open_a = entry;
+            break;
         }
     }
+    if (open_a == nullptr) {
+        return;
+    }
+    parse_error(ErrorCode::InvalidNesting, "Unexpected nested <a>", m_last_position);
+    static_cast<void>(run_adoption_agency("a"));
+    remove_from_active_formatting(open_a);
+    if (const auto it = std::ranges::find(m_element_stack, open_a); it != m_element_stack.end()) {
+        m_element_stack.erase(it);
+    }
+}
+
+void TreeBuilder::handle_nobr_start_tag() {
+    // <nobr> 起始：先重建；若已有 nobr 在 scope 内，跑 AAA 后再重建。
+    reconstruct_active_formatting_elements();
+    if (Element* open_nobr = find_open_element("nobr", false);
+        open_nobr != nullptr && has_element_in_scope(open_nobr)) {
+        parse_error(ErrorCode::InvalidNesting, "Unexpected nested <nobr>", m_last_position);
+        static_cast<void>(run_adoption_agency("nobr"));
+        reconstruct_active_formatting_elements();
+    }
+}
+
+void TreeBuilder::process_start_tag(const Token& token) {
+    apply_foreign_content_breakout(token.name());
 
     // template 内容隔离：有打开的 <template> 时，跳过文档外壳（html/head/body）管理，
     // 内容直接落入 template 子树（近似 HTML5 “in template” 插入模式）。
@@ -187,7 +226,6 @@ void TreeBuilder::process_start_tag(const Token& token) {
             }
             ensure_body_element();
         }
-    } else {
     }
 
     // "in body"：游离的表格结构起始标签（caption/col/colgroup/tbody/td/tfoot/th/thead/tr，
@@ -206,36 +244,10 @@ void TreeBuilder::process_start_tag(const Token& token) {
         return;
     }
     if (equals_ignore_case(token.name(), "a")) {
-        // <a> 起始：若活动格式化列表（最后一个 marker 之后）已有 <a>，先跑 AAA 并清理之。
-        Element* open_a = nullptr;
-        for (size_t i = m_active_formatting.size(); i > 0; --i) {
-            Element* entry = m_active_formatting[i - 1];
-            if (entry == nullptr) {
-                break;
-            }
-            if (equals_ignore_case(entry->tag_name(), "a")) {
-                open_a = entry;
-                break;
-            }
-        }
-        if (open_a != nullptr) {
-            parse_error(ErrorCode::InvalidNesting, "Unexpected nested <a>", m_last_position);
-            static_cast<void>(run_adoption_agency("a"));
-            remove_from_active_formatting(open_a);
-            if (const auto it = std::ranges::find(m_element_stack, open_a); it != m_element_stack.end()) {
-                m_element_stack.erase(it);
-            }
-        }
+        handle_a_start_tag();
     }
     if (equals_ignore_case(token.name(), "nobr")) {
-        // <nobr> 起始：先重建；若已有 nobr 在 scope 内，跑 AAA 后再重建。
-        reconstruct_active_formatting_elements();
-        if (Element* open_nobr = find_open_element("nobr", false);
-            open_nobr != nullptr && has_element_in_scope(open_nobr)) {
-            parse_error(ErrorCode::InvalidNesting, "Unexpected nested <nobr>", m_last_position);
-            static_cast<void>(run_adoption_agency("nobr"));
-            reconstruct_active_formatting_elements();
-        }
+        handle_nobr_start_tag();
     }
 
     if (!equals_ignore_case(token.name(), "col")) {

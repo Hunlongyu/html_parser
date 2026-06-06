@@ -90,6 +90,11 @@ class TreeBuilder {
     void process_head_start_tag(const Token& token);
     void process_body_start_tag(const Token& token);
 
+    // process_start_tag 的可拆分子步骤（保持主调度清晰）。
+    void apply_foreign_content_breakout(std::string_view tag_name);
+    void handle_a_start_tag();
+    void handle_nobr_start_tag();
+
     /**
      * @brief 处理结束标签Token
      * @param token 结束标签Token
