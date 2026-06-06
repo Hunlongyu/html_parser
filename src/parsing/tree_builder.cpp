@@ -1199,6 +1199,10 @@ bool TreeBuilder::should_foster_parent_element(const std::string_view tag_name) 
     if (is_table_structure_tag(tag_name)) {
         return false;
     }
+    // <template> 在表格内原位插入（不 foster），并切换到 “in template” 隔离上下文。
+    if (equals_ignore_case(tag_name, "template")) {
+        return false;
+    }
 
     const auto* current = current_element();
     if (current == nullptr) {
