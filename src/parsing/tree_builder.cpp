@@ -188,6 +188,16 @@ void TreeBuilder::process_start_tag(const Token& token) {
     } else {
     }
 
+    // "in body"：游离的表格结构起始标签（caption/col/colgroup/tbody/td/tfoot/th/thead/tr，
+    // 无打开的 table 时）按 HTML5 忽略。仅在 HTML 插入上下文生效（含 MathML/SVG 集成点内），
+    // 故 <math><mo><tr> 的 <tr> 被忽略，而 <math><tr> 仍作为 math 命名空间元素保留。
+    if (m_fragment_context == nullptr && current_insertion_namespace() == NamespaceKind::Html &&
+        is_table_structure_tag(token.name()) && !equals_ignore_case(token.name(), "table") &&
+        find_open_element("table", false) == nullptr) {
+        parse_error(ErrorCode::InvalidNesting, "Stray table-structure start tag ignored in body", m_last_position);
+        return;
+    }
+
     if (equals_ignore_case(token.name(), "form") &&
         find_open_element("form", false) != nullptr) {
         parse_error(ErrorCode::InvalidNesting, "Unexpected nested <form>", m_last_position);
@@ -1104,11 +1114,23 @@ NamespaceKind TreeBuilder::current_insertion_namespace() const noexcept {
     if (current == nullptr) {
         return NamespaceKind::Html;
     }
-    if (current->namespace_kind() == NamespaceKind::Svg &&
-        equals_ignore_case(current->tag_name(), "foreignobject")) {
-        return NamespaceKind::Html;
+    const NamespaceKind    ns  = current->namespace_kind();
+    const std::string_view tag = current->tag_name();
+    if (ns == NamespaceKind::Svg) {
+        // SVG HTML 集成点：foreignObject / desc / title 的内容按 HTML 解析。
+        if (equals_ignore_case(tag, "foreignobject") || equals_ignore_case(tag, "desc") ||
+            equals_ignore_case(tag, "title")) {
+            return NamespaceKind::Html;
+        }
+    } else if (ns == NamespaceKind::MathML) {
+        // MathML 文本集成点：mi/mo/mn/ms/mtext 的内容按 HTML 解析。
+        if (equals_ignore_case(tag, "mi") || equals_ignore_case(tag, "mo") ||
+            equals_ignore_case(tag, "mn") || equals_ignore_case(tag, "ms") ||
+            equals_ignore_case(tag, "mtext")) {
+            return NamespaceKind::Html;
+        }
     }
-    return current->namespace_kind();
+    return ns;
 }
 
 NamespaceKind TreeBuilder::namespace_for_start_tag(const std::string_view tag_name) const noexcept {
