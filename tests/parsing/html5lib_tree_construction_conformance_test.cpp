@@ -81,9 +81,12 @@ TEST(HTML5LibTreeConstructionConformance, FullUpstreamSuitePassRate) {
     }
     std::cout << "=========================================================================\n";
 
-    // 报告型断言：只要套件能加载并跑出非零通过，就算“测试通过”。
+    // 报告型断言：打印通过率，同时设一个回退地板，防止大幅退化被悄悄合入。
+    // 地板取当前通过数下方的整数（当前 1227），上游套件小幅增删不会误伤。
     RecordProperty("total", static_cast<int>(total));
     RecordProperty("passed", static_cast<int>(passed));
+    static constexpr size_t kConformanceFloor = 1200;
     EXPECT_GT(total, 0u);
-    EXPECT_GT(passed, 0u) << "整套 html5lib tree-construction 全部失败，疑似序列化/加载层面出问题";
+    EXPECT_GE(passed, kConformanceFloor)
+        << "html5lib tree-construction 通过数跌破地板 " << kConformanceFloor << "，疑似一致性回退";
 }

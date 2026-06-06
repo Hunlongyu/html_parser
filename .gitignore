@@ -11,3 +11,8 @@ enc_temp_folder/
 /coverage/Modules/
 /coverage/third-party/
 /coverage/index.html
+
+# IDE / 个人配置
+CMakeSettings.json
+Folder.DotSettings
+.idea/

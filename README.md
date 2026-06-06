@@ -5,9 +5,9 @@
 ![C++](https://img.shields.io/badge/C++-20-blue.svg)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-> ⚠️ **开发中 (WIP)** - 这是一个正在积极开发的项目，API 可能会发生变化。不建议在生产环境中使用当前版本。
+> ℹ️ **预发布 (0.x)** — 处于 0.x 预发布阶段，公共 API 仍可能调整。已通过 **362 项单元测试**，html5lib *tree-construction* 一致性套件 **1227 / 1764（69.6%，与 parse5 / lexbor 同口径）**。
 
-一个高性能、现代化的 C++ HTML 解析库，支持完整的 HTML5 标准解析和 CSS 选择器查询。
+一个高性能、现代化的 C++ HTML 解析库，支持 HTML5 容错解析（Tokenizer → Tree Construction → DOM）和 CSS 选择器查询。
 
 ## ✨ 核心特性
 
@@ -306,15 +306,18 @@ target_link_libraries(your_target PRIVATE hps::hps)
 
 ## 📚 文档链接
 
-- [📖 详细 API 文档](docs/API.md)
-- [🔧 详细构建说明](docs/BUILD.md)
-- [💡 完整示例代码](examples/)
-- [🏗️ 设计文档](docs/HPS%20HTML%20解析库详细设计文档.md)
+- [💡 示例代码](examples/) — 解析、DOM 操作、CSS 选择器、进阶用法
+- [✅ 测试与一致性基线](docs/TEST_BASELINES.md) — html5lib tokenizer / tree-construction 套件接入
+- [📋 需求与设计](docs/REQUIREMENTS.md)
+- [📈 性能基准](docs/BENCHMARK_2026-04-08.md)
+- [📝 更新日志](CHANGELOG.md)
 
-## 📋 TODO
+> 构建与集成说明见上文「📦 快速安装」。
 
-- [ ] **XPath 支持**：完整的 XPath 1.0 表达式支持（开发中）
-- [ ] 性能基准测试
+## 📋 TODO / 路线图
+
+- [ ] 提升 html5lib tree-construction 一致性（in-template 表格模式、innerHTML 片段、剩余 adoption 边角）
+- [ ] **XPath 支持**：完整的 XPath 1.0 表达式（计划中）
 
 ## 🤝 贡献
 
