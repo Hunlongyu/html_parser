@@ -163,7 +163,9 @@ void TreeBuilder::process_start_tag(const Token& token) {
         }
     }
 
-    if (m_fragment_context == nullptr) {
+    // template 内容隔离：有打开的 <template> 时，跳过文档外壳（html/head/body）管理，
+    // 内容直接落入 template 子树（近似 HTML5 “in template” 插入模式）。
+    if (m_fragment_context == nullptr && find_open_element("template", false) == nullptr) {
         if (equals_ignore_case(token.name(), "html")) {
             process_html_start_tag(token);
             return;

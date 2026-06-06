@@ -218,6 +218,15 @@ inline void serialize_node(const hps::Node& node, std::vector<std::string>& line
                 lines.push_back("| " + std::string((depth + 1) * 2, ' ') + attribute.name() +
                                 "=\"" + escape_tree_text(attribute.value()) + "\"");
             }
+            // html5lib 把 <template> 内容表示为 DocumentFragment：先输出一行 "content"，
+            // 再把模板子节点下挂一层。
+            if (ns_prefix.empty() && element->tag_name() == "template") {
+                lines.push_back("| " + std::string((depth + 1) * 2, ' ') + "content");
+                for (auto child = element->first_child(); child; child = child->next_sibling()) {
+                    serialize_node(*child, lines, depth + 2);
+                }
+                return;
+            }
             for (auto child = element->first_child(); child; child = child->next_sibling()) {
                 serialize_node(*child, lines, depth + 1);
             }
