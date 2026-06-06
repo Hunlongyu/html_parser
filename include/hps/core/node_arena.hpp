@@ -38,6 +38,10 @@ class NodeArena {
      */
     template <class T, class... Args>
     T* make(Args&&... args) {
+        // 块基址仅保证默认 new 对齐；若某节点类型对齐超过它，块内对齐偏移不足以保证正确
+        // 对齐——此处编译期拦下，避免悄无声息的错位（届时应让 allocate 走对齐分配）。
+        static_assert(alignof(T) <= __STDCPP_DEFAULT_NEW_ALIGNMENT__,
+                      "Node 派生类型对齐超过 arena 块基址保证的对齐");
         void* memory = allocate(sizeof(T), alignof(T));
         T*    node   = ::new (memory) T(std::forward<Args>(args)...);
         m_nodes.push_back(node);

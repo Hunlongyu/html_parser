@@ -7,6 +7,7 @@
 #include "hps/core/text_node.hpp"
 
 #include <algorithm>
+#include <cassert>
 #include <utility>
 
 namespace hps {
@@ -102,6 +103,10 @@ Node* Node::append_child(Node* child) {
     if (child == nullptr) {
         return nullptr;
     }
+    // 前置条件（仅 debug 校验，release 下编译为空）：节点不能挂到自身之下，
+    // 且必须是“游离”节点——已在树上的节点需先 remove_child/take_children 再挂。
+    assert(child != this && "append_child: 不能把节点挂到自身之下");
+    assert(child->m_parent == nullptr && "append_child: 节点已在树上，应先摘除再挂载");
     child->m_parent       = this;
     child->m_prev_sibling = m_last_child;
     child->m_next_sibling = nullptr;
@@ -118,6 +123,8 @@ Node* Node::insert_child_before(Node* child, const Node* before) {
     if (child == nullptr) {
         return nullptr;
     }
+    assert(child != this && "insert_child_before: 不能把节点挂到自身之下");
+    assert(child->m_parent == nullptr && "insert_child_before: 节点已在树上，应先摘除再挂载");
     if (before == nullptr) {
         return append_child(child);
     }
