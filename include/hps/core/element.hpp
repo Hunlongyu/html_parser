@@ -193,6 +193,13 @@ class Element : public Node {
     Node* insert_child_before(std::unique_ptr<Node> child, const Node* before);
 
     /**
+     * @brief 从直接子节点中摘除指定节点并交出所有权（供树重排使用）
+     * @param child 要摘除的子节点
+     * @return 被摘除节点的所有权；非本元素子节点时为 nullptr
+     */
+    std::unique_ptr<Node> remove_child(Node* child);
+
+    /**
      * @brief 取出并移除所有直接子节点
      * @return 当前元素原有子节点的所有权数组
      */

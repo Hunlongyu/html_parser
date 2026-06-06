@@ -234,6 +234,14 @@ Node* Element::insert_child_before(std::unique_ptr<Node> child, const Node* befo
     return inserted;
 }
 
+std::unique_ptr<Node> Element::remove_child(Node* child) {
+    auto owned = Node::remove_child(child);
+    if (owned) {
+        invalidate_document_query_cache();
+    }
+    return owned;
+}
+
 std::vector<std::unique_ptr<Node>> Element::take_children() {
     auto children = Node::take_children();
     invalidate_document_query_cache();

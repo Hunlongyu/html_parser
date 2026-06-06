@@ -221,7 +221,6 @@ class TreeBuilder {
     [[nodiscard]] static bool is_table_cell_tag(std::string_view tag_name) noexcept;
     [[nodiscard]] static bool is_table_structure_tag(std::string_view tag_name) noexcept;
     [[nodiscard]] static bool is_table_container_tag(std::string_view tag_name) noexcept;
-    [[nodiscard]] static bool is_adoption_formatting_tag(std::string_view tag_name) noexcept;
     [[nodiscard]] NamespaceKind current_insertion_namespace() const noexcept;
     [[nodiscard]] NamespaceKind namespace_for_start_tag(std::string_view tag_name) const noexcept;
     [[nodiscard]] static bool can_omit_end_tag_at_eof(std::string_view tag_name) noexcept;
@@ -230,7 +229,20 @@ class TreeBuilder {
     [[nodiscard]] bool should_foster_parent_element(std::string_view tag_name) const noexcept;
     [[nodiscard]] std::pair<Node*, const Node*> foster_parent_insertion_point() const noexcept;
     void close_foster_parented_elements_before_table_token() noexcept;
-    [[nodiscard]] bool try_recover_formatting_end_tag(std::string_view tag_name);
+
+    // ===== 活动格式化元素列表 + 领养机构算法（HTML5 in-body 的格式化元素处理）=====
+    void push_active_formatting(Element* element);
+    void push_active_formatting_marker();
+    void clear_active_formatting_to_last_marker();
+    void remove_from_active_formatting(const Element* element);
+    void reconstruct_active_formatting_elements();
+    [[nodiscard]] bool run_adoption_agency(std::string_view tag_name);
+    [[nodiscard]] bool is_in_active_formatting(const Element* element) const noexcept;
+    [[nodiscard]] bool has_element_in_scope(const Element* target) const noexcept;
+    [[nodiscard]] static bool is_special_element(const Element& element) noexcept;
+    [[nodiscard]] static bool is_formatting_element(std::string_view tag_name) noexcept;
+    [[nodiscard]] static bool same_formatting_element(const Element& a, const Element& b) noexcept;
+    Element* insert_html_element_at_current(std::unique_ptr<Element> element);
     [[nodiscard]] Element* find_open_element(
         std::string_view tag_name,
         bool include_fragment_base = true) const noexcept;
@@ -253,6 +265,7 @@ class TreeBuilder {
   private:
     std::shared_ptr<Document> m_document;       ///< 目标文档对象，存储构建的DOM树
     std::vector<Element*>     m_element_stack;  ///< 元素栈，跟踪当前的嵌套结构
+    std::vector<Element*>     m_active_formatting;  ///< 活动格式化元素列表（nullptr 为 marker）
     std::vector<std::string>  m_ignored_element_stack;  ///< 超过深度限制后跳过的元素栈
     std::vector<HPSError>     m_errors;         ///< 解析错误列表，收集处理过程中的错误
     const Options&            m_options;        ///< 解析选项

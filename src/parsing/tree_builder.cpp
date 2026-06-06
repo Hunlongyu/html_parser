@@ -20,6 +20,14 @@ namespace {
     return array;
 }
 
+// 插入这些元素会向活动格式化列表压入 marker（其闭合时清理到该 marker）。
+[[nodiscard]] bool is_marker_scope_tag(const std::string_view tag_name) noexcept {
+    return hps::equals_ignore_case(tag_name, "td") || hps::equals_ignore_case(tag_name, "th") ||
+           hps::equals_ignore_case(tag_name, "caption") || hps::equals_ignore_case(tag_name, "applet") ||
+           hps::equals_ignore_case(tag_name, "marquee") || hps::equals_ignore_case(tag_name, "object") ||
+           hps::equals_ignore_case(tag_name, "template");
+}
+
 // HTML5 外来内容里会「跳出」回 HTML 的起始标签集合（数组保持字典序以便二分）。
 [[nodiscard]] bool is_foreign_breakout_tag(const std::string_view tag_name) noexcept {
     static constexpr std::array<std::string_view, 44> breakout_tags = {
@@ -185,11 +193,26 @@ void TreeBuilder::process_start_tag(const Token& token) {
         parse_error(ErrorCode::InvalidNesting, "Unexpected nested <form>", m_last_position);
         return;
     }
-    if (equals_ignore_case(token.name(), "a") &&
-        find_open_element("a", false) != nullptr) {
-        parse_error(ErrorCode::InvalidNesting, "Unexpected nested <a>", m_last_position);
-        if (!try_recover_formatting_end_tag("a")) {
-            close_elements_until("a", false);
+    if (equals_ignore_case(token.name(), "a")) {
+        // <a> 起始：若活动格式化列表（最后一个 marker 之后）已有 <a>，先跑 AAA 并清理之。
+        Element* open_a = nullptr;
+        for (size_t i = m_active_formatting.size(); i > 0; --i) {
+            Element* entry = m_active_formatting[i - 1];
+            if (entry == nullptr) {
+                break;
+            }
+            if (equals_ignore_case(entry->tag_name(), "a")) {
+                open_a = entry;
+                break;
+            }
+        }
+        if (open_a != nullptr) {
+            parse_error(ErrorCode::InvalidNesting, "Unexpected nested <a>", m_last_position);
+            static_cast<void>(run_adoption_agency("a"));
+            remove_from_active_formatting(open_a);
+            if (const auto it = std::ranges::find(m_element_stack, open_a); it != m_element_stack.end()) {
+                m_element_stack.erase(it);
+            }
         }
     }
 
@@ -235,6 +258,11 @@ void TreeBuilder::process_start_tag(const Token& token) {
         }
     }
 
+    // 格式化元素插入前先重建活动格式化元素（HTML5 in-body）。
+    if (is_formatting_element(token.name())) {
+        reconstruct_active_formatting_elements();
+    }
+
     auto element = create_element(token, namespace_for_start_tag(token.name()));
     Element* element_ptr = element.get();
     if (foster_parent_element) {
@@ -246,6 +274,11 @@ void TreeBuilder::process_start_tag(const Token& token) {
 
     if (!m_options.is_void_element(std::string(token.name())) && token.type() != TokenType::CLOSE_SELF) {
         push_element(element_ptr);
+        if (is_formatting_element(token.name())) {
+            push_active_formatting(element_ptr);
+        } else if (is_marker_scope_tag(token.name())) {
+            push_active_formatting_marker();
+        }
     }
 }
 
@@ -357,8 +390,11 @@ void TreeBuilder::process_end_tag(const Token& token) {
         parse_error(ErrorCode::MismatchedTag, "No matching opening tag for: " + std::string(tag_name));
         return;
     }
-    if (try_recover_formatting_end_tag(tag_name)) {
-        return;
+    if (is_formatting_element(tag_name)) {
+        if (run_adoption_agency(tag_name)) {
+            return;
+        }
+        // run_adoption_agency 返回 false 表示活动格式化列表无此元素，按 “any other end tag” 继续。
     }
     if (find_open_element(tag_name, false) != nullptr) {
         close_elements_until(tag_name);
@@ -424,6 +460,8 @@ void TreeBuilder::process_text(const Token& token) {
         return;
     }
 
+    // body 文本插入前重建活动格式化元素（重新打开被隐式关闭的 <b>/<i>/… ）。
+    reconstruct_active_formatting_elements();
     insert_text(final_text);
 }
 
@@ -610,6 +648,9 @@ void TreeBuilder::close_elements_until(const std::string_view tag_name, const bo
     while (m_element_stack.size() > m_stack_floor) {
         const auto element = m_element_stack.back();
         m_element_stack.pop_back();
+        if (is_marker_scope_tag(element->tag_name())) {
+            clear_active_formatting_to_last_marker();
+        }
         if (equals_ignore_case(element->tag_name(), tag_name)) {
             break;
         }
@@ -668,6 +709,9 @@ void TreeBuilder::check_implicit_close(const std::string_view tag_name) {
 
         if (should_pop_current) {
             m_element_stack.pop_back();
+            if (is_marker_scope_tag(current_tag)) {
+                clear_active_formatting_to_last_marker();
+            }
             continue;
         }
         break;
@@ -1044,27 +1088,6 @@ bool TreeBuilder::is_table_container_tag(const std::string_view tag_name) noexce
     return std::ranges::binary_search(table_container_tags, tag_name);
 }
 
-bool TreeBuilder::is_adoption_formatting_tag(const std::string_view tag_name) noexcept {
-    static constexpr auto formatting_tags = sorted_string_view_array(std::array<std::string_view, 15>{
-        "a",
-        "b",
-        "big",
-        "code",
-        "em",
-        "font",
-        "i",
-        "nobr",
-        "s",
-        "small",
-        "strike",
-        "strong",
-        "tt",
-        "u",
-        "span",
-    });
-    return std::ranges::binary_search(formatting_tags, tag_name);
-}
-
 NamespaceKind TreeBuilder::current_insertion_namespace() const noexcept {
     const auto* current = current_element();
     if (current == nullptr) {
@@ -1190,51 +1213,357 @@ void TreeBuilder::close_foster_parented_elements_before_table_token() noexcept {
     }
 }
 
-bool TreeBuilder::try_recover_formatting_end_tag(const std::string_view tag_name) {
-    if (!is_adoption_formatting_tag(tag_name)) {
+// ==================== 活动格式化元素列表 + 领养机构算法 ====================
+
+bool TreeBuilder::is_formatting_element(const std::string_view tag_name) noexcept {
+    static constexpr std::array<std::string_view, 14> formatting = {
+        "a", "b", "big", "code", "em", "font", "i", "nobr", "s", "small", "strike", "strong", "tt", "u"};
+    return std::ranges::find(formatting, tag_name) != formatting.end();
+}
+
+bool TreeBuilder::is_special_element(const Element& element) noexcept {
+    if (element.namespace_kind() != NamespaceKind::Html) {
+        const std::string_view tag = element.tag_name();
+        return equals_ignore_case(tag, "foreignobject") || equals_ignore_case(tag, "desc") ||
+               equals_ignore_case(tag, "title") || equals_ignore_case(tag, "mi") ||
+               equals_ignore_case(tag, "mo") || equals_ignore_case(tag, "mn") ||
+               equals_ignore_case(tag, "ms") || equals_ignore_case(tag, "mtext") ||
+               equals_ignore_case(tag, "annotation-xml");
+    }
+    static constexpr std::array<std::string_view, 83> special = {
+        "address", "applet", "area", "article", "aside", "base", "basefont", "bgsound",
+        "blockquote", "body", "br", "button", "caption", "center", "col", "colgroup", "dd",
+        "details", "dir", "div", "dl", "dt", "embed", "fieldset", "figcaption", "figure",
+        "footer", "form", "frame", "frameset", "h1", "h2", "h3", "h4", "h5", "h6", "head",
+        "header", "hgroup", "hr", "html", "iframe", "img", "input", "keygen", "li", "link",
+        "listing", "main", "marquee", "menu", "meta", "nav", "noembed", "noframes", "noscript",
+        "object", "ol", "p", "param", "plaintext", "pre", "script", "section", "select",
+        "source", "style", "summary", "table", "tbody", "td", "template", "textarea", "tfoot",
+        "th", "thead", "title", "tr", "track", "ul", "wbr", "xmp"};
+    return std::ranges::find(special, element.tag_name()) != special.end();
+}
+
+bool TreeBuilder::same_formatting_element(const Element& a, const Element& b) noexcept {
+    if (a.namespace_kind() != b.namespace_kind() || !equals_ignore_case(a.tag_name(), b.tag_name())) {
         return false;
     }
-
-    size_t matching_index = m_element_stack.size();
-    for (size_t index = m_element_stack.size(); index > m_stack_floor; --index) {
-        if (equals_ignore_case(m_element_stack[index - 1]->tag_name(), tag_name)) {
-            matching_index = index - 1;
-            break;
-        }
-    }
-
-    if (matching_index == m_element_stack.size()) {
+    const auto& aa = a.attributes();
+    const auto& ba = b.attributes();
+    if (aa.size() != ba.size()) {
         return false;
     }
-    if (matching_index + 1 == m_element_stack.size()) {
-        return false;
-    }
-
-    for (size_t index = matching_index + 1; index < m_element_stack.size(); ++index) {
-        if (!is_adoption_formatting_tag(m_element_stack[index]->tag_name())) {
+    for (const auto& attr : aa) {
+        const bool found = std::ranges::any_of(ba, [&attr](const auto& other) {
+            return other.name() == attr.name() && other.value() == attr.value();
+        });
+        if (!found) {
             return false;
         }
     }
+    return true;
+}
 
-    std::vector<const Element*> reopen_chain;
-    reopen_chain.reserve(m_element_stack.size() - matching_index - 1);
-    for (size_t index = matching_index + 1; index < m_element_stack.size(); ++index) {
-        reopen_chain.push_back(m_element_stack[index]);
+bool TreeBuilder::is_in_active_formatting(const Element* element) const noexcept {
+    return element != nullptr &&
+           std::ranges::find(m_active_formatting, element) != m_active_formatting.end();
+}
+
+void TreeBuilder::remove_from_active_formatting(const Element* element) {
+    const auto it = std::ranges::find(m_active_formatting, element);
+    if (it != m_active_formatting.end()) {
+        m_active_formatting.erase(it);
+    }
+}
+
+void TreeBuilder::push_active_formatting_marker() {
+    m_active_formatting.push_back(nullptr);
+}
+
+void TreeBuilder::clear_active_formatting_to_last_marker() {
+    while (!m_active_formatting.empty()) {
+        Element* entry = m_active_formatting.back();
+        m_active_formatting.pop_back();
+        if (entry == nullptr) {
+            break;
+        }
+    }
+}
+
+void TreeBuilder::push_active_formatting(Element* element) {
+    // Noah's Ark：最后一个 marker 之后，若已有 3 个“同名同命名空间同属性”的条目，移除最早者。
+    int    count    = 0;
+    size_t earliest = m_active_formatting.size();
+    for (size_t i = m_active_formatting.size(); i > 0; --i) {
+        Element* entry = m_active_formatting[i - 1];
+        if (entry == nullptr) {
+            break;  // marker
+        }
+        if (same_formatting_element(*entry, *element)) {
+            ++count;
+            earliest = i - 1;
+        }
+    }
+    if (count >= 3 && earliest < m_active_formatting.size()) {
+        m_active_formatting.erase(m_active_formatting.begin() + static_cast<std::ptrdiff_t>(earliest));
+    }
+    m_active_formatting.push_back(element);
+}
+
+Element* TreeBuilder::insert_html_element_at_current(std::unique_ptr<Element> element) {
+    Node* parent = m_element_stack.empty() ? static_cast<Node*>(m_document.get())
+                                           : static_cast<Node*>(current_element());
+    return const_cast<Element*>(insert_node(std::move(element), parent)->as_element());
+}
+
+void TreeBuilder::reconstruct_active_formatting_elements() {
+    if (m_active_formatting.empty()) {
+        return;
+    }
+    Element* last = m_active_formatting.back();
+    if (last == nullptr || is_on_stack(last)) {
+        return;  // 末项是 marker 或仍在开放栈中：无需重建
     }
 
-    m_element_stack.resize(matching_index);
-
-    Node* parent = current_element() != nullptr
-                       ? static_cast<Node*>(current_element())
-                       : static_cast<Node*>(m_document.get());
-    for (const Element* element : reopen_chain) {
-        auto clone = clone_element_shallow(*element);
-        auto* clone_ptr =
-            const_cast<Element*>(insert_node(std::move(clone), parent)->as_element());
-        push_element(clone_ptr);
-        parent = clone_ptr;
+    size_t index = m_active_formatting.size() - 1;
+    while (index > 0) {
+        Element* entry = m_active_formatting[index - 1];
+        if (entry == nullptr || is_on_stack(entry)) {
+            break;
+        }
+        --index;
     }
 
+    for (; index < m_active_formatting.size(); ++index) {
+        Element* entry = m_active_formatting[index];
+        auto*    clone = insert_html_element_at_current(clone_element_shallow(*entry));
+        push_element(clone);
+        m_active_formatting[index] = clone;
+    }
+}
+
+bool TreeBuilder::has_element_in_scope(const Element* target) const noexcept {
+    for (size_t i = m_element_stack.size(); i > 0; --i) {
+        Element* element = m_element_stack[i - 1];
+        if (element == target) {
+            return true;
+        }
+        const std::string_view tag = element->tag_name();
+        if (element->namespace_kind() == NamespaceKind::Html) {
+            if (equals_ignore_case(tag, "applet") || equals_ignore_case(tag, "caption") ||
+                equals_ignore_case(tag, "html") || equals_ignore_case(tag, "table") ||
+                equals_ignore_case(tag, "td") || equals_ignore_case(tag, "th") ||
+                equals_ignore_case(tag, "marquee") || equals_ignore_case(tag, "object") ||
+                equals_ignore_case(tag, "template")) {
+                return false;
+            }
+        } else {
+            // MathML 文本集成点 / SVG HTML 集成点也是 scope 边界。
+            if (is_special_element(*element)) {
+                return false;
+            }
+        }
+    }
+    return false;
+}
+
+namespace {
+// 把 node 从当前父节点（应为元素）摘下，挂到 new_parent（before 非空则插于其前）。
+void move_node_into(Node* node, Element* new_parent, const Node* before) {
+    if (node == nullptr || new_parent == nullptr) {
+        return;
+    }
+    auto* old_parent = node->parent() ? const_cast<Element*>(node->parent()->as_element()) : nullptr;
+    if (old_parent == nullptr) {
+        return;
+    }
+    std::unique_ptr<Node> owned = old_parent->remove_child(node);
+    if (!owned) {
+        return;
+    }
+    if (before != nullptr) {
+        new_parent->insert_child_before(std::move(owned), before);
+    } else {
+        new_parent->add_child(std::move(owned));
+    }
+}
+}  // namespace
+
+bool TreeBuilder::run_adoption_agency(const std::string_view subject) {
+    // 1. 当前节点即 subject 且不在活动格式化列表：直接弹出。
+    if (Element* current = current_element();
+        current != nullptr && current->namespace_kind() == NamespaceKind::Html &&
+        equals_ignore_case(current->tag_name(), subject) && !is_in_active_formatting(current)) {
+        m_element_stack.pop_back();
+        return true;
+    }
+
+    for (int outer = 0; outer < 8; ++outer) {
+        // a. 活动格式化列表中最后一个 marker 之后、名字为 subject 的条目。
+        Element* formatting_element = nullptr;
+        size_t   fe_afe_index       = 0;
+        for (size_t i = m_active_formatting.size(); i > 0; --i) {
+            Element* entry = m_active_formatting[i - 1];
+            if (entry == nullptr) {
+                break;
+            }
+            if (equals_ignore_case(entry->tag_name(), subject)) {
+                formatting_element = entry;
+                fe_afe_index       = i - 1;
+                break;
+            }
+        }
+        if (formatting_element == nullptr) {
+            return false;  // 交给 “any other end tag” 处理
+        }
+
+        // b. 不在开放元素栈：从活动格式化列表移除并返回。
+        if (!is_on_stack(formatting_element)) {
+            parse_error(ErrorCode::MismatchedTag, "Adoption agency: formatting element not open");
+            remove_from_active_formatting(formatting_element);
+            return true;
+        }
+        // c. 在栈但不在 scope：什么也不做。
+        if (!has_element_in_scope(formatting_element)) {
+            parse_error(ErrorCode::MismatchedTag, "Adoption agency: formatting element not in scope");
+            return true;
+        }
+
+        // e. furthest block：栈中位于 formatting_element 之下、最靠近它的 special 元素。
+        size_t fe_stack_index = 0;
+        for (size_t i = 0; i < m_element_stack.size(); ++i) {
+            if (m_element_stack[i] == formatting_element) {
+                fe_stack_index = i;
+                break;
+            }
+        }
+        Element* furthest_block = nullptr;
+        for (size_t i = fe_stack_index + 1; i < m_element_stack.size(); ++i) {
+            if (is_special_element(*m_element_stack[i])) {
+                furthest_block = m_element_stack[i];
+                break;
+            }
+        }
+
+        // f. 无 furthest block：弹栈至（含）formatting_element，移除活动格式化条目。
+        if (furthest_block == nullptr) {
+            while (!m_element_stack.empty() && current_element() != formatting_element) {
+                m_element_stack.pop_back();
+            }
+            if (!m_element_stack.empty()) {
+                m_element_stack.pop_back();  // 弹出 formatting_element 自身
+            }
+            remove_from_active_formatting(formatting_element);
+            return true;
+        }
+
+        // g. common ancestor：栈中 formatting_element 紧靠栈底一侧的元素。
+        Element* common_ancestor = m_element_stack[fe_stack_index - 1];
+
+        // h. bookmark：formatting_element 在活动格式化列表中的位置。
+        size_t bookmark = fe_afe_index;
+
+        // i. 内循环：在 FE 与 furthest block 之间克隆格式化元素并重排。
+        Element* node      = furthest_block;
+        Element* last_node = furthest_block;
+        for (int inner = 1;; ++inner) {
+            // 找 node 在栈中的下标，取其紧靠栈底一侧的元素作为新的 node。
+            size_t node_stack_index = 0;
+            for (size_t i = 0; i < m_element_stack.size(); ++i) {
+                if (m_element_stack[i] == node) {
+                    node_stack_index = i;
+                    break;
+                }
+            }
+            if (node_stack_index == 0) {
+                break;
+            }
+            node = m_element_stack[node_stack_index - 1];
+
+            if (node == formatting_element) {
+                break;
+            }
+
+            const bool node_in_afe = is_in_active_formatting(node);
+            if (inner > 3 && node_in_afe) {
+                remove_from_active_formatting(node);
+            }
+            if (!is_in_active_formatting(node)) {
+                m_element_stack.erase(m_element_stack.begin() + static_cast<std::ptrdiff_t>(node_stack_index));
+                continue;
+            }
+
+            // 克隆 node，替换其在活动格式化列表与开放栈中的位置。
+            auto* clone = const_cast<Element*>(
+                common_ancestor->add_child(clone_element_shallow(*node))->as_element());
+            const auto afe_it = std::ranges::find(m_active_formatting, node);
+            if (afe_it != m_active_formatting.end()) {
+                if (static_cast<size_t>(afe_it - m_active_formatting.begin()) == fe_afe_index) {
+                    // 不会发生（node != FE），保险。
+                }
+                *afe_it = clone;
+            }
+            const auto stk_it = std::ranges::find(m_element_stack, node);
+            if (stk_it != m_element_stack.end()) {
+                *stk_it = clone;
+            }
+            node = clone;
+
+            if (last_node == furthest_block) {
+                bookmark = static_cast<size_t>(std::ranges::find(m_active_formatting, node) -
+                                               m_active_formatting.begin()) + 1;
+            }
+
+            // 把 last_node 挂到 node 之下。
+            move_node_into(last_node, node, nullptr);
+            last_node = node;
+        }
+
+        // 9. 把 last_node 放到 common ancestor 的“合适位置”（表格上下文需 foster）。
+        if (should_foster_parent_element(common_ancestor->tag_name()) ||
+            equals_ignore_case(common_ancestor->tag_name(), "table") ||
+            is_table_section_tag(common_ancestor->tag_name()) ||
+            equals_ignore_case(common_ancestor->tag_name(), "tr")) {
+            const auto [parent, before] = foster_parent_insertion_point();
+            if (auto* parent_el = parent ? const_cast<Element*>(parent->as_element()) : nullptr) {
+                move_node_into(last_node, parent_el, before);
+            } else {
+                move_node_into(last_node, common_ancestor, nullptr);
+            }
+        } else {
+            move_node_into(last_node, common_ancestor, nullptr);
+        }
+
+        // 10. 克隆 formatting_element，把 furthest block 的所有子节点搬到克隆下，再挂回 furthest block。
+        auto* fe_clone = const_cast<Element*>(
+            furthest_block->add_child(clone_element_shallow(*formatting_element))->as_element());
+        for (auto* child = const_cast<Node*>(furthest_block->first_child()); child != nullptr;) {
+            auto* next = const_cast<Node*>(child->next_sibling());
+            if (child != fe_clone) {
+                move_node_into(child, fe_clone, nullptr);
+            }
+            child = next;
+        }
+        // 上面的循环已把 fe_clone 之前的子节点搬走；确保 fe_clone 在 furthest block 末尾。
+        // （add_child 已追加在末尾，搬运时跳过它本身。）
+
+        // 11-13. 从活动格式化列表与开放栈中移除 formatting_element，于 bookmark 处插入 fe_clone，
+        //         并把 fe_clone 放到 furthest block 紧上方（更靠栈顶一侧）。
+        remove_from_active_formatting(formatting_element);
+        if (bookmark > m_active_formatting.size()) {
+            bookmark = m_active_formatting.size();
+        }
+        m_active_formatting.insert(
+            m_active_formatting.begin() + static_cast<std::ptrdiff_t>(bookmark), fe_clone);
+
+        if (const auto fe_stk = std::ranges::find(m_element_stack, formatting_element);
+            fe_stk != m_element_stack.end()) {
+            m_element_stack.erase(fe_stk);
+        }
+        if (const auto fb_stk = std::ranges::find(m_element_stack, furthest_block);
+            fb_stk != m_element_stack.end()) {
+            m_element_stack.insert(fb_stk + 1, fe_clone);
+        }
+    }
     return true;
 }
 

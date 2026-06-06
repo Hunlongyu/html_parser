@@ -163,6 +163,33 @@ void Node::set_parent(Node* parent_node) noexcept {
     m_parent = parent_node;
 }
 
+std::unique_ptr<Node> Node::remove_child(Node* child) {
+    if (child == nullptr) {
+        return nullptr;
+    }
+    const auto it = std::ranges::find_if(
+        m_children, [child](const std::unique_ptr<Node>& existing) { return existing.get() == child; });
+    if (it == m_children.end()) {
+        return nullptr;
+    }
+
+    Node* prev = child->m_prev_sibling;
+    Node* next = child->m_next_sibling;
+    if (prev != nullptr) {
+        prev->m_next_sibling = next;
+    }
+    if (next != nullptr) {
+        next->m_prev_sibling = prev;
+    }
+    child->m_prev_sibling = nullptr;
+    child->m_next_sibling = nullptr;
+    child->m_parent       = nullptr;
+
+    std::unique_ptr<Node> owned = std::move(*it);
+    m_children.erase(it);
+    return owned;
+}
+
 std::vector<std::unique_ptr<Node>> Node::take_children() {
     for (auto& child : m_children) {
         child->m_parent       = nullptr;

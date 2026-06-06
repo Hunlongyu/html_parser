@@ -224,6 +224,15 @@ class Node {
      */
     std::vector<std::unique_ptr<Node>> take_children();
 
+    /**
+     * @brief 从本节点的子节点中摘除指定子节点并交出其所有权
+     * @param child 要摘除的子节点
+     * @return 被摘除子节点的所有权；若不是本节点的子节点则返回 nullptr
+     *
+     * 修复兄弟链与父指针，供树重排（如领养机构算法）使用。
+     */
+    std::unique_ptr<Node> remove_child(Node* child);
+
   private:
     NodeType                           m_type;
     Node*                              m_parent{nullptr};
