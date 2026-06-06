@@ -1,5 +1,6 @@
 #include "hps/core/element.hpp"
 
+#include "hps/core/tag_table.hpp"
 #include "hps/core/text_node.hpp"
 #include "hps/query/element_query.hpp"
 #include "hps/query/query.hpp"
@@ -81,6 +82,7 @@ bool for_each_class_token(const std::string_view classes, Visit visit) {
 Element::Element(const std::string_view name, const NamespaceKind namespace_kind)
     : Node(NodeType::Element),
       m_name(name),
+      m_tag(tag::from_name_ci(name)),
       m_namespace_kind(namespace_kind) {}
 
 NodeType Element::type() const noexcept {
@@ -119,6 +121,10 @@ std::string Element::outer_html() const {
 
 const std::string& Element::tag_name() const noexcept {
     return m_name;
+}
+
+Tag Element::tag() const noexcept {
+    return m_tag;
 }
 
 NamespaceKind Element::namespace_kind() const noexcept {

@@ -1,6 +1,7 @@
 #include "hps/query/css/css_selector.hpp"
 
 #include "hps/core/element.hpp"
+#include "hps/core/tag_table.hpp"
 #include "hps/utils/string_utils.hpp"
 
 #include <algorithm>
@@ -9,11 +10,24 @@ namespace hps {
 
 // ==================== TypeSelector Implementation ====================
 
+TypeSelector::TypeSelector(const std::string_view tag_name)
+    : CSSSelector(SelectorType::Type),
+      m_tag_name(tag_name),
+      m_tag(tag::from_name_ci(tag_name)) {}
+
 bool TypeSelector::matches(const Element& element) const {
+    // 已知标签：整数比较（命名空间无关，沿用既有大小写不敏感语义）。
+    // 自定义/未知类型选择器：回退按名匹配。
+    if (m_tag != Tag::Unknown) {
+        return element.tag() == m_tag;
+    }
     return equals_ignore_case(element.tag_name(), m_tag_name);
 }
 
 bool TypeSelector::can_quick_reject(const Element& element) const {
+    if (m_tag != Tag::Unknown) {
+        return element.tag() != m_tag;
+    }
     return !equals_ignore_case(element.tag_name(), m_tag_name);
 }
 

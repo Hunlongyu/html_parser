@@ -92,7 +92,7 @@ class TreeBuilder {
     void process_frameset_start_tag(const Token& token);
 
     // process_start_tag 的可拆分子步骤（保持主调度清晰）。
-    void apply_foreign_content_breakout(std::string_view tag_name);
+    void apply_foreign_content_breakout(Tag tag);
     void handle_a_start_tag();
     void handle_nobr_start_tag();
 
@@ -198,7 +198,9 @@ class TreeBuilder {
      * 从栈顶开始弹出元素，直到找到匹配的标签或栈为空。
      * 用于处理不正确嵌套的HTML标签。
      */
-    void close_elements_until(std::string_view tag_name, bool report_auto_close_errors = true);
+    void close_elements_until(Tag tag, bool report_auto_close_errors = true);
+    // 按名字关闭（自定义/动态名匹配；自定义标签无法靠整数区分）。
+    void close_elements_until_by_name(std::string_view tag_name, bool report_auto_close_errors = true);
 
     /**
      * @brief 检查并处理隐含关闭的标签
@@ -206,16 +208,16 @@ class TreeBuilder {
      *
      * 如果当前栈顶元素是可以被新标签隐含关闭的（如 <p> 遇到 <p>），则自动关闭栈顶元素。
      */
-    void check_implicit_close(std::string_view tag_name);
+    void check_implicit_close(Tag tag);
     void ensure_html_element();
     void ensure_head_element();
     void ensure_body_element();
     void close_head_element_if_open();
-    void prepare_table_context_for_start_tag(std::string_view tag_name);
-    void prepare_select_context_for_start_tag(std::string_view tag_name);
-    [[nodiscard]] bool handle_table_end_tag(std::string_view tag_name);
-    [[nodiscard]] bool handle_select_end_tag(std::string_view tag_name);
-    void close_open_table_content_before_container(std::string_view tag_name, bool close_matching_tag = true);
+    void prepare_table_context_for_start_tag(Tag tag);
+    void prepare_select_context_for_start_tag(Tag tag);
+    [[nodiscard]] bool handle_table_end_tag(Tag tag);
+    [[nodiscard]] bool handle_select_end_tag(Tag tag);
+    void close_open_table_content_before_container(Tag container, bool close_matching_tag = true);
     void ensure_table_section(std::string_view tag_name = "tbody");
     void ensure_table_row();
     void ensure_colgroup();
@@ -224,18 +226,11 @@ class TreeBuilder {
     Node* insert_node_before(Node* child, Node* parent, const Node* before) const;
     void insert_text_before(std::string_view text, Node* parent, const Node* before) const;
 
-    [[nodiscard]] static bool is_head_content_tag(std::string_view tag_name) noexcept;
-    [[nodiscard]] static bool is_table_section_tag(std::string_view tag_name) noexcept;
-    [[nodiscard]] static bool is_heading_tag(std::string_view tag_name) noexcept;
-    [[nodiscard]] static bool is_table_cell_tag(std::string_view tag_name) noexcept;
-    [[nodiscard]] static bool is_table_structure_tag(std::string_view tag_name) noexcept;
-    [[nodiscard]] static bool is_table_container_tag(std::string_view tag_name) noexcept;
     [[nodiscard]] NamespaceKind current_insertion_namespace() const noexcept;
-    [[nodiscard]] NamespaceKind namespace_for_start_tag(std::string_view tag_name) const noexcept;
-    [[nodiscard]] static bool can_omit_end_tag_at_eof(std::string_view tag_name) noexcept;
+    [[nodiscard]] NamespaceKind namespace_for_start_tag(Tag tag) const noexcept;
     [[nodiscard]] static bool is_all_whitespace(std::string_view text) noexcept;
     [[nodiscard]] bool should_foster_parent_text() const noexcept;
-    [[nodiscard]] bool should_foster_parent_element(std::string_view tag_name) const noexcept;
+    [[nodiscard]] bool should_foster_parent_element(Tag tag) const noexcept;
     [[nodiscard]] std::pair<Node*, const Node*> foster_parent_insertion_point() const noexcept;
     void close_foster_parented_elements_before_table_token() noexcept;
 
@@ -245,17 +240,21 @@ class TreeBuilder {
     void clear_active_formatting_to_last_marker();
     void remove_from_active_formatting(const Element* element);
     void reconstruct_active_formatting_elements();
-    [[nodiscard]] bool run_adoption_agency(std::string_view tag_name);
+    [[nodiscard]] bool run_adoption_agency(Tag subject);
     [[nodiscard]] bool is_in_active_formatting(const Element* element) const noexcept;
     [[nodiscard]] bool has_element_in_scope(const Element* target) const noexcept;
     [[nodiscard]] static bool is_special_element(const Element& element) noexcept;
-    [[nodiscard]] static bool is_formatting_element(std::string_view tag_name) noexcept;
     [[nodiscard]] static bool same_formatting_element(const Element& a, const Element& b) noexcept;
     Element* insert_html_element_at_current(Element* element);
+    // 按整数 tag 在开放元素栈中查找最近的匹配（热路径，已知标签）。
     [[nodiscard]] Element* find_open_element(
+        Tag tag,
+        bool include_fragment_base = true) const noexcept;
+    // 按名字查找（用于自定义/动态名匹配；自定义标签 tag()==Unknown 无法靠整数区分）。
+    [[nodiscard]] Element* find_open_element_by_name(
         std::string_view tag_name,
         bool include_fragment_base = true) const noexcept;
-    [[nodiscard]] Element* find_open_in_select_scope(std::string_view tag_name) const noexcept;
+    [[nodiscard]] Element* find_open_in_select_scope(Tag tag) const noexcept;
     [[nodiscard]] Element* find_open_table_section() const noexcept;
     [[nodiscard]] Element* find_open_table_row() const noexcept;
     [[nodiscard]] Element* find_open_table_cell() const noexcept;

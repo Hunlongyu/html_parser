@@ -20,6 +20,18 @@ enum class NamespaceKind : std::uint8_t {
     MathML,  /**< MathML 命名空间 */
 };
 
+/**
+ * @brief 驻留后的标签标识（整数化标签名）。
+ *
+ * 已知标签映射到一个稳定的小整数 id（= 内部主表下标 + 1），未知/自定义标签由
+ * Document 在解析期动态分配 id（>= 已知标签数）。`Tag::Unknown` 表示尚未解析。
+ * 建树与 CSS 匹配在热路径上以整数比较取代字符串比较——这是 lexbor 同款加速核心。
+ * 取回名字用 Element::tag_name()（已知查静态表，自定义查 Document 驻留表）。
+ */
+enum class Tag : std::uint16_t {
+    Unknown = 0,
+};
+
 enum class TokenType : std::uint8_t {
     OPEN,          /// <tag ...>
     CLOSE,         /// </tag>

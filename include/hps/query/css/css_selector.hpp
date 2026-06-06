@@ -1,5 +1,6 @@
 #pragma once
 
+#include "hps/hps_fwd.hpp"
 #include "hps/utils/string_pool.hpp"
 
 #include <memory>
@@ -113,9 +114,8 @@ class UniversalSelector : public CSSSelector {
 // 类型选择器 div, p, span
 class TypeSelector : public CSSSelector {
   public:
-    explicit TypeSelector(std::string_view tag_name)
-        : CSSSelector(SelectorType::Type),
-          m_tag_name(tag_name) {}
+    // 构造时把类型名整数化为 Tag（已知标签 → 整数匹配；自定义/未知 → 回退按名匹配）。
+    explicit TypeSelector(std::string_view tag_name);
 
     [[nodiscard]] bool matches(const Element& element) const override;
 
@@ -135,6 +135,7 @@ class TypeSelector : public CSSSelector {
 
   private:
     std::string_view m_tag_name;
+    Tag              m_tag;  ///< 整数化类型 id；Tag::Unknown 表示自定义/未知（回退按名匹配）
 };
 
 // 类选择器 .class-name

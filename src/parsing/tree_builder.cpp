@@ -3,6 +3,7 @@
 #include "hps/core/comment_node.hpp"
 #include "hps/core/doctype_node.hpp"
 #include "hps/core/document.hpp"
+#include "hps/core/tag_table.hpp"
 #include "hps/core/text_node.hpp"
 #include "hps/parsing/token.hpp"
 #include "hps/utils/string_utils.hpp"
@@ -17,10 +18,6 @@
 namespace hps {
 
 namespace {
-
-[[nodiscard]] constexpr auto sorted_string_view_array(auto array) {
-    return array;
-}
 
 // SVG 属性大小写修正（HTML 词法器全小写 → 还原 camelCase）。HTML5「adjust SVG attributes」表。
 [[nodiscard]] std::string_view adjust_svg_attribute_name(const std::string_view name) {
@@ -65,24 +62,6 @@ namespace {
         return "definitionURL";
     }
     return name;
-}
-
-// 插入这些元素会向活动格式化列表压入 marker（其闭合时清理到该 marker）。
-[[nodiscard]] bool is_marker_scope_tag(const std::string_view tag_name) noexcept {
-    return hps::equals_ignore_case(tag_name, "td") || hps::equals_ignore_case(tag_name, "th") ||
-           hps::equals_ignore_case(tag_name, "caption") || hps::equals_ignore_case(tag_name, "applet") ||
-           hps::equals_ignore_case(tag_name, "marquee") || hps::equals_ignore_case(tag_name, "object") ||
-           hps::equals_ignore_case(tag_name, "template");
-}
-
-// HTML5 外来内容里会「跳出」回 HTML 的起始标签集合（数组保持字典序以便二分）。
-[[nodiscard]] bool is_foreign_breakout_tag(const std::string_view tag_name) noexcept {
-    static constexpr std::array<std::string_view, 44> breakout_tags = {
-        "b", "big", "blockquote", "body", "br", "center", "code", "dd", "div", "dl", "dt",
-        "em", "embed", "h1", "h2", "h3", "h4", "h5", "h6", "head", "hr", "i", "img", "li",
-        "listing", "menu", "meta", "nobr", "ol", "p", "pre", "ruby", "s", "small", "span",
-        "strike", "strong", "sub", "sup", "table", "tt", "u", "ul", "var"};
-    return std::ranges::binary_search(breakout_tags, tag_name);
 }
 
 }  // namespace
@@ -176,7 +155,7 @@ bool TreeBuilder::finish() {
     while (m_element_stack.size() > m_stack_floor) {
         const auto element = m_element_stack.back();
         m_element_stack.pop_back();
-        if (!can_omit_end_tag_at_eof(element->tag_name())) {
+        if (!tag::is_optional_end(element->tag())) {
             parse_error(ErrorCode::UnclosedTag, "Unclosed tag: " + std::string(element->tag_name()), m_last_position);
         }
     }
@@ -192,10 +171,10 @@ std::vector<HPSError> TreeBuilder::consume_errors() {
     return std::move(m_errors);
 }
 
-void TreeBuilder::apply_foreign_content_breakout(const std::string_view tag_name) {
+void TreeBuilder::apply_foreign_content_breakout(const Tag tag) {
     // 外来内容（SVG/MathML）中的 breakout 起始标签：弹出外来元素回到 HTML 上下文，
     // 再按 HTML 规则继续处理该标签（如 <svg><g><p> 中的 <p> 应成为 HTML 段落）。
-    if (current_insertion_namespace() == NamespaceKind::Html || !is_foreign_breakout_tag(tag_name)) {
+    if (current_insertion_namespace() == NamespaceKind::Html || !tag::is_foreign_breakout(tag)) {
         return;
     }
     while (m_element_stack.size() > m_stack_floor && current_element() != nullptr &&
@@ -212,7 +191,7 @@ void TreeBuilder::handle_a_start_tag() {
         if (entry == nullptr) {
             break;
         }
-        if (equals_ignore_case(entry->tag_name(), "a")) {
+        if (entry->tag() == tag::kA) {
             open_a = entry;
             break;
         }
@@ -221,7 +200,7 @@ void TreeBuilder::handle_a_start_tag() {
         return;
     }
     parse_error(ErrorCode::InvalidNesting, "Unexpected nested <a>", m_last_position);
-    static_cast<void>(run_adoption_agency("a"));
+    static_cast<void>(run_adoption_agency(tag::kA));
     remove_from_active_formatting(open_a);
     if (const auto it = std::ranges::find(m_element_stack, open_a); it != m_element_stack.end()) {
         m_element_stack.erase(it);
@@ -231,19 +210,22 @@ void TreeBuilder::handle_a_start_tag() {
 void TreeBuilder::handle_nobr_start_tag() {
     // <nobr> 起始：先重建；若已有 nobr 在 scope 内，跑 AAA 后再重建。
     reconstruct_active_formatting_elements();
-    if (Element* open_nobr = find_open_element("nobr", false);
+    if (Element* open_nobr = find_open_element(tag::kNobr, false);
         open_nobr != nullptr && has_element_in_scope(open_nobr)) {
         parse_error(ErrorCode::InvalidNesting, "Unexpected nested <nobr>", m_last_position);
-        static_cast<void>(run_adoption_agency("nobr"));
+        static_cast<void>(run_adoption_agency(tag::kNobr));
         reconstruct_active_formatting_elements();
     }
 }
 
 void TreeBuilder::process_start_tag(const Token& token) {
-    apply_foreign_content_breakout(token.name());
+    const std::string_view name = token.name();
+    const Tag              tg   = tag::from_name_ci(name);  // 整数化一次，热路径全程整数分发
+
+    apply_foreign_content_breakout(tg);
 
     // <frameset> 起始标签（根或嵌套）由专门方法处理。
-    if (m_fragment_context == nullptr && equals_ignore_case(token.name(), "frameset")) {
+    if (m_fragment_context == nullptr && tg == tag::kFrameset) {
         process_frameset_start_tag(token);
         return;
     }
@@ -251,29 +233,28 @@ void TreeBuilder::process_start_tag(const Token& token) {
     // frameset 文档：in-frameset 仅允许 frame/noframes；after-frameset（根 frameset 已关闭）
     // 仅允许 noframes；其余起始标签忽略，且不走文档外壳逻辑（frameset 文档无 body）。
     if (m_fragment_context == nullptr && m_is_frameset_document) {
-        const bool frameset_open = find_open_element("frameset", false) != nullptr;
-        const bool allowed       = equals_ignore_case(token.name(), "noframes") ||
-                             (frameset_open && equals_ignore_case(token.name(), "frame"));
+        const bool frameset_open = find_open_element(tag::kFrameset, false) != nullptr;
+        const bool allowed       = tg == tag::kNoframes || (frameset_open && tg == tag::kFrame);
         if (!allowed) {
             parse_error(ErrorCode::InvalidNesting, "Start tag ignored in frameset document", m_last_position);
             return;
         }
-    } else if (m_fragment_context == nullptr && find_open_element("template", false) == nullptr) {
+    } else if (m_fragment_context == nullptr && find_open_element(tag::kTemplate, false) == nullptr) {
         // template 内容隔离：有打开的 <template> 时跳过文档外壳管理，内容直接落入 template 子树。
-        if (equals_ignore_case(token.name(), "html")) {
+        if (tg == tag::kHtml) {
             process_html_start_tag(token);
             return;
         }
-        if (equals_ignore_case(token.name(), "head")) {
+        if (tg == tag::kHead) {
             process_head_start_tag(token);
             return;
         }
-        if (equals_ignore_case(token.name(), "body")) {
+        if (tg == tag::kBody) {
             process_body_start_tag(token);
             return;
         }
 
-        if (is_head_content_tag(token.name()) && m_body_element == nullptr) {
+        if (tag::is_head_content(tg) && m_body_element == nullptr) {
             ensure_head_element();
         } else {
             if (current_element() == m_head_element && !m_head_closed) {
@@ -287,34 +268,33 @@ void TreeBuilder::process_start_tag(const Token& token) {
     // 无打开的 table 时）按 HTML5 忽略。仅在 HTML 插入上下文生效（含 MathML/SVG 集成点内），
     // 故 <math><mo><tr> 的 <tr> 被忽略，而 <math><tr> 仍作为 math 命名空间元素保留。
     if (m_fragment_context == nullptr && current_insertion_namespace() == NamespaceKind::Html &&
-        is_table_structure_tag(token.name()) && !equals_ignore_case(token.name(), "table") &&
-        find_open_element("table", false) == nullptr) {
+        tag::is_table_structure(tg) && tg != tag::kTable &&
+        find_open_element(tag::kTable, false) == nullptr) {
         parse_error(ErrorCode::InvalidNesting, "Stray table-structure start tag ignored in body", m_last_position);
         return;
     }
 
-    if (equals_ignore_case(token.name(), "form") &&
-        find_open_element("form", false) != nullptr) {
+    if (tg == tag::kForm && find_open_element(tag::kForm, false) != nullptr) {
         parse_error(ErrorCode::InvalidNesting, "Unexpected nested <form>", m_last_position);
         return;
     }
-    if (equals_ignore_case(token.name(), "a")) {
+    if (tg == tag::kA) {
         handle_a_start_tag();
     }
-    if (equals_ignore_case(token.name(), "nobr")) {
+    if (tg == tag::kNobr) {
         handle_nobr_start_tag();
     }
 
-    if (!equals_ignore_case(token.name(), "col")) {
+    if (tg != tag::kCol) {
         close_colgroup_for_non_col_token();
     }
 
-    const bool foster_parent_element = should_foster_parent_element(token.name());
-    check_implicit_close(token.name());
+    const bool foster_parent_element = should_foster_parent_element(tg);
+    check_implicit_close(tg);
     if (!foster_parent_element) {
-        prepare_table_context_for_start_tag(token.name());
+        prepare_table_context_for_start_tag(tg);
     }
-    prepare_select_context_for_start_tag(token.name());
+    prepare_select_context_for_start_tag(tg);
 
     const size_t content_depth =
         static_cast<size_t>(std::ranges::count_if(m_element_stack, [this](const Element* element) {
@@ -329,7 +309,7 @@ void TreeBuilder::process_start_tag(const Token& token) {
         return;
     }
 
-    if (token.name() == "br") {
+    if (tg == tag::kBr) {
         if (m_options.br_handling == BRHandling::InsertNewline) {
             if (foster_parent_element) {
                 const auto [parent, before] = foster_parent_insertion_point();
@@ -349,11 +329,11 @@ void TreeBuilder::process_start_tag(const Token& token) {
 
     // HTML5 in-body：插入“任意其它起始标签”前先重建活动格式化元素；
     // 表格结构标签（in-table 各模式）与 head 内容标签不在此列。
-    if (!is_table_structure_tag(token.name()) && !is_head_content_tag(token.name())) {
+    if (!tag::is_table_structure(tg) && !tag::is_head_content(tg)) {
         reconstruct_active_formatting_elements();
     }
 
-    Element* element_ptr = create_element(token, namespace_for_start_tag(token.name()));
+    Element* element_ptr = create_element(token, namespace_for_start_tag(tg));
     if (foster_parent_element) {
         const auto [parent, before] = foster_parent_insertion_point();
         insert_node_before(element_ptr, parent, before);
@@ -361,11 +341,11 @@ void TreeBuilder::process_start_tag(const Token& token) {
         insert_element(element_ptr);
     }
 
-    if (!m_options.is_void_element(std::string(token.name())) && token.type() != TokenType::CLOSE_SELF) {
+    if (!m_options.is_void_element(name) && token.type() != TokenType::CLOSE_SELF) {
         push_element(element_ptr);
-        if (is_formatting_element(token.name())) {
+        if (tag::is_formatting(tg)) {
             push_active_formatting(element_ptr);
-        } else if (is_marker_scope_tag(token.name())) {
+        } else if (tag::is_marker_scope(tg)) {
             push_active_formatting_marker();
         }
     }
@@ -429,7 +409,7 @@ void TreeBuilder::process_frameset_start_tag(const Token& token) {
     ensure_html_element();
 
     // 嵌套 frameset：已在 frameset 内 → 原位插入。
-    if (find_open_element("frameset", false) != nullptr) {
+    if (find_open_element(tag::kFrameset, false) != nullptr) {
         auto* frameset = const_cast<Element*>(
             insert_node(create_element(token), current_element())->as_element());
         push_element(frameset);
@@ -456,7 +436,7 @@ void TreeBuilder::process_frameset_start_tag(const Token& token) {
     // 移除已创建的空 body（frameset 文档无 body）。
     if (m_body_element != nullptr) {
         if (is_on_stack(m_body_element)) {
-            close_elements_until("body", false);
+            close_elements_until(tag::kBody, false);
         }
         m_html_element->remove_child(m_body_element);
         m_body_element = nullptr;
@@ -469,15 +449,16 @@ void TreeBuilder::process_frameset_start_tag(const Token& token) {
 }
 
 void TreeBuilder::process_end_tag(const Token& token) {
-    std::string_view tag_name = token.name();
+    const std::string_view tag_name = token.name();
+    const Tag              tg       = tag::from_name_ci(tag_name);
 
-    if (m_fragment_context == nullptr && equals_ignore_case(tag_name, "head")) {
+    if (m_fragment_context == nullptr && tg == tag::kHead) {
         close_head_element_if_open();
         return;
     }
-    if (m_fragment_context == nullptr && equals_ignore_case(tag_name, "frameset")) {
-        if (find_open_element("frameset", false) != nullptr) {
-            close_elements_until("frameset", false);  // 弹出当前 frameset（树中保留）
+    if (m_fragment_context == nullptr && tg == tag::kFrameset) {
+        if (find_open_element(tag::kFrameset, false) != nullptr) {
+            close_elements_until(tag::kFrameset, false);  // 弹出当前 frameset（树中保留）
         } else {
             parse_error(ErrorCode::MismatchedTag, "No matching opening tag for: frameset", m_last_position);
         }
@@ -487,42 +468,41 @@ void TreeBuilder::process_end_tag(const Token& token) {
     // in-body 处理，仅切换插入模式（after-body / after-after-body），并不弹出已打开的
     // 表格内容。对我们的简化构建器而言等价于“忽略”——若照常拆栈会毁掉 foster parenting
     // 的插入点（例如 <table><td>...</html>foo 中的 foo 应留在 <td> 内）。
-    if (m_fragment_context == nullptr &&
-        (equals_ignore_case(tag_name, "body") || equals_ignore_case(tag_name, "html")) &&
-        find_open_element("table", false) != nullptr) {
+    if (m_fragment_context == nullptr && (tg == tag::kBody || tg == tag::kHtml) &&
+        find_open_element(tag::kTable, false) != nullptr) {
         parse_error(ErrorCode::MismatchedTag,
                     "Ignoring </" + std::string(tag_name) + "> while a table is open", m_last_position);
         return;
     }
-    if (m_fragment_context == nullptr && equals_ignore_case(tag_name, "body")) {
+    if (m_fragment_context == nullptr && tg == tag::kBody) {
         close_head_element_if_open();
         if (!m_body_element) {
             return;
         }
         if (is_on_stack(m_body_element)) {
-            close_elements_until("body", false);
+            close_elements_until(tag::kBody, false);
         }
         return;
     }
-    if (m_fragment_context == nullptr && equals_ignore_case(tag_name, "html")) {
+    if (m_fragment_context == nullptr && tg == tag::kHtml) {
         close_head_element_if_open();
         if (m_body_element && is_on_stack(m_body_element)) {
-            close_elements_until("body", false);
+            close_elements_until(tag::kBody, false);
         }
         if (m_html_element && is_on_stack(m_html_element)) {
-            close_elements_until("html", false);
+            close_elements_until(tag::kHtml, false);
         }
         return;
     }
 
-    if (handle_table_end_tag(tag_name)) {
+    if (handle_table_end_tag(tg)) {
         return;
     }
-    if (handle_select_end_tag(tag_name)) {
+    if (handle_select_end_tag(tg)) {
         return;
     }
 
-    if (m_options.is_void_element(std::string(token.name()))) {
+    if (m_options.is_void_element(tag_name)) {
         return;
     }
 
@@ -530,17 +510,17 @@ void TreeBuilder::process_end_tag(const Token& token) {
         parse_error(ErrorCode::MismatchedTag, "No matching opening tag for: " + std::string(tag_name));
         return;
     }
-    if (is_formatting_element(tag_name)) {
-        if (run_adoption_agency(tag_name)) {
+    if (tag::is_formatting(tg)) {
+        if (run_adoption_agency(tg)) {
             return;
         }
         // run_adoption_agency 返回 false 表示活动格式化列表无此元素，按 “any other end tag” 继续。
     }
 
     // </template>：关闭最内层 template 本身。
-    if (equals_ignore_case(tag_name, "template")) {
-        if (find_open_element("template", false) != nullptr) {
-            close_elements_until("template", false);
+    if (tg == tag::kTemplate) {
+        if (find_open_element(tag::kTemplate, false) != nullptr) {
+            close_elements_until(tag::kTemplate, false);
         } else {
             parse_error(ErrorCode::MismatchedTag, "No matching opening tag for: template");
         }
@@ -548,22 +528,30 @@ void TreeBuilder::process_end_tag(const Token& token) {
     }
 
     // 其它结束标签只在最内层 template 的内容范围内匹配（模板隔离：</div> 跨不出 template）。
+    // 已知标签按整数比较；自定义标签（tg==Unknown，无法靠整数区分彼此）回退按名比较。
     size_t scope_floor = m_stack_floor;
     for (size_t i = m_element_stack.size(); i > 0; --i) {
-        if (equals_ignore_case(m_element_stack[i - 1]->tag_name(), "template")) {
+        if (m_element_stack[i - 1]->tag() == tag::kTemplate) {
             scope_floor = i;
             break;
         }
     }
+    const auto matches = [&](const Element* el) {
+        return tg != Tag::Unknown ? el->tag() == tg : equals_ignore_case(el->tag_name(), tag_name);
+    };
     bool found_in_scope = false;
     for (size_t i = m_element_stack.size(); i > scope_floor; --i) {
-        if (equals_ignore_case(m_element_stack[i - 1]->tag_name(), tag_name)) {
+        if (matches(m_element_stack[i - 1])) {
             found_in_scope = true;
             break;
         }
     }
     if (found_in_scope) {
-        close_elements_until(tag_name);
+        if (tg != Tag::Unknown) {
+            close_elements_until(tg);
+        } else {
+            close_elements_until_by_name(tag_name);
+        }
     } else {
         parse_error(ErrorCode::MismatchedTag, "No matching opening tag for: " + std::string(tag_name));
     }
@@ -819,17 +807,33 @@ bool TreeBuilder::is_on_stack(const Element* element) const noexcept {
            std::ranges::find(m_element_stack, element) != m_element_stack.end();
 }
 
-void TreeBuilder::close_elements_until(const std::string_view tag_name, const bool report_auto_close_errors) {
+void TreeBuilder::close_elements_until(const Tag target, const bool report_auto_close_errors) {
     while (m_element_stack.size() > m_stack_floor) {
         const auto element = m_element_stack.back();
         m_element_stack.pop_back();
-        if (is_marker_scope_tag(element->tag_name())) {
+        if (tag::is_marker_scope(element->tag())) {
+            clear_active_formatting_to_last_marker();
+        }
+        if (element->tag() == target) {
+            break;
+        }
+        if (report_auto_close_errors && !tag::is_optional_end(element->tag())) {
+            parse_error(ErrorCode::MismatchedTag, "Auto-closing unclosed tag: " + std::string(element->tag_name()));
+        }
+    }
+}
+
+void TreeBuilder::close_elements_until_by_name(const std::string_view tag_name, const bool report_auto_close_errors) {
+    while (m_element_stack.size() > m_stack_floor) {
+        const auto element = m_element_stack.back();
+        m_element_stack.pop_back();
+        if (tag::is_marker_scope(element->tag())) {
             clear_active_formatting_to_last_marker();
         }
         if (equals_ignore_case(element->tag_name(), tag_name)) {
             break;
         }
-        if (report_auto_close_errors && !can_omit_end_tag_at_eof(element->tag_name())) {
+        if (report_auto_close_errors && !tag::is_optional_end(element->tag())) {
             parse_error(ErrorCode::MismatchedTag, "Auto-closing unclosed tag: " + std::string(element->tag_name()));
         }
     }
@@ -843,48 +847,34 @@ void TreeBuilder::parse_error(const ErrorCode code, const std::string& message, 
     }
 }
 
-void TreeBuilder::check_implicit_close(const std::string_view tag_name) {
+void TreeBuilder::check_implicit_close(const Tag tg) {
     while (m_element_stack.size() > m_stack_floor) {
-        const auto             current     = current_element();
-        const std::string_view current_tag = current->tag_name();
+        const auto current = current_element();
+        const Tag  cur     = current->tag();
 
         // <p> 会被这些块级起始标签隐式关闭（HTML5「have a p element in button scope」组，
-        // 含 h1–h6/pre/listing/form/plaintext/xmp/table/hr 等）。数组必须保持字典序以便二分。
-        static constexpr std::array<std::string_view, 39> p_closers = {
-            "address", "article", "aside", "blockquote", "center", "dd", "details", "dialog",
-            "dir", "div", "dl", "dt", "fieldset", "figcaption", "figure", "footer", "form",
-            "h1", "h2", "h3", "h4", "h5", "h6", "header", "hgroup", "hr", "listing", "main",
-            "menu", "nav", "ol", "p", "plaintext", "pre", "section", "summary", "table", "ul", "xmp"};
-        const bool closes_paragraph =
-            current_tag == "p" && std::ranges::binary_search(p_closers, tag_name);
+        // 含 h1–h6/pre/listing/form/plaintext/xmp/table/hr 等）。
+        const bool closes_paragraph = cur == tag::kP && tag::is_p_closer(tg);
         const bool closes_list_item =
-            (current_tag == "li" && tag_name == "li") ||
-            ((current_tag == "dd" || current_tag == "dt") &&
-             (tag_name == "dd" || tag_name == "dt"));
-        const bool closes_button =
-            equals_ignore_case(current_tag, "button") &&
-            equals_ignore_case(tag_name, "button");
+            (cur == tag::kLi && tg == tag::kLi) ||
+            ((cur == tag::kDd || cur == tag::kDt) && (tg == tag::kDd || tg == tag::kDt));
+        const bool closes_button = cur == tag::kButton && tg == tag::kButton;
         // 一个 h1–h6 起始标签会关闭当前打开的 h1–h6（标题不可嵌套）。
-        const bool closes_heading =
-            is_heading_tag(current_tag) && is_heading_tag(tag_name);
+        const bool closes_heading = tag::is_heading(cur) && tag::is_heading(tg);
         const bool closes_table_cell =
-            is_table_cell_tag(current_tag) &&
-            (is_table_cell_tag(tag_name) || equals_ignore_case(tag_name, "tr") ||
-             is_table_section_tag(tag_name));
+            tag::is_table_cell(cur) &&
+            (tag::is_table_cell(tg) || tg == tag::kTr || tag::is_table_section(tg));
         const bool closes_table_row =
-            equals_ignore_case(current_tag, "tr") &&
-            (equals_ignore_case(tag_name, "tr") || is_table_section_tag(tag_name) ||
-             equals_ignore_case(tag_name, "table"));
+            cur == tag::kTr && (tg == tag::kTr || tag::is_table_section(tg) || tg == tag::kTable);
         const bool closes_table_section =
-            is_table_section_tag(current_tag) &&
-            (is_table_section_tag(tag_name) || equals_ignore_case(tag_name, "table"));
+            tag::is_table_section(cur) && (tag::is_table_section(tg) || tg == tag::kTable);
         const bool should_pop_current =
             closes_paragraph || closes_list_item || closes_button || closes_heading ||
             closes_table_cell || closes_table_row || closes_table_section;
 
         if (should_pop_current) {
             m_element_stack.pop_back();
-            if (is_marker_scope_tag(current_tag)) {
+            if (tag::is_marker_scope(cur)) {
                 clear_active_formatting_to_last_marker();
             }
             continue;
@@ -944,198 +934,193 @@ void TreeBuilder::close_head_element_if_open() {
     }
 
     if (is_on_stack(m_head_element)) {
-        close_elements_until("head", false);
+        close_elements_until(tag::kHead, false);
     }
     m_head_closed = true;
 }
 
-void TreeBuilder::prepare_table_context_for_start_tag(const std::string_view tag_name) {
-    if (is_table_structure_tag(tag_name)) {
+void TreeBuilder::prepare_table_context_for_start_tag(const Tag tg) {
+    if (tag::is_table_structure(tg)) {
         close_foster_parented_elements_before_table_token();
     }
 
-    if (equals_ignore_case(tag_name, "caption")) {
-        close_open_table_content_before_container("caption");
+    if (tg == tag::kCaption) {
+        close_open_table_content_before_container(tag::kCaption);
         return;
     }
 
-    if (equals_ignore_case(tag_name, "colgroup")) {
-        close_open_table_content_before_container("colgroup");
+    if (tg == tag::kColgroup) {
+        close_open_table_content_before_container(tag::kColgroup);
         return;
     }
 
-    if (equals_ignore_case(tag_name, "col")) {
-        close_open_table_content_before_container("colgroup", false);
+    if (tg == tag::kCol) {
+        close_open_table_content_before_container(tag::kColgroup, false);
         ensure_colgroup();
         return;
     }
 
-    if (is_table_section_tag(tag_name) || equals_ignore_case(tag_name, "tr") ||
-        is_table_cell_tag(tag_name)) {
-        if (find_open_element("caption", false) != nullptr) {
-            close_elements_until("caption", false);
+    if (tag::is_table_section(tg) || tg == tag::kTr || tag::is_table_cell(tg)) {
+        if (find_open_element(tag::kCaption, false) != nullptr) {
+            close_elements_until(tag::kCaption, false);
         }
-        if (find_open_element("colgroup", false) != nullptr) {
-            close_elements_until("colgroup", false);
+        if (find_open_element(tag::kColgroup, false) != nullptr) {
+            close_elements_until(tag::kColgroup, false);
         }
     }
 
-    if (equals_ignore_case(tag_name, "tr")) {
+    if (tg == tag::kTr) {
         ensure_table_section();
         return;
     }
 
-    if (is_table_cell_tag(tag_name)) {
+    if (tag::is_table_cell(tg)) {
         ensure_table_row();
     }
 }
 
-void TreeBuilder::prepare_select_context_for_start_tag(const std::string_view tag_name) {
-    if (equals_ignore_case(tag_name, "option")) {
-        if (find_open_in_select_scope("option") != nullptr) {
-            close_elements_until("option", false);
+void TreeBuilder::prepare_select_context_for_start_tag(const Tag tg) {
+    if (tg == tag::kOption) {
+        if (find_open_in_select_scope(tag::kOption) != nullptr) {
+            close_elements_until(tag::kOption, false);
         }
         return;
     }
 
-    if (equals_ignore_case(tag_name, "optgroup")) {
-        if (find_open_in_select_scope("option") != nullptr) {
-            close_elements_until("option", false);
+    if (tg == tag::kOptgroup) {
+        if (find_open_in_select_scope(tag::kOption) != nullptr) {
+            close_elements_until(tag::kOption, false);
         }
-        if (find_open_in_select_scope("optgroup") != nullptr) {
-            close_elements_until("optgroup", false);
+        if (find_open_in_select_scope(tag::kOptgroup) != nullptr) {
+            close_elements_until(tag::kOptgroup, false);
         }
         return;
     }
 
-    if (equals_ignore_case(tag_name, "select")) {
-        if (find_open_in_select_scope("option") != nullptr) {
-            close_elements_until("option", false);
+    if (tg == tag::kSelect) {
+        if (find_open_in_select_scope(tag::kOption) != nullptr) {
+            close_elements_until(tag::kOption, false);
         }
-        if (find_open_in_select_scope("optgroup") != nullptr) {
-            close_elements_until("optgroup", false);
+        if (find_open_in_select_scope(tag::kOptgroup) != nullptr) {
+            close_elements_until(tag::kOptgroup, false);
         }
-        if (find_open_in_select_scope("select") != nullptr) {
-            close_elements_until("select", false);
+        if (find_open_in_select_scope(tag::kSelect) != nullptr) {
+            close_elements_until(tag::kSelect, false);
         }
     }
 }
 
-bool TreeBuilder::handle_table_end_tag(const std::string_view tag_name) {
-    if (equals_ignore_case(tag_name, "table") ||
-        equals_ignore_case(tag_name, "tr") ||
-        is_table_section_tag(tag_name) ||
-        is_table_cell_tag(tag_name) ||
-        equals_ignore_case(tag_name, "caption") ||
-        equals_ignore_case(tag_name, "colgroup")) {
+bool TreeBuilder::handle_table_end_tag(const Tag tg) {
+    if (tg == tag::kTable || tg == tag::kTr || tag::is_table_section(tg) ||
+        tag::is_table_cell(tg) || tg == tag::kCaption || tg == tag::kColgroup) {
         close_foster_parented_elements_before_table_token();
     }
 
-    if (equals_ignore_case(tag_name, "caption") || equals_ignore_case(tag_name, "colgroup")) {
-        if (find_open_element(tag_name, false) == nullptr) {
-            parse_error(ErrorCode::MismatchedTag, "No matching opening tag for: " + std::string(tag_name));
+    if (tg == tag::kCaption || tg == tag::kColgroup) {
+        if (find_open_element(tg, false) == nullptr) {
+            parse_error(ErrorCode::MismatchedTag, "No matching opening tag for: " + std::string(tag::static_name(tg)));
             return true;
         }
-        close_elements_until(tag_name, false);
+        close_elements_until(tg, false);
         return true;
     }
 
-    if (is_table_cell_tag(tag_name)) {
-        if (find_open_element(tag_name, false) == nullptr) {
+    if (tag::is_table_cell(tg)) {
+        if (find_open_element(tg, false) == nullptr) {
             return false;
         }
-        close_elements_until(tag_name, false);
+        close_elements_until(tg, false);
         return true;
     }
 
-    if (equals_ignore_case(tag_name, "tr")) {
+    if (tg == tag::kTr) {
         if (find_open_table_cell() != nullptr) {
-            close_elements_until(find_open_table_cell()->tag_name(), false);
+            close_elements_until(find_open_table_cell()->tag(), false);
         }
         if (find_open_table_row() == nullptr) {
             parse_error(ErrorCode::MismatchedTag, "No matching opening tag for: tr");
             return true;
         }
-        close_elements_until("tr", false);
+        close_elements_until(tag::kTr, false);
         return true;
     }
 
-    if (is_table_section_tag(tag_name)) {
+    if (tag::is_table_section(tg)) {
         if (find_open_table_cell() != nullptr) {
-            close_elements_until(find_open_table_cell()->tag_name(), false);
+            close_elements_until(find_open_table_cell()->tag(), false);
         }
         if (find_open_table_row() != nullptr) {
-            close_elements_until("tr", false);
+            close_elements_until(tag::kTr, false);
         }
-        if (find_open_element(tag_name, false) == nullptr) {
-            parse_error(ErrorCode::MismatchedTag, "No matching opening tag for: " + std::string(tag_name));
+        if (find_open_element(tg, false) == nullptr) {
+            parse_error(ErrorCode::MismatchedTag, "No matching opening tag for: " + std::string(tag::static_name(tg)));
             return true;
         }
-        close_elements_until(tag_name, false);
+        close_elements_until(tg, false);
         return true;
     }
 
-    if (equals_ignore_case(tag_name, "table")) {
-        if (find_open_element("caption", false) != nullptr) {
-            close_elements_until("caption", false);
+    if (tg == tag::kTable) {
+        if (find_open_element(tag::kCaption, false) != nullptr) {
+            close_elements_until(tag::kCaption, false);
         }
-        if (find_open_element("colgroup", false) != nullptr) {
-            close_elements_until("colgroup", false);
+        if (find_open_element(tag::kColgroup, false) != nullptr) {
+            close_elements_until(tag::kColgroup, false);
         }
         if (find_open_table_cell() != nullptr) {
-            close_elements_until(find_open_table_cell()->tag_name(), false);
+            close_elements_until(find_open_table_cell()->tag(), false);
         }
         if (find_open_table_row() != nullptr) {
-            close_elements_until("tr", false);
+            close_elements_until(tag::kTr, false);
         }
         if (find_open_table_section() != nullptr) {
-            close_elements_until(find_open_table_section()->tag_name(), false);
+            close_elements_until(find_open_table_section()->tag(), false);
         }
-        if (find_open_element("table", false) == nullptr) {
+        if (find_open_element(tag::kTable, false) == nullptr) {
             parse_error(ErrorCode::MismatchedTag, "No matching opening tag for: table");
             return true;
         }
-        close_elements_until("table", false);
+        close_elements_until(tag::kTable, false);
         return true;
     }
 
     return false;
 }
 
-bool TreeBuilder::handle_select_end_tag(const std::string_view tag_name) {
-    if (equals_ignore_case(tag_name, "option")) {
-        if (find_open_in_select_scope("option") == nullptr) {
+bool TreeBuilder::handle_select_end_tag(const Tag tg) {
+    if (tg == tag::kOption) {
+        if (find_open_in_select_scope(tag::kOption) == nullptr) {
             parse_error(ErrorCode::MismatchedTag, "No matching opening tag for: option");
             return true;
         }
-        close_elements_until("option", false);
+        close_elements_until(tag::kOption, false);
         return true;
     }
 
-    if (equals_ignore_case(tag_name, "optgroup")) {
-        if (find_open_in_select_scope("option") != nullptr) {
-            close_elements_until("option", false);
+    if (tg == tag::kOptgroup) {
+        if (find_open_in_select_scope(tag::kOption) != nullptr) {
+            close_elements_until(tag::kOption, false);
         }
-        if (find_open_in_select_scope("optgroup") == nullptr) {
+        if (find_open_in_select_scope(tag::kOptgroup) == nullptr) {
             parse_error(ErrorCode::MismatchedTag, "No matching opening tag for: optgroup");
             return true;
         }
-        close_elements_until("optgroup", false);
+        close_elements_until(tag::kOptgroup, false);
         return true;
     }
 
-    if (equals_ignore_case(tag_name, "select")) {
-        if (find_open_in_select_scope("option") != nullptr) {
-            close_elements_until("option", false);
+    if (tg == tag::kSelect) {
+        if (find_open_in_select_scope(tag::kOption) != nullptr) {
+            close_elements_until(tag::kOption, false);
         }
-        if (find_open_in_select_scope("optgroup") != nullptr) {
-            close_elements_until("optgroup", false);
+        if (find_open_in_select_scope(tag::kOptgroup) != nullptr) {
+            close_elements_until(tag::kOptgroup, false);
         }
-        if (find_open_in_select_scope("select") == nullptr) {
+        if (find_open_in_select_scope(tag::kSelect) == nullptr) {
             parse_error(ErrorCode::MismatchedTag, "No matching opening tag for: select");
             return true;
         }
-        close_elements_until("select", false);
+        close_elements_until(tag::kSelect, false);
         return true;
     }
 
@@ -1143,37 +1128,37 @@ bool TreeBuilder::handle_select_end_tag(const std::string_view tag_name) {
 }
 
 void TreeBuilder::close_open_table_content_before_container(
-    const std::string_view tag_name,
+    const Tag container,
     const bool close_matching_tag) {
     if (find_open_table_cell() != nullptr) {
-        close_elements_until(find_open_table_cell()->tag_name(), false);
+        close_elements_until(find_open_table_cell()->tag(), false);
     }
-    if (find_open_element("tr", false) != nullptr) {
-        close_elements_until("tr", false);
+    if (find_open_element(tag::kTr, false) != nullptr) {
+        close_elements_until(tag::kTr, false);
     }
     if (find_open_table_section() != nullptr) {
-        close_elements_until(find_open_table_section()->tag_name(), false);
+        close_elements_until(find_open_table_section()->tag(), false);
     }
 
-    for (const std::string_view container : {std::string_view("caption"), std::string_view("colgroup")}) {
-        if (!equals_ignore_case(container, tag_name) && find_open_element(container, false) != nullptr) {
-            close_elements_until(container, false);
+    for (const Tag c : {tag::kCaption, tag::kColgroup}) {
+        if (c != container && find_open_element(c, false) != nullptr) {
+            close_elements_until(c, false);
         }
     }
 
-    if (close_matching_tag && find_open_element(tag_name, false) != nullptr) {
-        close_elements_until(tag_name, false);
+    if (close_matching_tag && find_open_element(container, false) != nullptr) {
+        close_elements_until(container, false);
     }
 }
 
 void TreeBuilder::ensure_table_section(const std::string_view tag_name) {
-    if (find_open_element("table") == nullptr || find_open_table_section() != nullptr) {
+    if (find_open_element(tag::kTable) == nullptr || find_open_table_section() != nullptr) {
         return;
     }
 
     Element* section = m_document->create_element(tag_name);
     auto* section_ptr =
-        const_cast<Element*>(insert_node(section, find_open_element("table"))->as_element());
+        const_cast<Element*>(insert_node(section, find_open_element(tag::kTable))->as_element());
     push_if_absent(section_ptr);
 }
 
@@ -1195,13 +1180,13 @@ void TreeBuilder::ensure_table_row() {
 }
 
 void TreeBuilder::ensure_colgroup() {
-    if (find_open_element("table") == nullptr || find_open_element("colgroup") != nullptr) {
+    if (find_open_element(tag::kTable) == nullptr || find_open_element(tag::kColgroup) != nullptr) {
         return;
     }
 
     Element* colgroup = m_document->create_element("colgroup");
     auto* colgroup_ptr =
-        const_cast<Element*>(insert_node(colgroup, find_open_element("table"))->as_element());
+        const_cast<Element*>(insert_node(colgroup, find_open_element(tag::kTable))->as_element());
     push_if_absent(colgroup_ptr);
 }
 
@@ -1209,58 +1194,10 @@ void TreeBuilder::close_colgroup_for_non_col_token() {
     if (current_element() == nullptr) {
         return;
     }
-    if (!equals_ignore_case(current_element()->tag_name(), "colgroup")) {
+    if (current_element()->tag() != tag::kColgroup) {
         return;
     }
-    close_elements_until("colgroup", false);
-}
-
-bool TreeBuilder::is_head_content_tag(const std::string_view tag_name) noexcept {
-    static constexpr auto head_content_tags = sorted_string_view_array(std::array<std::string_view, 11>{
-        "base",
-        "basefont",
-        "bgsound",
-        "link",
-        "meta",
-        "noframes",
-        "noscript",
-        "script",
-        "style",
-        "template",
-        "title",
-    });
-    return std::ranges::binary_search(head_content_tags, tag_name);
-}
-
-bool TreeBuilder::is_table_section_tag(const std::string_view tag_name) noexcept {
-    static constexpr auto table_section_tags = sorted_string_view_array(
-        std::array<std::string_view, 3>{"tbody", "tfoot", "thead"});
-    return std::ranges::binary_search(table_section_tags, tag_name);
-}
-
-bool TreeBuilder::is_heading_tag(const std::string_view tag_name) noexcept {
-    static constexpr auto heading_tags = sorted_string_view_array(
-        std::array<std::string_view, 6>{"h1", "h2", "h3", "h4", "h5", "h6"});
-    return std::ranges::binary_search(heading_tags, tag_name);
-}
-
-bool TreeBuilder::is_table_cell_tag(const std::string_view tag_name) noexcept {
-    static constexpr auto table_cell_tags =
-        sorted_string_view_array(std::array<std::string_view, 2>{"td", "th"});
-    return std::ranges::binary_search(table_cell_tags, tag_name);
-}
-
-bool TreeBuilder::is_table_structure_tag(const std::string_view tag_name) noexcept {
-    static constexpr auto table_structure_tags = sorted_string_view_array(
-        std::array<std::string_view, 9>{"caption", "col", "colgroup", "table", "tbody", "td", "tfoot", "th", "thead"});
-    return std::ranges::binary_search(table_structure_tags, tag_name) ||
-           equals_ignore_case(tag_name, "tr");
-}
-
-bool TreeBuilder::is_table_container_tag(const std::string_view tag_name) noexcept {
-    static constexpr auto table_container_tags = sorted_string_view_array(
-        std::array<std::string_view, 2>{"caption", "colgroup"});
-    return std::ranges::binary_search(table_container_tags, tag_name);
+    close_elements_until(tag::kColgroup, false);
 }
 
 NamespaceKind TreeBuilder::current_insertion_namespace() const noexcept {
@@ -1268,67 +1205,34 @@ NamespaceKind TreeBuilder::current_insertion_namespace() const noexcept {
     if (current == nullptr) {
         return NamespaceKind::Html;
     }
-    const NamespaceKind    ns  = current->namespace_kind();
-    const std::string_view tag = current->tag_name();
+    const NamespaceKind ns = current->namespace_kind();
+    const Tag           t  = current->tag();
     if (ns == NamespaceKind::Svg) {
         // SVG HTML 集成点：foreignObject / desc / title 的内容按 HTML 解析。
-        if (equals_ignore_case(tag, "foreignobject") || equals_ignore_case(tag, "desc") ||
-            equals_ignore_case(tag, "title")) {
+        if (t == tag::kForeignObject || t == tag::kDesc || t == tag::kTitle) {
             return NamespaceKind::Html;
         }
     } else if (ns == NamespaceKind::MathML) {
         // MathML 文本集成点：mi/mo/mn/ms/mtext 的内容按 HTML 解析。
-        if (equals_ignore_case(tag, "mi") || equals_ignore_case(tag, "mo") ||
-            equals_ignore_case(tag, "mn") || equals_ignore_case(tag, "ms") ||
-            equals_ignore_case(tag, "mtext")) {
+        if (t == tag::kMi || t == tag::kMo || t == tag::kMn || t == tag::kMs || t == tag::kMtext) {
             return NamespaceKind::Html;
         }
     }
     return ns;
 }
 
-NamespaceKind TreeBuilder::namespace_for_start_tag(const std::string_view tag_name) const noexcept {
+NamespaceKind TreeBuilder::namespace_for_start_tag(const Tag tg) const noexcept {
     const auto inherited_namespace = current_insertion_namespace();
-    if (equals_ignore_case(tag_name, "svg")) {
+    if (tg == tag::kSvg) {
         return NamespaceKind::Svg;
     }
-    if (equals_ignore_case(tag_name, "math")) {
+    if (tg == tag::kMath) {
         return NamespaceKind::MathML;
     }
     if (inherited_namespace != NamespaceKind::Html) {
         return inherited_namespace;
     }
     return NamespaceKind::Html;
-}
-
-bool TreeBuilder::can_omit_end_tag_at_eof(const std::string_view tag_name) noexcept {
-    static constexpr auto optional_end_tags = sorted_string_view_array(std::array<std::string_view, 18>{
-        "body",
-        "caption",
-        "colgroup",
-        "dd",
-        "dt",
-        "head",
-        "html",
-        "li",
-        "optgroup",
-        "option",
-        "p",
-        "rb",
-        "rp",
-        "rt",
-        "rtc",
-        "tbody",
-        "td",
-        "tfoot",
-    });
-    static constexpr auto optional_end_tags_tail = sorted_string_view_array(std::array<std::string_view, 3>{
-        "th",
-        "thead",
-        "tr",
-    });
-    return std::ranges::binary_search(optional_end_tags, tag_name) ||
-           std::ranges::binary_search(optional_end_tags_tail, tag_name);
 }
 
 bool TreeBuilder::is_all_whitespace(const std::string_view text) noexcept {
@@ -1340,19 +1244,16 @@ bool TreeBuilder::should_foster_parent_text() const noexcept {
     if (current == nullptr) {
         return false;
     }
-
-    const std::string_view current_tag = current->tag_name();
-    return equals_ignore_case(current_tag, "table") ||
-           is_table_section_tag(current_tag) ||
-           equals_ignore_case(current_tag, "tr");
+    const Tag t = current->tag();
+    return t == tag::kTable || tag::is_table_section(t) || t == tag::kTr;
 }
 
-bool TreeBuilder::should_foster_parent_element(const std::string_view tag_name) const noexcept {
-    if (is_table_structure_tag(tag_name)) {
+bool TreeBuilder::should_foster_parent_element(const Tag tg) const noexcept {
+    if (tag::is_table_structure(tg)) {
         return false;
     }
     // <template> 在表格内原位插入（不 foster），并切换到 “in template” 隔离上下文。
-    if (equals_ignore_case(tag_name, "template")) {
+    if (tg == tag::kTemplate) {
         return false;
     }
 
@@ -1360,15 +1261,12 @@ bool TreeBuilder::should_foster_parent_element(const std::string_view tag_name) 
     if (current == nullptr) {
         return false;
     }
-
-    const std::string_view current_tag = current->tag_name();
-    return equals_ignore_case(current_tag, "table") ||
-           is_table_section_tag(current_tag) ||
-           equals_ignore_case(current_tag, "tr");
+    const Tag t = current->tag();
+    return t == tag::kTable || tag::is_table_section(t) || t == tag::kTr;
 }
 
 std::pair<Node*, const Node*> TreeBuilder::foster_parent_insertion_point() const noexcept {
-    Element* table = find_open_element("table");
+    Element* table = find_open_element(tag::kTable);
     if (table == nullptr) {
         return {current_element() != nullptr ? static_cast<Node*>(current_element())
                                              : static_cast<Node*>(m_document.get()),
@@ -1387,7 +1285,7 @@ std::pair<Node*, const Node*> TreeBuilder::foster_parent_insertion_point() const
 }
 
 void TreeBuilder::close_foster_parented_elements_before_table_token() noexcept {
-    Element* table = find_open_element("table");
+    Element* table = find_open_element(tag::kTable);
     if (table == nullptr) {
         return;
     }
@@ -1397,7 +1295,7 @@ void TreeBuilder::close_foster_parented_elements_before_table_token() noexcept {
         if (current == nullptr || current == table) {
             return;
         }
-        if (is_table_structure_tag(current->tag_name())) {
+        if (tag::is_table_structure(current->tag())) {
             return;
         }
         m_element_stack.pop_back();
@@ -1406,32 +1304,15 @@ void TreeBuilder::close_foster_parented_elements_before_table_token() noexcept {
 
 // ==================== 活动格式化元素列表 + 领养机构算法 ====================
 
-bool TreeBuilder::is_formatting_element(const std::string_view tag_name) noexcept {
-    static constexpr std::array<std::string_view, 14> formatting = {
-        "a", "b", "big", "code", "em", "font", "i", "nobr", "s", "small", "strike", "strong", "tt", "u"};
-    return std::ranges::find(formatting, tag_name) != formatting.end();
-}
-
 bool TreeBuilder::is_special_element(const Element& element) noexcept {
+    const Tag t = element.tag();
     if (element.namespace_kind() != NamespaceKind::Html) {
-        const std::string_view tag = element.tag_name();
-        return equals_ignore_case(tag, "foreignobject") || equals_ignore_case(tag, "desc") ||
-               equals_ignore_case(tag, "title") || equals_ignore_case(tag, "mi") ||
-               equals_ignore_case(tag, "mo") || equals_ignore_case(tag, "mn") ||
-               equals_ignore_case(tag, "ms") || equals_ignore_case(tag, "mtext") ||
-               equals_ignore_case(tag, "annotation-xml");
+        // 外来内容里的集成点元素亦视作 special（scope 边界）。
+        return t == tag::kForeignObject || t == tag::kDesc || t == tag::kTitle ||
+               t == tag::kMi || t == tag::kMo || t == tag::kMn || t == tag::kMs ||
+               t == tag::kMtext || t == tag::kAnnotationXml;
     }
-    static constexpr std::array<std::string_view, 83> special = {
-        "address", "applet", "area", "article", "aside", "base", "basefont", "bgsound",
-        "blockquote", "body", "br", "button", "caption", "center", "col", "colgroup", "dd",
-        "details", "dir", "div", "dl", "dt", "embed", "fieldset", "figcaption", "figure",
-        "footer", "form", "frame", "frameset", "h1", "h2", "h3", "h4", "h5", "h6", "head",
-        "header", "hgroup", "hr", "html", "iframe", "img", "input", "keygen", "li", "link",
-        "listing", "main", "marquee", "menu", "meta", "nav", "noembed", "noframes", "noscript",
-        "object", "ol", "p", "param", "plaintext", "pre", "script", "section", "select",
-        "source", "style", "summary", "table", "tbody", "td", "template", "textarea", "tfoot",
-        "th", "thead", "title", "tr", "track", "ul", "wbr", "xmp"};
-    return std::ranges::find(special, element.tag_name()) != special.end();
+    return tag::is_special(t);
 }
 
 bool TreeBuilder::same_formatting_element(const Element& a, const Element& b) noexcept {
@@ -1538,13 +1419,11 @@ bool TreeBuilder::has_element_in_scope(const Element* target) const noexcept {
         if (element == target) {
             return true;
         }
-        const std::string_view tag = element->tag_name();
+        const Tag t = element->tag();
         if (element->namespace_kind() == NamespaceKind::Html) {
-            if (equals_ignore_case(tag, "applet") || equals_ignore_case(tag, "caption") ||
-                equals_ignore_case(tag, "html") || equals_ignore_case(tag, "table") ||
-                equals_ignore_case(tag, "td") || equals_ignore_case(tag, "th") ||
-                equals_ignore_case(tag, "marquee") || equals_ignore_case(tag, "object") ||
-                equals_ignore_case(tag, "template")) {
+            if (t == tag::kApplet || t == tag::kCaption || t == tag::kHtml || t == tag::kTable ||
+                tag::is_table_cell(t) || t == tag::kMarquee || t == tag::kObject ||
+                t == tag::kTemplate) {
                 return false;
             }
         } else {
@@ -1576,11 +1455,11 @@ void move_node_into(Node* node, Element* new_parent, const Node* before) {
 }
 }  // namespace
 
-bool TreeBuilder::run_adoption_agency(const std::string_view subject) {
+bool TreeBuilder::run_adoption_agency(const Tag subject) {
     // 1. 当前节点即 subject 且不在活动格式化列表：直接弹出。
     if (Element* current = current_element();
         current != nullptr && current->namespace_kind() == NamespaceKind::Html &&
-        equals_ignore_case(current->tag_name(), subject) && !is_in_active_formatting(current)) {
+        current->tag() == subject && !is_in_active_formatting(current)) {
         m_element_stack.pop_back();
         return true;
     }
@@ -1594,7 +1473,7 @@ bool TreeBuilder::run_adoption_agency(const std::string_view subject) {
             if (entry == nullptr) {
                 break;
             }
-            if (equals_ignore_case(entry->tag_name(), subject)) {
+            if (entry->tag() == subject) {
                 formatting_element = entry;
                 fe_afe_index       = i - 1;
                 break;
@@ -1701,10 +1580,9 @@ bool TreeBuilder::run_adoption_agency(const std::string_view subject) {
         }
 
         // 9. 把 last_node 放到 common ancestor 的“合适位置”（表格上下文需 foster）。
-        if (should_foster_parent_element(common_ancestor->tag_name()) ||
-            equals_ignore_case(common_ancestor->tag_name(), "table") ||
-            is_table_section_tag(common_ancestor->tag_name()) ||
-            equals_ignore_case(common_ancestor->tag_name(), "tr")) {
+        if (const Tag ca = common_ancestor->tag();
+            should_foster_parent_element(ca) || ca == tag::kTable ||
+            tag::is_table_section(ca) || ca == tag::kTr) {
             const auto [parent, before] = foster_parent_insertion_point();
             if (auto* parent_el = parent ? const_cast<Element*>(parent->as_element()) : nullptr) {
                 move_node_into(last_node, parent_el, before);
@@ -1754,6 +1632,21 @@ bool TreeBuilder::run_adoption_agency(const std::string_view subject) {
 }
 
 Element* TreeBuilder::find_open_element(
+    const Tag target,
+    const bool include_fragment_base) const noexcept {
+    for (size_t index = m_element_stack.size(); index > 0; --index) {
+        if (!include_fragment_base && index <= m_stack_floor) {
+            break;
+        }
+        Element* element = m_element_stack[index - 1];
+        if (element->tag() == target) {
+            return element;
+        }
+    }
+    return nullptr;
+}
+
+Element* TreeBuilder::find_open_element_by_name(
     const std::string_view tag_name,
     const bool include_fragment_base) const noexcept {
     for (size_t index = m_element_stack.size(); index > 0; --index) {
@@ -1768,17 +1661,17 @@ Element* TreeBuilder::find_open_element(
     return nullptr;
 }
 
-Element* TreeBuilder::find_open_in_select_scope(const std::string_view tag_name) const noexcept {
+Element* TreeBuilder::find_open_in_select_scope(const Tag target) const noexcept {
     for (size_t index = m_element_stack.size(); index > 0; --index) {
         if (index <= m_stack_floor) {
             break;
         }
         Element* element = m_element_stack[index - 1];
-        if (equals_ignore_case(element->tag_name(), tag_name)) {
+        if (element->tag() == target) {
             return element;
         }
-        if (equals_ignore_case(element->tag_name(), "select")) {
-            return equals_ignore_case(tag_name, "select") ? element : nullptr;
+        if (element->tag() == tag::kSelect) {
+            return target == tag::kSelect ? element : nullptr;
         }
     }
     return nullptr;
@@ -1787,10 +1680,10 @@ Element* TreeBuilder::find_open_in_select_scope(const std::string_view tag_name)
 Element* TreeBuilder::find_open_table_section() const noexcept {
     for (size_t index = m_element_stack.size(); index > 0; --index) {
         Element* element = m_element_stack[index - 1];
-        if (is_table_section_tag(element->tag_name())) {
+        if (tag::is_table_section(element->tag())) {
             return element;
         }
-        if (equals_ignore_case(element->tag_name(), "table")) {
+        if (element->tag() == tag::kTable) {
             break;
         }
     }
@@ -1800,10 +1693,10 @@ Element* TreeBuilder::find_open_table_section() const noexcept {
 Element* TreeBuilder::find_open_table_row() const noexcept {
     for (size_t index = m_element_stack.size(); index > 0; --index) {
         Element* element = m_element_stack[index - 1];
-        if (equals_ignore_case(element->tag_name(), "tr")) {
+        if (element->tag() == tag::kTr) {
             return element;
         }
-        if (equals_ignore_case(element->tag_name(), "table")) {
+        if (element->tag() == tag::kTable) {
             break;
         }
     }
@@ -1813,10 +1706,10 @@ Element* TreeBuilder::find_open_table_row() const noexcept {
 Element* TreeBuilder::find_open_table_cell() const noexcept {
     for (size_t index = m_element_stack.size(); index > 0; --index) {
         Element* element = m_element_stack[index - 1];
-        if (is_table_cell_tag(element->tag_name())) {
+        if (tag::is_table_cell(element->tag())) {
             return element;
         }
-        if (equals_ignore_case(element->tag_name(), "table")) {
+        if (element->tag() == tag::kTable) {
             break;
         }
     }

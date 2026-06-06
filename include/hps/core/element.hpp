@@ -68,6 +68,15 @@ class Element : public Node {
     [[nodiscard]] const std::string& tag_name() const noexcept;
 
     /**
+     * @brief 获取元素的整数化标签 id（驻留后的 Tag）
+     * @return 已知 HTML 标签为对应 Tag；自定义/未知标签为 Tag::Unknown
+     *
+     * 供建树与 CSS 匹配在热路径上以整数比较取代字符串比较。命名空间无关
+     * （`tag()` 只表名字归一化后的身份），需配合 namespace_kind() 区分外来元素。
+     */
+    [[nodiscard]] Tag tag() const noexcept;
+
+    /**
      * @brief 获取元素所属命名空间
      * @return 命名空间种类（HTML/SVG/MathML）
      */
@@ -213,7 +222,8 @@ class Element : public Node {
     void add_attribute(std::string_view name, std::string_view value, bool has_value = true);
 
   private:
-    std::string            m_name;            /**< 标签名 */
+    std::string            m_name;            /**< 标签名（保留原始大小写；池化留待 Phase 3） */
+    Tag                    m_tag;             /**< 整数化标签 id（构造时由 m_name 归一化解析） */
     NamespaceKind          m_namespace_kind;  /**< 命名空间 */
     std::vector<Attribute> m_attributes;      /**< 属性列表 */
 };
