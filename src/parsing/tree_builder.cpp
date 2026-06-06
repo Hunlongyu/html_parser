@@ -215,6 +215,16 @@ void TreeBuilder::process_start_tag(const Token& token) {
             }
         }
     }
+    if (equals_ignore_case(token.name(), "nobr")) {
+        // <nobr> 起始：先重建；若已有 nobr 在 scope 内，跑 AAA 后再重建。
+        reconstruct_active_formatting_elements();
+        if (Element* open_nobr = find_open_element("nobr", false);
+            open_nobr != nullptr && has_element_in_scope(open_nobr)) {
+            parse_error(ErrorCode::InvalidNesting, "Unexpected nested <nobr>", m_last_position);
+            static_cast<void>(run_adoption_agency("nobr"));
+            reconstruct_active_formatting_elements();
+        }
+    }
 
     if (!equals_ignore_case(token.name(), "col")) {
         close_colgroup_for_non_col_token();
