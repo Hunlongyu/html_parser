@@ -268,8 +268,9 @@ void TreeBuilder::process_start_tag(const Token& token) {
         }
     }
 
-    // 格式化元素插入前先重建活动格式化元素（HTML5 in-body）。
-    if (is_formatting_element(token.name())) {
+    // HTML5 in-body：插入“任意其它起始标签”前先重建活动格式化元素；
+    // 表格结构标签（in-table 各模式）与 head 内容标签不在此列。
+    if (!is_table_structure_tag(token.name()) && !is_head_content_tag(token.name())) {
         reconstruct_active_formatting_elements();
     }
 
