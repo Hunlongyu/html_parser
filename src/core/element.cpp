@@ -216,33 +216,30 @@ ElementQuery Element::css(const std::string_view selector) const {
     return Query::css(*this, selector);
 }
 
-Node* Element::add_child(std::unique_ptr<Node> child) {
-    if (!child) {
+Node* Element::add_child(Node* child) {
+    if (child == nullptr) {
         return nullptr;
     }
-    Node* inserted = append_child(std::move(child));
+    Node* inserted = append_child(child);
     invalidate_document_query_cache();
     return inserted;
 }
 
-Node* Element::insert_child_before(std::unique_ptr<Node> child, const Node* before) {
-    if (!child) {
+Node* Element::insert_child_before(Node* child, const Node* before) {
+    if (child == nullptr) {
         return nullptr;
     }
-    Node* inserted = Node::insert_child_before(std::move(child), before);
+    Node* inserted = Node::insert_child_before(child, before);
     invalidate_document_query_cache();
     return inserted;
 }
 
-std::unique_ptr<Node> Element::remove_child(Node* child) {
-    auto owned = Node::remove_child(child);
-    if (owned) {
-        invalidate_document_query_cache();
-    }
-    return owned;
+void Element::remove_child(Node* child) {
+    Node::remove_child(child);
+    invalidate_document_query_cache();
 }
 
-std::vector<std::unique_ptr<Node>> Element::take_children() {
+std::vector<Node*> Element::take_children() {
     auto children = Node::take_children();
     invalidate_document_query_cache();
     return children;

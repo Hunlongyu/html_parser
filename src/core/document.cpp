@@ -1,6 +1,9 @@
 #include "hps/core/document.hpp"
 
+#include "hps/core/comment_node.hpp"
+#include "hps/core/doctype_node.hpp"
 #include "hps/core/element.hpp"
+#include "hps/core/text_node.hpp"
 #include "hps/query/element_query.hpp"
 #include "hps/query/query.hpp"
 #include "hps/utils/string_utils.hpp"
@@ -265,25 +268,42 @@ ElementQuery Document::css(const std::string_view selector) const {
     return Query::css(*this, selector);
 }
 
-Node* Document::add_child(std::unique_ptr<Node> child) {
-    if (!child) {
+Element* Document::create_element(const std::string_view name, const NamespaceKind ns) {
+    return m_arena.make<Element>(name, ns);
+}
+
+TextNode* Document::create_text(const std::string_view text) {
+    return m_arena.make<TextNode>(text);
+}
+
+CommentNode* Document::create_comment(const std::string_view text) {
+    return m_arena.make<CommentNode>(text);
+}
+
+DoctypeNode* Document::create_doctype(
+    const std::string_view name, const std::string_view public_id, const std::string_view system_id, const bool has_identifiers) {
+    return m_arena.make<DoctypeNode>(name, public_id, system_id, has_identifiers);
+}
+
+Node* Document::add_child(Node* child) {
+    if (child == nullptr) {
         return nullptr;
     }
-    Node* inserted = append_child(std::move(child));
+    Node* inserted = append_child(child);
     invalidate_query_indexes();
     return inserted;
 }
 
-Node* Document::insert_child_before(std::unique_ptr<Node> child, const Node* before) {
-    if (!child) {
+Node* Document::insert_child_before(Node* child, const Node* before) {
+    if (child == nullptr) {
         return nullptr;
     }
-    Node* inserted = Node::insert_child_before(std::move(child), before);
+    Node* inserted = Node::insert_child_before(child, before);
     invalidate_query_indexes();
     return inserted;
 }
 
-std::vector<std::unique_ptr<Node>> Document::take_children() {
+std::vector<Node*> Document::take_children() {
     auto children = Node::take_children();
     invalidate_query_indexes();
     return children;

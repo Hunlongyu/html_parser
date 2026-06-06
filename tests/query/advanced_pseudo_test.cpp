@@ -1,3 +1,4 @@
+#include "hps/core/document.hpp"
 #include "hps/core/element.hpp"
 #include "hps/query/css/css_parser.hpp"
 #include "hps/query/css/css_selector.hpp"
@@ -42,13 +43,13 @@ TEST(CSSSelectorTest, PseudoClassWhere) {
 }
 
 TEST(CSSSelectorTest, PseudoClassHas) {
+    Document doc("");
     Element parent("div");
-    auto child = std::make_unique<Element>("span");
+    Element* child = doc.create_element("span");
     child->add_attribute("class", "foo");
-    
-    Element* child_ptr = child.get();
-    parent.add_child(std::move(child));
-    
+
+    parent.add_child(child);
+
     // div:has(.foo) matches parent
     EXPECT_TRUE(parse("div:has(.foo)")->matches(parent));
     
@@ -60,20 +61,21 @@ TEST(CSSSelectorTest, PseudoClassHas) {
 }
 
 TEST(CSSSelectorTest, PseudoClassHasSupportsRelativeSelectors) {
+    Document doc("");
     Element parent("div");
 
-    auto first = std::make_unique<Element>("span");
+    Element* first = doc.create_element("span");
     first->add_attribute("class", "lead");
-    auto nested = std::make_unique<Element>("em");
+    Element* nested = doc.create_element("em");
     nested->add_attribute("class", "nested");
-    first->add_child(std::move(nested));
+    first->add_child(nested);
 
-    auto second = std::make_unique<Element>("span");
+    Element* second = doc.create_element("span");
     second->add_attribute("class", "target");
 
-    Element* first_ptr = first.get();
-    parent.add_child(std::move(first));
-    parent.add_child(std::move(second));
+    Element* first_ptr = first;
+    parent.add_child(first);
+    parent.add_child(second);
 
     EXPECT_TRUE(parse("div:has(> span.target)")->matches(parent));
     EXPECT_TRUE(parse("span:has(+ span.target)")->matches(*first_ptr));

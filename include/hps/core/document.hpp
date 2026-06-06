@@ -1,5 +1,7 @@
 #pragma once
 #include "hps/core/node.hpp"
+#include "hps/core/node_arena.hpp"
+#include "hps/hps_fwd.hpp"
 
 #include <optional>
 #include <string>
@@ -172,22 +174,31 @@ class Document : public Node {
      */
     [[nodiscard]] ElementQuery css(std::string_view selector) const;
 
+    // Node Creation (arena-backed; 节点生命周期 = 本 Document 生命周期)
+    /**
+     * @brief 在本文档的 arena 中创建一个元素/文本/注释/DOCTYPE 节点。
+     *
+     * 返回的节点由本 Document 拥有（随 Document 一同释放）；用 add_child / 兄弟 API
+     * 把它挂进树。比手动 new + unique_ptr 更快（无逐节点 malloc），也更不易出错。
+     */
+    [[nodiscard]] Element*     create_element(std::string_view name, NamespaceKind ns = NamespaceKind::Html);
+    [[nodiscard]] TextNode*    create_text(std::string_view text);
+    [[nodiscard]] CommentNode* create_comment(std::string_view text);
+    [[nodiscard]] DoctypeNode* create_doctype(
+        std::string_view name, std::string_view public_id, std::string_view system_id, bool has_identifiers);
+
     // Document Modification
     /**
-     * @brief 向文档添加子节点
-     * @param child 要添加的子节点
-     *
-     * 将指定的节点添加为文档的子节点。通常用于添加根元素（如 html 元素）。
-     * 如果传入的节点为 nullptr，则不执行任何操作。
+     * @brief 把一个（本文档 arena 创建的）节点挂为文档的子节点。
+     * @param child 要添加的子节点（nullptr 时不操作）
      */
-    Node* add_child(std::unique_ptr<Node> child);
-    Node* insert_child_before(std::unique_ptr<Node> child, const Node* before);
+    Node* add_child(Node* child);
+    Node* insert_child_before(Node* child, const Node* before);
 
     /**
-     * @brief 取出并移除所有直接子节点
-     * @return 当前文档原有子节点的所有权数组
+     * @brief 断开并返回所有直接子节点（仅断链，节点仍由 arena 拥有）
      */
-    std::vector<std::unique_ptr<Node>> take_children();
+    std::vector<Node*> take_children();
 
   private:
     struct QueryIndexCache {
@@ -200,6 +211,8 @@ class Document : public Node {
     void invalidate_query_indexes() noexcept;
     void ensure_query_indexes() const;
     void index_element_subtree(const Element& element) const;
+
+    NodeArena m_arena; /**< 拥有本文档全部 DOM 节点的 arena（节点生命周期 = 文档生命周期） */
 
     std::string m_html_source; /**< 原始 HTML 源代码 */
     std::string m_base_url;     /**< 文档来源 URL（页面地址），来自 Options::base_url */

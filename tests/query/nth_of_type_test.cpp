@@ -1,3 +1,4 @@
+#include "hps/core/document.hpp"
 #include "hps/core/element.hpp"
 #include "hps/query/css/css_parser.hpp"
 #include "hps/query/css/css_selector.hpp"
@@ -12,8 +13,9 @@ std::unique_ptr<SelectorList> parse(std::string_view selector) {
 }
 
 TEST(CSSSelectorTest, NthOfType) {
+    Document doc("");
     Element parent("div");
-    
+
     // Structure:
     // div
     //   p (1)
@@ -21,25 +23,25 @@ TEST(CSSSelectorTest, NthOfType) {
     //   p (2)
     //   span (2)
     //   p (3)
-    
-    auto p1 = std::make_unique<Element>("p");
-    auto s1 = std::make_unique<Element>("span");
-    auto p2 = std::make_unique<Element>("p");
-    auto s2 = std::make_unique<Element>("span");
-    auto p3 = std::make_unique<Element>("p");
-    
-    Element* p1_ptr = p1.get();
-    Element* s1_ptr = s1.get();
-    Element* p2_ptr = p2.get();
-    Element* s2_ptr = s2.get();
-    Element* p3_ptr = p3.get();
-    
-    parent.add_child(std::move(p1));
-    parent.add_child(std::move(s1));
-    parent.add_child(std::move(p2));
-    parent.add_child(std::move(s2));
-    parent.add_child(std::move(p3));
-    
+
+    Element* p1 = doc.create_element("p");
+    Element* s1 = doc.create_element("span");
+    Element* p2 = doc.create_element("p");
+    Element* s2 = doc.create_element("span");
+    Element* p3 = doc.create_element("p");
+
+    Element* p1_ptr = p1;
+    Element* s1_ptr = s1;
+    Element* p2_ptr = p2;
+    Element* s2_ptr = s2;
+    Element* p3_ptr = p3;
+
+    parent.add_child(p1);
+    parent.add_child(s1);
+    parent.add_child(p2);
+    parent.add_child(s2);
+    parent.add_child(p3);
+
     // :nth-of-type(1)
     EXPECT_TRUE(parse("p:nth-of-type(1)")->matches(*p1_ptr));
     EXPECT_FALSE(parse("p:nth-of-type(1)")->matches(*p2_ptr));
@@ -66,8 +68,9 @@ TEST(CSSSelectorTest, NthOfType) {
 }
 
 TEST(CSSSelectorTest, NthLastOfType) {
+    Document doc("");
     Element parent("div");
-    
+
     // Structure:
     // div
     //   p (1) - 3rd from last
@@ -75,25 +78,25 @@ TEST(CSSSelectorTest, NthLastOfType) {
     //   p (2) - 2nd from last
     //   span (2) - 1st from last
     //   p (3) - 1st from last
-    
-    auto p1 = std::make_unique<Element>("p");
-    auto s1 = std::make_unique<Element>("span");
-    auto p2 = std::make_unique<Element>("p");
-    auto s2 = std::make_unique<Element>("span");
-    auto p3 = std::make_unique<Element>("p");
-    
-    Element* p1_ptr = p1.get();
-    Element* s1_ptr = s1.get();
-    Element* p2_ptr = p2.get();
-    Element* s2_ptr = s2.get();
-    Element* p3_ptr = p3.get();
-    
-    parent.add_child(std::move(p1));
-    parent.add_child(std::move(s1));
-    parent.add_child(std::move(p2));
-    parent.add_child(std::move(s2));
-    parent.add_child(std::move(p3));
-    
+
+    Element* p1 = doc.create_element("p");
+    Element* s1 = doc.create_element("span");
+    Element* p2 = doc.create_element("p");
+    Element* s2 = doc.create_element("span");
+    Element* p3 = doc.create_element("p");
+
+    Element* p1_ptr = p1;
+    Element* s1_ptr = s1;
+    Element* p2_ptr = p2;
+    Element* s2_ptr = s2;
+    Element* p3_ptr = p3;
+
+    parent.add_child(p1);
+    parent.add_child(s1);
+    parent.add_child(p2);
+    parent.add_child(s2);
+    parent.add_child(p3);
+
     // :nth-last-of-type(1)
     EXPECT_TRUE(parse("p:nth-last-of-type(1)")->matches(*p3_ptr));
     EXPECT_TRUE(parse("span:nth-last-of-type(1)")->matches(*s2_ptr));

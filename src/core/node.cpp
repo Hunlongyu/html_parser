@@ -19,32 +19,22 @@ const Node* Node::parent() const noexcept {
 
 std::vector<const Node*> Node::children() const noexcept {
     std::vector<const Node*> result;
-    result.reserve(m_children.size());
-    for (const auto& child : m_children) {
-        result.push_back(child.get());
+    for (const Node* child = m_first_child; child != nullptr; child = child->m_next_sibling) {
+        result.push_back(child);
     }
     return result;
 }
 
 const Node* Node::first_child() const noexcept {
-    if (m_children.empty()) {
-        return nullptr;
-    }
-    return m_children.front().get();
+    return m_first_child;
 }
 
 const Node* Node::last_child() const noexcept {
-    if (m_children.empty()) {
-        return nullptr;
-    }
-    return m_children.back().get();
+    return m_last_child;
 }
 
 Node* Node::last_child_mut() noexcept {
-    if (m_children.empty()) {
-        return nullptr;
-    }
-    return m_children.back().get();
+    return m_last_child;
 }
 
 const Node* Node::previous_sibling() const noexcept {
@@ -60,13 +50,9 @@ std::vector<const Node*> Node::siblings() const noexcept {
     if (!m_parent) {
         return result;
     }
-    const auto& parent_children = m_parent->m_children;
-    if (!parent_children.empty()) {
-        result.reserve(parent_children.size() - 1);
-    }
-    for (const auto& child : parent_children) {
-        if (child.get() != this) {
-            result.push_back(child.get());
+    for (const Node* child = m_parent->m_first_child; child != nullptr; child = child->m_next_sibling) {
+        if (child != this) {
+            result.push_back(child);
         }
     }
     return result;
@@ -112,94 +98,85 @@ void Node::invalidate_document_query_cache() noexcept {
     }
 }
 
-Node* Node::append_child(std::unique_ptr<Node> child) {
-    if (!child) {
+Node* Node::append_child(Node* child) {
+    if (child == nullptr) {
         return nullptr;
     }
-    Node* inserted = child.get();
-    child->set_parent(this);
-
-    if (!m_children.empty()) {
-        Node* last            = m_children.back().get();
-        last->m_next_sibling  = child.get();
-        child->m_prev_sibling = last;
+    child->m_parent       = this;
+    child->m_prev_sibling = m_last_child;
+    child->m_next_sibling = nullptr;
+    if (m_last_child != nullptr) {
+        m_last_child->m_next_sibling = child;
+    } else {
+        m_first_child = child;
     }
-
-    m_children.push_back(std::move(child));
-    return inserted;
+    m_last_child = child;
+    return child;
 }
 
-Node* Node::insert_child_before(std::unique_ptr<Node> child, const Node* before) {
-    if (!child) {
+Node* Node::insert_child_before(Node* child, const Node* before) {
+    if (child == nullptr) {
         return nullptr;
     }
     if (before == nullptr) {
-        return append_child(std::move(child));
+        return append_child(child);
+    }
+    auto* next = const_cast<Node*>(before);
+    if (next->m_parent != this) {
+        return append_child(child);  // before 不是本节点的子节点：退化为追加
     }
 
-    const auto it = std::ranges::find_if(
-        m_children, [before](const std::unique_ptr<Node>& existing) { return existing.get() == before; });
-    if (it == m_children.end()) {
-        return append_child(std::move(child));
-    }
-
-    Node* inserted = child.get();
-    child->set_parent(this);
-
-    Node* next = it->get();
-    Node* prev = next->m_prev_sibling;
+    Node* prev            = next->m_prev_sibling;
+    child->m_parent       = this;
     child->m_prev_sibling = prev;
     child->m_next_sibling = next;
-    next->m_prev_sibling  = inserted;
+    next->m_prev_sibling  = child;
     if (prev != nullptr) {
-        prev->m_next_sibling = inserted;
+        prev->m_next_sibling = child;
+    } else {
+        m_first_child = child;
     }
-
-    m_children.insert(it, std::move(child));
-    return inserted;
+    return child;
 }
 
 void Node::set_parent(Node* parent_node) noexcept {
     m_parent = parent_node;
 }
 
-std::unique_ptr<Node> Node::remove_child(Node* child) {
-    if (child == nullptr) {
-        return nullptr;
+void Node::remove_child(Node* child) {
+    if (child == nullptr || child->m_parent != this) {
+        return;
     }
-    const auto it = std::ranges::find_if(
-        m_children, [child](const std::unique_ptr<Node>& existing) { return existing.get() == child; });
-    if (it == m_children.end()) {
-        return nullptr;
-    }
-
     Node* prev = child->m_prev_sibling;
     Node* next = child->m_next_sibling;
     if (prev != nullptr) {
         prev->m_next_sibling = next;
+    } else {
+        m_first_child = next;
     }
     if (next != nullptr) {
         next->m_prev_sibling = prev;
+    } else {
+        m_last_child = prev;
     }
+    child->m_parent       = nullptr;
     child->m_prev_sibling = nullptr;
     child->m_next_sibling = nullptr;
-    child->m_parent       = nullptr;
-
-    std::unique_ptr<Node> owned = std::move(*it);
-    m_children.erase(it);
-    return owned;
 }
 
-std::vector<std::unique_ptr<Node>> Node::take_children() {
-    for (auto& child : m_children) {
+std::vector<Node*> Node::take_children() {
+    std::vector<Node*> result;
+    for (Node* child = m_first_child; child != nullptr;) {
+        Node* next            = child->m_next_sibling;
         child->m_parent       = nullptr;
         child->m_prev_sibling = nullptr;
         child->m_next_sibling = nullptr;
+        result.push_back(child);
+        child = next;
     }
-
-    auto children = std::move(m_children);
-    m_children.clear();
-    return children;
+    m_first_child = nullptr;
+    m_last_child  = nullptr;
+    return result;
 }
 
 }  // namespace hps

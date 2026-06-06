@@ -1,5 +1,6 @@
 #include "hps/core/element.hpp"
 #include "hps/core/comment_node.hpp"
+#include "hps/core/document.hpp"
 #include "hps/core/text_node.hpp"
 
 #include <gtest/gtest.h>
@@ -61,30 +62,32 @@ TEST(ElementTest, ClassHelpersWorkWithWhitespaceSeparatedTokens) {
 }
 
 TEST(ElementTest, OwnTextOnlyIncludesDirectTextNodes) {
-    Element root("div");
-    root.add_child(std::make_unique<TextNode>("A"));
+    Document doc("");
+    Element  root("div");
+    root.add_child(doc.create_text("A"));
 
-    auto child = std::make_unique<Element>("span");
-    child->add_child(std::make_unique<TextNode>("B"));
-    root.add_child(std::move(child));
+    Element* child = doc.create_element("span");
+    child->add_child(doc.create_text("B"));
+    root.add_child(child);
 
-    root.add_child(std::make_unique<TextNode>("C"));
+    root.add_child(doc.create_text("C"));
 
     EXPECT_EQ(root.own_text(), "AC");
     EXPECT_EQ(root.text_content(), "ABC");
 }
 
 TEST(ElementTest, TextContentIgnoresCommentNodes) {
-    Element root("div");
-    root.add_child(std::make_unique<TextNode>("A"));
-    root.add_child(std::make_unique<CommentNode>("hidden"));
+    Document doc("");
+    Element  root("div");
+    root.add_child(doc.create_text("A"));
+    root.add_child(doc.create_comment("hidden"));
 
-    auto child = std::make_unique<Element>("span");
-    child->add_child(std::make_unique<TextNode>("B"));
-    child->add_child(std::make_unique<CommentNode>("nested"));
-    root.add_child(std::move(child));
+    Element* child = doc.create_element("span");
+    child->add_child(doc.create_text("B"));
+    child->add_child(doc.create_comment("nested"));
+    root.add_child(child);
 
-    root.add_child(std::make_unique<TextNode>("C"));
+    root.add_child(doc.create_text("C"));
 
     EXPECT_EQ(root.own_text(), "AC");
     EXPECT_EQ(root.text_content(), "ABC");
@@ -106,39 +109,41 @@ TEST(ElementTest, BooleanAttributeSemanticsCanBeStored) {
 }
 
 TEST(ElementTest, RecursiveFindByIdSearchesDescendants) {
-    Element root("div");
-    auto    a = std::make_unique<Element>("a");
-    auto    b = std::make_unique<Element>("b");
+    Document doc("");
+    Element  root("div");
+    Element* a = doc.create_element("a");
+    Element* b = doc.create_element("b");
 
     b->add_attribute("id", "target");
-    const auto* target_ptr = b.get();
+    const auto* target_ptr = b;
 
-    a->add_child(std::move(b));
-    root.add_child(std::move(a));
+    a->add_child(b);
+    root.add_child(a);
 
     EXPECT_EQ(root.get_element_by_id("target"), target_ptr);
     EXPECT_EQ(root.get_element_by_id("missing"), nullptr);
 }
 
 TEST(ElementTest, RecursiveCollectByTagNameAndClassName) {
-    Element root("div");
+    Document doc("");
+    Element  root("div");
 
-    auto a = std::make_unique<Element>("p");
+    Element* a = doc.create_element("p");
     a->add_attribute("class", "x");
 
-    auto b = std::make_unique<Element>("span");
+    Element* b = doc.create_element("span");
     b->add_attribute("class", "x y");
 
-    auto c = std::make_unique<Element>("p");
+    Element* c = doc.create_element("p");
     c->add_attribute("class", "y");
 
-    const auto* a_ptr = a.get();
-    const auto* b_ptr = b.get();
-    const auto* c_ptr = c.get();
+    const auto* a_ptr = a;
+    const auto* b_ptr = b;
+    const auto* c_ptr = c;
 
-    root.add_child(std::move(a));
-    root.add_child(std::move(b));
-    root.add_child(std::move(c));
+    root.add_child(a);
+    root.add_child(b);
+    root.add_child(c);
 
     const auto ps = root.get_elements_by_tag_name("p");
     ASSERT_EQ(ps.size(), 2u);

@@ -18,26 +18,27 @@ class NodeTestHarness final : public Node {
 };
 
 TEST(NodeTest, ParentChildrenAndSiblingPointersAreMaintained) {
-    auto parent = std::make_unique<Element>("div");
+    Document doc("");
+    Element* parent = doc.create_element("div");
 
-    auto a = std::make_unique<Element>("a");
-    auto b = std::make_unique<TextNode>("x");
-    auto c = std::make_unique<CommentNode>("y");
+    Element*     a = doc.create_element("a");
+    TextNode*    b = doc.create_text("x");
+    CommentNode* c = doc.create_comment("y");
 
-    const Node* a_ptr = a.get();
-    const Node* b_ptr = b.get();
-    const Node* c_ptr = c.get();
+    const Node* a_ptr = a;
+    const Node* b_ptr = b;
+    const Node* c_ptr = c;
 
-    parent->add_child(std::move(a));
-    parent->add_child(std::move(b));
-    parent->add_child(std::move(c));
+    parent->add_child(a);
+    parent->add_child(b);
+    parent->add_child(c);
 
     EXPECT_EQ(parent->first_child(), a_ptr);
     EXPECT_EQ(parent->last_child(), c_ptr);
 
-    EXPECT_EQ(a_ptr->parent(), parent.get());
-    EXPECT_EQ(b_ptr->parent(), parent.get());
-    EXPECT_EQ(c_ptr->parent(), parent.get());
+    EXPECT_EQ(a_ptr->parent(), parent);
+    EXPECT_EQ(b_ptr->parent(), parent);
+    EXPECT_EQ(c_ptr->parent(), parent);
 
     EXPECT_EQ(a_ptr->previous_sibling(), nullptr);
     EXPECT_EQ(a_ptr->next_sibling(), b_ptr);
@@ -96,7 +97,7 @@ TEST(NodeTest, SingleChildHasNoSiblingsAndParentLinksSet) {
     auto            child = std::make_unique<NodeTestHarness>(NodeType::Text);
     const Node*     child_ptr = child.get();
 
-    parent.append_child(std::move(child));
+    parent.append_child(child.get());
 
     EXPECT_TRUE(parent.has_children());
     EXPECT_EQ(parent.first_child(), child_ptr);
@@ -116,17 +117,17 @@ TEST(NodeTest, SingleChildHasNoSiblingsAndParentLinksSet) {
 
 TEST(NodeTest, TypePredicatesAndDynamicCastsWork) {
     Document doc("");
-    auto     html = std::make_unique<Element>("html");
-    auto     text = std::make_unique<TextNode>("t");
-    auto     comm = std::make_unique<CommentNode>("c");
+    Element*     html = doc.create_element("html");
+    TextNode*    text = doc.create_text("t");
+    CommentNode* comm = doc.create_comment("c");
 
-    const Node* html_ptr = html.get();
-    const Node* text_ptr = text.get();
-    const Node* comm_ptr = comm.get();
+    const Node* html_ptr = html;
+    const Node* text_ptr = text;
+    const Node* comm_ptr = comm;
 
-    html->add_child(std::move(text));
-    html->add_child(std::move(comm));
-    doc.add_child(std::move(html));
+    html->add_child(text);
+    html->add_child(comm);
+    doc.add_child(html);
 
     EXPECT_TRUE(doc.is_document());
     EXPECT_NE(doc.as_document(), nullptr);

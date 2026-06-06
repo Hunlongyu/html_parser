@@ -10,14 +10,14 @@ class QueryTest : public ::testing::Test {
 protected:
     void SetUp() override {
         doc = std::make_shared<Document>("");
-        auto root = std::make_unique<Element>("html");
-        auto body = std::make_unique<Element>("body");
-        auto div = std::make_unique<Element>("div");
+        Element* root = doc->create_element("html");
+        Element* body = doc->create_element("body");
+        Element* div  = doc->create_element("div");
         div->add_attribute("class", "container");
-        
-        body->add_child(std::move(div));
-        root->add_child(std::move(body));
-        doc->add_child(std::move(root));
+
+        body->add_child(div);
+        root->add_child(body);
+        doc->add_child(root);
     }
 
     std::shared_ptr<Document> doc;
@@ -54,18 +54,18 @@ TEST_F(QueryTest, ElementScopedCSSQueryDoesNotMatchContextElement) {
 TEST_F(QueryTest, DocumentScopedQueriesTraverseAllTopLevelElementsInFragments) {
     Document fragment("");
 
-    auto first = std::make_unique<Element>("div");
+    Element* first = fragment.create_element("div");
     first->add_attribute("id", "first");
 
-    auto second = std::make_unique<Element>("section");
+    Element* second = fragment.create_element("section");
     second->add_attribute("class", "wrapper");
 
-    auto nested = std::make_unique<Element>("div");
+    Element* nested = fragment.create_element("div");
     nested->add_attribute("class", "target");
-    second->add_child(std::move(nested));
+    second->add_child(nested);
 
-    fragment.add_child(std::move(first));
-    fragment.add_child(std::move(second));
+    fragment.add_child(first);
+    fragment.add_child(second);
 
     const auto sections = Query::css(fragment, "section");
     ASSERT_EQ(sections.size(), 1u);

@@ -132,25 +132,28 @@ class TreeBuilder {
     // === 元素操作方法 ===
 
     /**
-     * @brief 根据Token创建Element对象
+     * @brief 根据Token创建Element对象（在 Document 的 arena 中分配）
      * @param token 包含标签信息的Token
-     * @return 新创建的Element智能指针
-     *
-     * 静态方法，根据Token中的标签名和属性创建相应的Element对象。
+     * @return 新创建的Element裸指针（所有权归 Document arena）
      */
-    [[nodiscard]] static std::unique_ptr<Element> create_element(const Token& token);
-    [[nodiscard]] static std::unique_ptr<Element> create_element(
+    [[nodiscard]] Element* create_element(const Token& token);
+    [[nodiscard]] Element* create_element(
         const Token& token,
         NamespaceKind namespace_kind);
     static void merge_token_attributes(Element& element, const Token& token);
 
     /**
+     * @brief 浅克隆元素（标签名/命名空间/属性），在 Document arena 中分配
+     */
+    [[nodiscard]] Element* clone_element_shallow(const Element& source) const;
+
+    /**
      * @brief 将元素插入到DOM树中
-     * @param element 要插入的元素
+     * @param element 要插入的元素（arena 拥有）
      *
      * 将元素作为当前元素的子节点插入到DOM树的适当位置。
      */
-    void insert_element(std::unique_ptr<Element> element) const;
+    void insert_element(Element* element) const;
 
     /**
      * @brief 插入文本节点
@@ -217,8 +220,8 @@ class TreeBuilder {
     void ensure_table_row();
     void ensure_colgroup();
     void close_colgroup_for_non_col_token();
-    Node* insert_node(std::unique_ptr<Node> child, Node* parent) const;
-    Node* insert_node_before(std::unique_ptr<Node> child, Node* parent, const Node* before) const;
+    Node* insert_node(Node* child, Node* parent) const;
+    Node* insert_node_before(Node* child, Node* parent, const Node* before) const;
     void insert_text_before(std::string_view text, Node* parent, const Node* before) const;
 
     [[nodiscard]] static bool is_head_content_tag(std::string_view tag_name) noexcept;
@@ -248,7 +251,7 @@ class TreeBuilder {
     [[nodiscard]] static bool is_special_element(const Element& element) noexcept;
     [[nodiscard]] static bool is_formatting_element(std::string_view tag_name) noexcept;
     [[nodiscard]] static bool same_formatting_element(const Element& a, const Element& b) noexcept;
-    Element* insert_html_element_at_current(std::unique_ptr<Element> element);
+    Element* insert_html_element_at_current(Element* element);
     [[nodiscard]] Element* find_open_element(
         std::string_view tag_name,
         bool include_fragment_base = true) const noexcept;

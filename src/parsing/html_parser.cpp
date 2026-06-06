@@ -224,11 +224,10 @@ std::shared_ptr<Document> HTMLParser::parse_fragment_owned(
         normalize_tag_name(context_tag, options.preserve_case);
 
     try {
-        auto  fragment_root = std::make_unique<Element>(
+        Element* fragment_element = working_document->create_element(
             normalized_context,
             namespace_for_context_tag(normalized_context));
-        auto* fragment_element = const_cast<Element*>(
-            working_document->add_child(std::move(fragment_root))->as_element());
+        working_document->add_child(fragment_element);
 
         TreeBuilder builder(working_document, options, fragment_element);
         Tokenizer   tokenizer(
@@ -293,13 +292,15 @@ std::shared_ptr<Document> HTMLParser::parse_fragment_owned(
             std::make_move_iterator(builder_errors.begin()),
             std::make_move_iterator(builder_errors.end()));
 
-        auto result_document =
-            std::make_shared<Document>(std::string(working_document->source_html()), options.base_url);
+        // arena 模型下，全部节点归 working_document 的 arena 所有；不能把它们搬进另一个
+        // Document（会变悬空）。改为：把 fragment 内容从上下文元素上摘下，直接挂到 document 根下，
+        // 并把上下文元素移出文档树（仍留在 arena 中，无害），返回 working_document 本身。
         auto fragment_children = fragment_element->take_children();
-        for (auto& child : fragment_children) {
-            result_document->add_child(std::move(child));
+        working_document->take_children();  // 摘除上下文包裹元素
+        for (auto* child : fragment_children) {
+            working_document->add_child(child);
         }
-        return result_document;
+        return working_document;
     } catch (const HPSException& e) {
         m_errors.push_back(e.error());
         if (error_handling == ErrorHandlingMode::Strict) {

@@ -14,17 +14,17 @@ protected:
         //   <span id="b">text</span>
         // </div>
         doc = std::make_shared<Document>("");
-        auto div = std::make_unique<Element>("div");
-        
-        auto p = std::make_unique<Element>("p");
+        Element* div = doc->create_element("div");
+
+        Element* p = doc->create_element("p");
         p->add_attribute("class", "a");
-        
-        auto span = std::make_unique<Element>("span");
+
+        Element* span = doc->create_element("span");
         span->add_attribute("id", "b");
-        
-        div->add_child(std::move(p));
-        div->add_child(std::move(span));
-        doc->add_child(std::move(div));
+
+        div->add_child(p);
+        div->add_child(span);
+        doc->add_child(div);
     }
 
     std::shared_ptr<Document> doc;
@@ -61,16 +61,16 @@ TEST_F(CSSMatcherTest, NoMatch) {
 TEST(CSSMatcherFragmentTest, DocumentTraversalIncludesAllTopLevelElementSubtrees) {
     Document fragment("");
 
-    auto first = std::make_unique<Element>("div");
+    Element* first = fragment.create_element("div");
     first->add_attribute("class", "first");
 
-    auto second = std::make_unique<Element>("section");
-    auto nested = std::make_unique<Element>("span");
+    Element* second = fragment.create_element("section");
+    Element* nested = fragment.create_element("span");
     nested->add_attribute("class", "target");
-    second->add_child(std::move(nested));
+    second->add_child(nested);
 
-    fragment.add_child(std::move(first));
-    fragment.add_child(std::move(second));
+    fragment.add_child(first);
+    fragment.add_child(second);
 
     CSSParser parser(".target");
     auto      selector = parser.parse_selector();

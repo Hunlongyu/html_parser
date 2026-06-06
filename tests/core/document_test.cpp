@@ -18,12 +18,12 @@ TEST(DocumentTest, SourceHtmlIsStored) {
 TEST(DocumentTest, RootPrefersHtmlElement) {
     Document doc("");
 
-    auto head = std::make_unique<Element>("head");
-    auto html = std::make_unique<Element>("html");
-    const auto* html_ptr = html.get();
+    Element* head = doc.create_element("head");
+    Element* html = doc.create_element("html");
+    const auto* html_ptr = html;
 
-    doc.add_child(std::move(head));
-    doc.add_child(std::move(html));
+    doc.add_child(head);
+    doc.add_child(html);
 
     EXPECT_EQ(doc.html(), html_ptr);
     EXPECT_EQ(doc.root(), html_ptr);
@@ -32,14 +32,14 @@ TEST(DocumentTest, RootPrefersHtmlElement) {
 TEST(DocumentTest, TextContentConcatenatesAllChildrenRecursively) {
     Document doc("");
 
-    auto html = std::make_unique<Element>("html");
-    auto body = std::make_unique<Element>("body");
-    body->add_child(std::make_unique<TextNode>("Hello"));
-    body->add_child(std::make_unique<CommentNode>("ignored"));
-    body->add_child(std::make_unique<Element>("span"));
-    body->add_child(std::make_unique<TextNode>("World"));
-    html->add_child(std::move(body));
-    doc.add_child(std::move(html));
+    Element* html = doc.create_element("html");
+    Element* body = doc.create_element("body");
+    body->add_child(doc.create_text("Hello"));
+    body->add_child(doc.create_comment("ignored"));
+    body->add_child(doc.create_element("span"));
+    body->add_child(doc.create_text("World"));
+    html->add_child(body);
+    doc.add_child(html);
 
     EXPECT_EQ(doc.text_content(), "HelloWorld");
 }
@@ -47,20 +47,20 @@ TEST(DocumentTest, TextContentConcatenatesAllChildrenRecursively) {
 TEST(DocumentTest, CharsetParsesMetaVariants) {
     Document doc("");
 
-    auto html = std::make_unique<Element>("html");
-    auto head = std::make_unique<Element>("head");
+    Element* html = doc.create_element("html");
+    Element* head = doc.create_element("head");
 
-    auto meta_equiv = std::make_unique<Element>("meta");
+    Element* meta_equiv = doc.create_element("meta");
     meta_equiv->add_attribute("http-equiv", "content-type");
     meta_equiv->add_attribute("content", "text/html; Charset=UTF-8");
 
-    auto meta_charset = std::make_unique<Element>("meta");
+    Element* meta_charset = doc.create_element("meta");
     meta_charset->add_attribute("charset", "  utf-8  ");
 
-    head->add_child(std::move(meta_charset));
-    head->add_child(std::move(meta_equiv));
-    html->add_child(std::move(head));
-    doc.add_child(std::move(html));
+    head->add_child(meta_charset);
+    head->add_child(meta_equiv);
+    html->add_child(head);
+    doc.add_child(html);
 
     EXPECT_EQ(doc.charset(), "utf-8");
     EXPECT_EQ(doc.charset(), "utf-8");
@@ -68,15 +68,15 @@ TEST(DocumentTest, CharsetParsesMetaVariants) {
 
 TEST(DocumentTest, TitleFindsFirstTitleElement) {
     Document doc("");
-    auto     html = std::make_unique<Element>("html");
-    auto     head = std::make_unique<Element>("head");
+    Element* html = doc.create_element("html");
+    Element* head = doc.create_element("head");
 
-    auto title = std::make_unique<Element>("title");
-    title->add_child(std::make_unique<TextNode>("MyTitle"));
-    head->add_child(std::move(title));
+    Element* title = doc.create_element("title");
+    title->add_child(doc.create_text("MyTitle"));
+    head->add_child(title);
 
-    html->add_child(std::move(head));
-    doc.add_child(std::move(html));
+    html->add_child(head);
+    doc.add_child(html);
 
     EXPECT_EQ(doc.title(), "MyTitle");
     EXPECT_EQ(doc.title(), "MyTitle");
@@ -85,18 +85,18 @@ TEST(DocumentTest, TitleFindsFirstTitleElement) {
 TEST(DocumentTest, DirectLookupHelpersDoNotRequireCssEscaping) {
     Document doc("");
 
-    auto first = std::make_unique<Element>("div");
+    Element* first = doc.create_element("div");
     first->add_attribute("id", "plain");
 
-    auto second = std::make_unique<Element>("section");
-    auto target = std::make_unique<Element>("article");
+    Element* second = doc.create_element("section");
+    Element* target = doc.create_element("article");
     target->add_attribute("id", "a:b");
     target->add_attribute("class", "entry x:y");
-    const auto* target_ptr = target.get();
+    const auto* target_ptr = target;
 
-    second->add_child(std::move(target));
-    doc.add_child(std::move(first));
-    doc.add_child(std::move(second));
+    second->add_child(target);
+    doc.add_child(first);
+    doc.add_child(second);
 
     EXPECT_EQ(doc.get_element_by_id("a:b"), target_ptr);
 
@@ -108,19 +108,19 @@ TEST(DocumentTest, DirectLookupHelpersDoNotRequireCssEscaping) {
 TEST(DocumentTest, QueryIndexesInvalidateAfterAttachedDomMutations) {
     Document doc("");
 
-    auto root = std::make_unique<Element>("div");
-    auto* root_ptr = root.get();
-    doc.add_child(std::move(root));
+    Element* root = doc.create_element("div");
+    auto* root_ptr = root;
+    doc.add_child(root);
 
     EXPECT_EQ(doc.get_element_by_id("late-id"), nullptr);
     EXPECT_TRUE(doc.get_elements_by_tag_name("span").empty());
     EXPECT_TRUE(doc.get_elements_by_class_name("alpha").empty());
 
-    auto child = std::make_unique<Element>("span");
+    Element* child = doc.create_element("span");
     child->add_attribute("id", "late-id");
     child->add_attribute("class", "alpha beta");
-    auto* child_ptr = child.get();
-    root_ptr->add_child(std::move(child));
+    auto* child_ptr = child;
+    root_ptr->add_child(child);
 
     EXPECT_EQ(doc.get_element_by_id("late-id"), child_ptr);
     ASSERT_EQ(doc.get_elements_by_tag_name("span").size(), 1u);

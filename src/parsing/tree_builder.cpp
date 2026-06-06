@@ -85,14 +85,6 @@ namespace {
     return std::ranges::binary_search(breakout_tags, tag_name);
 }
 
-[[nodiscard]] auto clone_element_shallow(const Element& source) -> std::unique_ptr<Element> {
-    auto clone = std::make_unique<Element>(source.tag_name(), source.namespace_kind());
-    for (const auto& attribute : source.attributes()) {
-        clone->add_attribute(attribute.name(), attribute.value(), attribute.has_value());
-    }
-    return clone;
-}
-
 }  // namespace
 
 TreeBuilder::TreeBuilder(const std::shared_ptr<Document>& document, const Options& options)
@@ -361,13 +353,12 @@ void TreeBuilder::process_start_tag(const Token& token) {
         reconstruct_active_formatting_elements();
     }
 
-    auto element = create_element(token, namespace_for_start_tag(token.name()));
-    Element* element_ptr = element.get();
+    Element* element_ptr = create_element(token, namespace_for_start_tag(token.name()));
     if (foster_parent_element) {
         const auto [parent, before] = foster_parent_insertion_point();
-        element_ptr = const_cast<Element*>(insert_node_before(std::move(element), parent, before)->as_element());
+        insert_node_before(element_ptr, parent, before);
     } else {
-        insert_element(std::move(element));
+        insert_element(element_ptr);
     }
 
     if (!m_options.is_void_element(std::string(token.name())) && token.type() != TokenType::CLOSE_SELF) {
@@ -382,8 +373,8 @@ void TreeBuilder::process_start_tag(const Token& token) {
 
 void TreeBuilder::process_html_start_tag(const Token& token) {
     if (!m_html_element) {
-        auto html_element = create_element(token);
-        m_html_element    = const_cast<Element*>(insert_node(std::move(html_element), m_document.get())->as_element());
+        Element* html_element = create_element(token);
+        m_html_element        = const_cast<Element*>(insert_node(html_element, m_document.get())->as_element());
         if (token.type() != TokenType::CLOSE_SELF) {
             push_if_absent(m_html_element);
         }
@@ -402,8 +393,8 @@ void TreeBuilder::process_head_start_tag(const Token& token) {
     }
 
     if (!m_head_element) {
-        auto head_element = create_element(token);
-        m_head_element    = const_cast<Element*>(insert_node(std::move(head_element), m_html_element)->as_element());
+        Element* head_element = create_element(token);
+        m_head_element        = const_cast<Element*>(insert_node(head_element, m_html_element)->as_element());
     } else {
         merge_token_attributes(*m_head_element, token);
     }
@@ -423,8 +414,8 @@ void TreeBuilder::process_body_start_tag(const Token& token) {
     close_head_element_if_open();
 
     if (!m_body_element) {
-        auto body_element = create_element(token);
-        m_body_element    = const_cast<Element*>(insert_node(std::move(body_element), m_html_element)->as_element());
+        Element* body_element = create_element(token);
+        m_body_element        = const_cast<Element*>(insert_node(body_element, m_html_element)->as_element());
     } else {
         merge_token_attributes(*m_body_element, token);
     }
@@ -664,24 +655,32 @@ void TreeBuilder::process_doctype(const Token& token) {
         return;
     }
 
-    auto doctype = std::make_unique<DoctypeNode>(
+    DoctypeNode* doctype = m_document->create_doctype(
         token.name(),
         token.doctype_public_id(),
         token.doctype_system_id(),
         token.doctype_has_identifiers());
-    insert_node(std::move(doctype), m_document.get());
+    insert_node(doctype, m_document.get());
 }
 
-std::unique_ptr<Element> TreeBuilder::create_element(const Token& token) {
+Element* TreeBuilder::create_element(const Token& token) {
     return create_element(token, NamespaceKind::Html);
 }
 
-std::unique_ptr<Element> TreeBuilder::create_element(
+Element* TreeBuilder::create_element(
     const Token& token,
     const NamespaceKind namespace_kind) {
-    auto element = std::make_unique<Element>(token.name(), namespace_kind);
+    Element* element = m_document->create_element(token.name(), namespace_kind);
     merge_token_attributes(*element, token);
     return element;
+}
+
+Element* TreeBuilder::clone_element_shallow(const Element& source) const {
+    Element* clone = m_document->create_element(source.tag_name(), source.namespace_kind());
+    for (const auto& attribute : source.attributes()) {
+        clone->add_attribute(attribute.name(), attribute.value(), attribute.has_value());
+    }
+    return clone;
 }
 
 void TreeBuilder::merge_token_attributes(Element& element, const Token& token) {
@@ -694,44 +693,43 @@ void TreeBuilder::merge_token_attributes(Element& element, const Token& token) {
     }
 }
 
-void TreeBuilder::insert_element(std::unique_ptr<Element> element) const {
+void TreeBuilder::insert_element(Element* element) const {
     if (m_element_stack.empty()) {
-        m_document->add_child(std::move(element));
+        m_document->add_child(element);
     } else {
-        const auto current = current_element();
-        current->add_child(std::move(element));
+        current_element()->add_child(element);
     }
 }
 
-Node* TreeBuilder::insert_node(std::unique_ptr<Node> child, Node* parent) const {
-    if (!child) {
+Node* TreeBuilder::insert_node(Node* child, Node* parent) const {
+    if (child == nullptr) {
         return nullptr;
     }
 
     if (parent == nullptr || parent->is_document()) {
-        return m_document->add_child(std::move(child));
+        return m_document->add_child(child);
     }
 
     if (auto* parent_element = const_cast<Element*>(parent->as_element())) {
-        return parent_element->add_child(std::move(child));
+        return parent_element->add_child(child);
     }
     return nullptr;
 }
 
 Node* TreeBuilder::insert_node_before(
-    std::unique_ptr<Node> child,
+    Node* child,
     Node* parent,
     const Node* before) const {
-    if (!child) {
+    if (child == nullptr) {
         return nullptr;
     }
 
     if (parent == nullptr || parent->is_document()) {
-        return m_document->insert_child_before(std::move(child), before);
+        return m_document->insert_child_before(child, before);
     }
 
     if (auto* parent_element = const_cast<Element*>(parent->as_element())) {
-        return parent_element->insert_child_before(std::move(child), before);
+        return parent_element->insert_child_before(child, before);
     }
     return nullptr;
 }
@@ -757,12 +755,11 @@ void TreeBuilder::insert_text(std::string_view text) const {
         }
     }
 
-    auto text_node = std::make_unique<TextNode>(text);
+    TextNode* text_node = m_document->create_text(text);
     if (m_element_stack.empty()) {
-        m_document->add_child(std::move(text_node));
+        m_document->add_child(text_node);
     } else {
-        const auto element = current_element();
-        element->add_child(std::move(text_node));
+        current_element()->add_child(text_node);
     }
 }
 
@@ -786,17 +783,16 @@ void TreeBuilder::insert_text_before(
         return;
     }
 
-    auto text_node = std::make_unique<TextNode>(text);
-    insert_node_before(std::move(text_node), parent, before);
+    TextNode* text_node = m_document->create_text(text);
+    insert_node_before(text_node, parent, before);
 }
 
 void TreeBuilder::insert_comment(std::string_view comment) const {
-    auto comment_node = std::make_unique<CommentNode>(comment);
+    CommentNode* comment_node = m_document->create_comment(comment);
     if (m_element_stack.empty()) {
-        m_document->add_child(std::move(comment_node));
+        m_document->add_child(comment_node);
     } else {
-        const auto parent = current_element();
-        parent->add_child(std::move(comment_node));
+        current_element()->add_child(comment_node);
     }
 }
 
@@ -902,8 +898,8 @@ void TreeBuilder::ensure_html_element() {
         return;
     }
 
-    auto html_element = std::make_unique<Element>("html");
-    m_html_element    = const_cast<Element*>(insert_node(std::move(html_element), m_document.get())->as_element());
+    Element* html_element = m_document->create_element("html");
+    m_html_element        = const_cast<Element*>(insert_node(html_element, m_document.get())->as_element());
     push_if_absent(m_html_element);
 }
 
@@ -911,8 +907,8 @@ void TreeBuilder::ensure_head_element() {
     ensure_html_element();
 
     if (!m_head_element) {
-        auto head_element = std::make_unique<Element>("head");
-        m_head_element    = const_cast<Element*>(insert_node(std::move(head_element), m_html_element)->as_element());
+        Element* head_element = m_document->create_element("head");
+        m_head_element        = const_cast<Element*>(insert_node(head_element, m_html_element)->as_element());
     }
 
     m_head_closed = false;
@@ -925,16 +921,16 @@ void TreeBuilder::ensure_body_element() {
     ensure_html_element();
 
     if (!m_head_element) {
-        auto head_element = std::make_unique<Element>("head");
-        m_head_element    = const_cast<Element*>(insert_node(std::move(head_element), m_html_element)->as_element());
+        Element* head_element = m_document->create_element("head");
+        m_head_element        = const_cast<Element*>(insert_node(head_element, m_html_element)->as_element());
         m_head_closed = true;
     } else if (!m_head_closed) {
         close_head_element_if_open();
     }
 
     if (!m_body_element) {
-        auto body_element = std::make_unique<Element>("body");
-        m_body_element    = const_cast<Element*>(insert_node(std::move(body_element), m_html_element)->as_element());
+        Element* body_element = m_document->create_element("body");
+        m_body_element        = const_cast<Element*>(insert_node(body_element, m_html_element)->as_element());
     }
 
     if (current_element() == nullptr || current_element() == m_html_element) {
@@ -1175,9 +1171,9 @@ void TreeBuilder::ensure_table_section(const std::string_view tag_name) {
         return;
     }
 
-    auto section = std::make_unique<Element>(tag_name);
+    Element* section = m_document->create_element(tag_name);
     auto* section_ptr =
-        const_cast<Element*>(insert_node(std::move(section), find_open_element("table"))->as_element());
+        const_cast<Element*>(insert_node(section, find_open_element("table"))->as_element());
     push_if_absent(section_ptr);
 }
 
@@ -1192,9 +1188,9 @@ void TreeBuilder::ensure_table_row() {
         return;
     }
 
-    auto row = std::make_unique<Element>("tr");
+    Element* row = m_document->create_element("tr");
     auto* row_ptr =
-        const_cast<Element*>(insert_node(std::move(row), section)->as_element());
+        const_cast<Element*>(insert_node(row, section)->as_element());
     push_if_absent(row_ptr);
 }
 
@@ -1203,9 +1199,9 @@ void TreeBuilder::ensure_colgroup() {
         return;
     }
 
-    auto colgroup = std::make_unique<Element>("colgroup");
+    Element* colgroup = m_document->create_element("colgroup");
     auto* colgroup_ptr =
-        const_cast<Element*>(insert_node(std::move(colgroup), find_open_element("table"))->as_element());
+        const_cast<Element*>(insert_node(colgroup, find_open_element("table"))->as_element());
     push_if_absent(colgroup_ptr);
 }
 
@@ -1504,10 +1500,10 @@ void TreeBuilder::push_active_formatting(Element* element) {
     m_active_formatting.push_back(element);
 }
 
-Element* TreeBuilder::insert_html_element_at_current(std::unique_ptr<Element> element) {
+Element* TreeBuilder::insert_html_element_at_current(Element* element) {
     Node* parent = m_element_stack.empty() ? static_cast<Node*>(m_document.get())
                                            : static_cast<Node*>(current_element());
-    return const_cast<Element*>(insert_node(std::move(element), parent)->as_element());
+    return const_cast<Element*>(insert_node(element, parent)->as_element());
 }
 
 void TreeBuilder::reconstruct_active_formatting_elements() {
@@ -1571,14 +1567,11 @@ void move_node_into(Node* node, Element* new_parent, const Node* before) {
     if (old_parent == nullptr) {
         return;
     }
-    std::unique_ptr<Node> owned = old_parent->remove_child(node);
-    if (!owned) {
-        return;
-    }
+    old_parent->remove_child(node);
     if (before != nullptr) {
-        new_parent->insert_child_before(std::move(owned), before);
+        new_parent->insert_child_before(node, before);
     } else {
-        new_parent->add_child(std::move(owned));
+        new_parent->add_child(node);
     }
 }
 }  // namespace

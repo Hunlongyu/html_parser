@@ -102,7 +102,7 @@ class Node {
      * @return 如果有子节点则返回 true
      */
     [[nodiscard]] bool has_children() const noexcept {
-        return !m_children.empty();
+        return m_first_child != nullptr;
     }
 
     /**
@@ -199,18 +199,18 @@ class Node {
     void invalidate_document_query_cache() noexcept;
 
     /**
-     * @brief 添加子节点
-     * @param child 子节点的唯一指针（所有权转移）
+     * @brief 追加子节点（不转移所有权——节点由 Document 的 arena 拥有）
+     * @param child 由同一 Document 的 arena 分配的节点
      */
-    Node* append_child(std::unique_ptr<Node> child);
+    Node* append_child(Node* child);
 
     /**
      * @brief 在指定子节点前插入一个子节点
-     * @param child 要插入的子节点
+     * @param child 要插入的子节点（arena 拥有）
      * @param before 作为参照的现有子节点；为空时退化为追加
      * @return 实际插入后的节点指针
      */
-    Node* insert_child_before(std::unique_ptr<Node> child, const Node* before);
+    Node* insert_child_before(Node* child, const Node* before);
 
     /**
      * @brief 设置父节点
@@ -219,26 +219,26 @@ class Node {
     void set_parent(Node* parent_node) noexcept;
 
     /**
-     * @brief 取出并移除所有子节点
-     * @return 当前节点原有子节点的所有权数组
+     * @brief 取出并移除所有子节点（仅断链，节点仍由 arena 拥有）
+     * @return 原有子节点的裸指针数组（按文档序）
      */
-    std::vector<std::unique_ptr<Node>> take_children();
+    std::vector<Node*> take_children();
 
     /**
-     * @brief 从本节点的子节点中摘除指定子节点并交出其所有权
+     * @brief 从子节点链中摘除指定子节点（仅断链，节点仍由 arena 拥有）
      * @param child 要摘除的子节点
-     * @return 被摘除子节点的所有权；若不是本节点的子节点则返回 nullptr
      *
      * 修复兄弟链与父指针，供树重排（如领养机构算法）使用。
      */
-    std::unique_ptr<Node> remove_child(Node* child);
+    void remove_child(Node* child);
 
   private:
-    NodeType                           m_type;
-    Node*                              m_parent{nullptr};
-    std::vector<std::unique_ptr<Node>> m_children;
-    Node*                              m_prev_sibling{nullptr};
-    Node*                              m_next_sibling{nullptr};
+    NodeType m_type;
+    Node*    m_parent{nullptr};
+    Node*    m_first_child{nullptr};  ///< 侵入式子节点链表头（arena 拥有节点）
+    Node*    m_last_child{nullptr};   ///< 侵入式子节点链表尾
+    Node*    m_prev_sibling{nullptr};
+    Node*    m_next_sibling{nullptr};
 };
 
 }  // namespace hps

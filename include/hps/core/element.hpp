@@ -186,24 +186,23 @@ class Element : public Node {
 
     // Tree Modification
     /**
-     * @brief 添加子节点
-     * @param child 要添加的子节点的唯一指针
+     * @brief 添加子节点（节点由 Document 的 arena 拥有，此处仅挂链）
+     * @param child 由同一 Document 创建的节点
      */
-    Node* add_child(std::unique_ptr<Node> child);
-    Node* insert_child_before(std::unique_ptr<Node> child, const Node* before);
+    Node* add_child(Node* child);
+    Node* insert_child_before(Node* child, const Node* before);
 
     /**
-     * @brief 从直接子节点中摘除指定节点并交出所有权（供树重排使用）
+     * @brief 从直接子节点中摘除指定节点（仅断链，节点仍由 arena 拥有）
      * @param child 要摘除的子节点
-     * @return 被摘除节点的所有权；非本元素子节点时为 nullptr
      */
-    std::unique_ptr<Node> remove_child(Node* child);
+    void remove_child(Node* child);
 
     /**
-     * @brief 取出并移除所有直接子节点
-     * @return 当前元素原有子节点的所有权数组
+     * @brief 断开并返回所有直接子节点（仅断链，节点仍由 arena 拥有）
+     * @return 原有子节点的裸指针数组（按文档序）
      */
-    std::vector<std::unique_ptr<Node>> take_children();
+    std::vector<Node*> take_children();
 
     /**
      * @brief 添加或更新属性
