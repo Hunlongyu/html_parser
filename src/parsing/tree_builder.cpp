@@ -11,6 +11,8 @@
 #include <array>
 #include <cassert>
 #include <ranges>
+#include <string_view>
+#include <unordered_map>
 
 namespace hps {
 
@@ -18,6 +20,51 @@ namespace {
 
 [[nodiscard]] constexpr auto sorted_string_view_array(auto array) {
     return array;
+}
+
+// SVG 属性大小写修正（HTML 词法器全小写 → 还原 camelCase）。HTML5「adjust SVG attributes」表。
+[[nodiscard]] std::string_view adjust_svg_attribute_name(const std::string_view name) {
+    static const std::unordered_map<std::string_view, std::string_view> table = {
+        {"attributename", "attributeName"}, {"attributetype", "attributeType"},
+        {"basefrequency", "baseFrequency"}, {"baseprofile", "baseProfile"},
+        {"calcmode", "calcMode"}, {"clippathunits", "clipPathUnits"},
+        {"diffuseconstant", "diffuseConstant"}, {"edgemode", "edgeMode"},
+        {"filterunits", "filterUnits"}, {"glyphref", "glyphRef"},
+        {"gradienttransform", "gradientTransform"}, {"gradientunits", "gradientUnits"},
+        {"kernelmatrix", "kernelMatrix"}, {"kernelunitlength", "kernelUnitLength"},
+        {"keypoints", "keyPoints"}, {"keysplines", "keySplines"}, {"keytimes", "keyTimes"},
+        {"lengthadjust", "lengthAdjust"}, {"limitingconeangle", "limitingConeAngle"},
+        {"markerheight", "markerHeight"}, {"markerunits", "markerUnits"}, {"markerwidth", "markerWidth"},
+        {"maskcontentunits", "maskContentUnits"}, {"maskunits", "maskUnits"},
+        {"numoctaves", "numOctaves"}, {"pathlength", "pathLength"},
+        {"patterncontentunits", "patternContentUnits"}, {"patterntransform", "patternTransform"},
+        {"patternunits", "patternUnits"}, {"pointsatx", "pointsAtX"}, {"pointsaty", "pointsAtY"},
+        {"pointsatz", "pointsAtZ"}, {"preservealpha", "preserveAlpha"},
+        {"preserveaspectratio", "preserveAspectRatio"}, {"primitiveunits", "primitiveUnits"},
+        {"refx", "refX"}, {"refy", "refY"}, {"repeatcount", "repeatCount"}, {"repeatdur", "repeatDur"},
+        {"requiredextensions", "requiredExtensions"}, {"requiredfeatures", "requiredFeatures"},
+        {"specularconstant", "specularConstant"}, {"specularexponent", "specularExponent"},
+        {"spreadmethod", "spreadMethod"}, {"startoffset", "startOffset"},
+        {"stddeviation", "stdDeviation"}, {"stitchtiles", "stitchTiles"},
+        {"surfacescale", "surfaceScale"}, {"systemlanguage", "systemLanguage"},
+        {"tablevalues", "tableValues"}, {"targetx", "targetX"}, {"targety", "targetY"},
+        {"textlength", "textLength"}, {"viewbox", "viewBox"}, {"viewtarget", "viewTarget"},
+        {"xchannelselector", "xChannelSelector"}, {"ychannelselector", "yChannelSelector"},
+        {"zoomandpan", "zoomAndPan"}};
+    const auto it = table.find(name);
+    return it != table.end() ? it->second : name;
+}
+
+// 外来元素属性名修正（SVG 大小写表；MathML definitionurl → definitionURL）。
+[[nodiscard]] std::string_view adjust_foreign_attribute_name(
+    const std::string_view name, const NamespaceKind ns) {
+    if (ns == NamespaceKind::Svg) {
+        return adjust_svg_attribute_name(name);
+    }
+    if (ns == NamespaceKind::MathML && name == "definitionurl") {
+        return "definitionURL";
+    }
+    return name;
 }
 
 // 插入这些元素会向活动格式化列表压入 marker（其闭合时清理到该 marker）。
@@ -571,8 +618,12 @@ std::unique_ptr<Element> TreeBuilder::create_element(
 }
 
 void TreeBuilder::merge_token_attributes(Element& element, const Token& token) {
+    const NamespaceKind ns = element.namespace_kind();
     for (const auto& attr : token.attrs()) {
-        element.add_attribute(attr.name, attr.value, attr.has_value);
+        const std::string_view name =
+            ns == NamespaceKind::Html ? std::string_view(attr.name)
+                                      : adjust_foreign_attribute_name(attr.name, ns);
+        element.add_attribute(name, attr.value, attr.has_value);
     }
 }
 

@@ -196,6 +196,19 @@ inline void append_section_line(std::string& section, const std::string& line) {
     return std::string(text);
 }
 
+// 外来元素上 xlink:/xml:/xmlns: 前缀属性在 html5lib 转储里写成「命名空间 局部名」（冒号→空格）。
+[[nodiscard]] inline std::string foreign_attr_dump_name(std::string_view name, const bool is_foreign) {
+    if (is_foreign) {
+        for (const std::string_view prefix : {"xlink:", "xml:", "xmlns:"}) {
+            if (name.size() > prefix.size() && name.substr(0, prefix.size()) == prefix) {
+                return std::string(prefix.substr(0, prefix.size() - 1)) + " " +
+                       std::string(name.substr(prefix.size()));
+            }
+        }
+    }
+    return std::string(name);
+}
+
 inline void serialize_node(const hps::Node& node, std::vector<std::string>& lines, const size_t depth) {
     const std::string indent(depth * 2, ' ');
     switch (node.type()) {
@@ -214,9 +227,17 @@ inline void serialize_node(const hps::Node& node, std::vector<std::string>& line
                 case hps::NamespaceKind::Html:   break;
             }
             lines.push_back("| " + indent + "<" + ns_prefix + element->tag_name() + ">");
+            // html5lib：属性按名称字典序输出；外来元素的 xlink:/xml:/xmlns: 写成命名空间形式。
+            const bool is_foreign = !ns_prefix.empty();
+            std::vector<std::pair<std::string, std::string>> attrs;
             for (const auto& attribute : element->attributes()) {
-                lines.push_back("| " + std::string((depth + 1) * 2, ' ') + attribute.name() +
-                                "=\"" + escape_tree_text(attribute.value()) + "\"");
+                attrs.emplace_back(foreign_attr_dump_name(attribute.name(), is_foreign),
+                                   escape_tree_text(attribute.value()));
+            }
+            std::ranges::sort(attrs, [](const auto& a, const auto& b) { return a.first < b.first; });
+            for (const auto& [attr_name, attr_value] : attrs) {
+                lines.push_back("| " + std::string((depth + 1) * 2, ' ') + attr_name +
+                                "=\"" + attr_value + "\"");
             }
             // html5lib 把 <template> 内容表示为 DocumentFragment：先输出一行 "content"，
             // 再把模板子节点下挂一层。
