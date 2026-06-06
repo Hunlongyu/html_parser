@@ -223,6 +223,14 @@ class Tokenizer {
      * @return 处理后的文本 Token
      */
     std::optional<Token> consume_rcdata_state();
+
+    /**
+     * @brief RAWTEXT / RCDATA 的共同实现：收集原始文本直到匹配的结束标签。
+     * @param decode_entities 为 true 时按 RCDATA 解码字符实体（textarea/title）；
+     *                        为 false 时按 RAWTEXT 原样输出（style/noscript 等）。
+     */
+    std::optional<Token> consume_raw_text_until_end_tag(bool decode_entities);
+
     std::optional<Token> consume_plaintext_state();
     std::optional<Token> consume_cdata_section_state();
 

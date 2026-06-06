@@ -753,106 +753,29 @@ std::optional<Token> Tokenizer::consume_script_data_state() {
 }
 
 std::optional<Token> Tokenizer::consume_rawtext_state() {
-    if (m_last_start_tag.empty()) {
-        m_state = TokenizerState::Data;
-        return {};
-    }
-
-    const std::string_view closing_tag = m_last_start_tag;
-    const size_t start = m_pos;
-
-    while (has_more()) {
-        if (current_char() == '<' && peek_char() == '/' &&
-            starts_with_ignore_case(m_source.substr(m_pos + 2), closing_tag)) {
-            const size_t saved_pos = m_pos;
-            m_pos += 2 + closing_tag.size();
-
-            if (!has_more()) {
-                m_pos = m_source.size();
-                break;
-            }
-
-            if (is_whitespace(current_char())) {
-                while (has_more() && is_whitespace(current_char())) {
-                    advance();
-                }
-                if (!has_more()) {
-                    if (start < saved_pos) {
-                        const std::string_view content = m_source.substr(start, saved_pos - start);
-                        record_recoverable_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in RAWTEXT end tag");
-                        m_state = TokenizerState::Data;
-                        return emit_text_token(content);
-                    }
-                    record_recoverable_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in RAWTEXT end tag");
-                    m_state = TokenizerState::Data;
-                    return {};
-                }
-            }
-            if (current_char() == '>') {
-                if (start < saved_pos) {
-                    m_pos                          = saved_pos;
-                    const std::string_view content = m_source.substr(start, saved_pos - start);
-                    return emit_text_token(content);
-                }
-                advance();
-                m_state   = TokenizerState::Data;
-                m_end_tag = std::string(closing_tag);
-                return create_end_tag_token();
-            }
-            if (current_char() == '/') {
-                advance();
-                while (has_more() && is_whitespace(current_char())) {
-                    advance();
-                }
-                if (!has_more()) {
-                    if (start < saved_pos) {
-                        const std::string_view content = m_source.substr(start, saved_pos - start);
-                        record_recoverable_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in RAWTEXT end tag");
-                        m_state = TokenizerState::Data;
-                        return emit_text_token(content);
-                    }
-                    record_recoverable_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in RAWTEXT end tag");
-                    m_state = TokenizerState::Data;
-                    return {};
-                }
-                if (current_char() == '>') {
-                    if (start < saved_pos) {
-                        m_pos                          = saved_pos;
-                        const std::string_view content = m_source.substr(start, saved_pos - start);
-                        return emit_text_token(content);
-                    }
-                    advance();
-                    m_state   = TokenizerState::Data;
-                    m_end_tag = std::string(closing_tag);
-                    return create_end_tag_token();
-                }
-            }
-            m_pos = saved_pos;
-            advance();
-        } else {
-            advance();
-        }
-    }
-
-    if (start < m_pos) {
-        const std::string_view content = m_source.substr(start, m_pos - start);
-        m_state                        = TokenizerState::Data;
-        return emit_text_token(content);
-    }
-
-    handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in RAWTEXT");
-    m_state = TokenizerState::Data;
-    return {};
+    return consume_raw_text_until_end_tag(/*decode_entities=*/false);
 }
 
 std::optional<Token> Tokenizer::consume_rcdata_state() {
+    return consume_raw_text_until_end_tag(/*decode_entities=*/true);
+}
+
+std::optional<Token> Tokenizer::consume_raw_text_until_end_tag(const bool decode_entities) {
     if (m_last_start_tag.empty()) {
         m_state = TokenizerState::Data;
         return {};
     }
 
     const std::string_view closing_tag = m_last_start_tag;
-    const size_t start = m_pos;
+    const size_t           start       = m_pos;
+
+    // RAWTEXT 原样输出；RCDATA 解码字符实体（这是两态唯一的差别）。
+    const auto emit_collected = [this, decode_entities](const std::string_view content) -> std::optional<Token> {
+        if (decode_entities) {
+            return emit_owned_text_token(decode_html_entities(std::string(content)));
+        }
+        return emit_text_token(content);
+    };
 
     while (has_more()) {
         if (current_char() == '<' && peek_char() == '/' &&
@@ -870,22 +793,18 @@ std::optional<Token> Tokenizer::consume_rcdata_state() {
                     advance();
                 }
                 if (!has_more()) {
-                    if (start < saved_pos) {
-                        const std::string_view content = m_source.substr(start, saved_pos - start);
-                        record_recoverable_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in RCDATA end tag");
-                        m_state = TokenizerState::Data;
-                        return emit_owned_text_token(decode_html_entities(std::string(content)));
-                    }
-                    record_recoverable_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in RCDATA end tag");
+                    record_recoverable_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in raw text end tag");
                     m_state = TokenizerState::Data;
+                    if (start < saved_pos) {
+                        return emit_collected(m_source.substr(start, saved_pos - start));
+                    }
                     return {};
                 }
             }
             if (current_char() == '>') {
                 if (start < saved_pos) {
-                    m_pos                          = saved_pos;
-                    const std::string_view content = m_source.substr(start, saved_pos - start);
-                    return emit_owned_text_token(decode_html_entities(std::string(content)));
+                    m_pos = saved_pos;
+                    return emit_collected(m_source.substr(start, saved_pos - start));
                 }
                 advance();
                 m_state   = TokenizerState::Data;
@@ -898,21 +817,17 @@ std::optional<Token> Tokenizer::consume_rcdata_state() {
                     advance();
                 }
                 if (!has_more()) {
-                    if (start < saved_pos) {
-                        const std::string_view content = m_source.substr(start, saved_pos - start);
-                        record_recoverable_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in RCDATA end tag");
-                        m_state = TokenizerState::Data;
-                        return emit_owned_text_token(decode_html_entities(std::string(content)));
-                    }
-                    record_recoverable_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in RCDATA end tag");
+                    record_recoverable_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in raw text end tag");
                     m_state = TokenizerState::Data;
+                    if (start < saved_pos) {
+                        return emit_collected(m_source.substr(start, saved_pos - start));
+                    }
                     return {};
                 }
                 if (current_char() == '>') {
                     if (start < saved_pos) {
-                        m_pos                          = saved_pos;
-                        const std::string_view content = m_source.substr(start, saved_pos - start);
-                        return emit_owned_text_token(decode_html_entities(std::string(content)));
+                        m_pos = saved_pos;
+                        return emit_collected(m_source.substr(start, saved_pos - start));
                     }
                     advance();
                     m_state   = TokenizerState::Data;
@@ -928,12 +843,11 @@ std::optional<Token> Tokenizer::consume_rcdata_state() {
     }
 
     if (start < m_pos) {
-        const std::string_view content = m_source.substr(start, m_pos - start);
-        m_state                        = TokenizerState::Data;
-        return emit_owned_text_token(decode_html_entities(std::string(content)));
+        m_state = TokenizerState::Data;
+        return emit_collected(m_source.substr(start, m_pos - start));
     }
 
-    handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in RCDATA");
+    handle_parse_error(ErrorCode::UnexpectedEOF, "Unexpected EOF in raw text");
     m_state = TokenizerState::Data;
     return {};
 }
