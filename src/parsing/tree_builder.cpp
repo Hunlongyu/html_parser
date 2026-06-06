@@ -256,11 +256,14 @@ void TreeBuilder::process_start_tag(const Token& token) {
         return;
     }
 
-    // 在 frameset 内：仅允许 frame / noframes，其余起始标签忽略，且不走文档外壳逻辑。
-    if (m_fragment_context == nullptr && find_open_element("frameset", false) != nullptr) {
-        if (!equals_ignore_case(token.name(), "frame") &&
-            !equals_ignore_case(token.name(), "noframes")) {
-            parse_error(ErrorCode::InvalidNesting, "Start tag ignored in frameset", m_last_position);
+    // frameset 文档：in-frameset 仅允许 frame/noframes；after-frameset（根 frameset 已关闭）
+    // 仅允许 noframes；其余起始标签忽略，且不走文档外壳逻辑（frameset 文档无 body）。
+    if (m_fragment_context == nullptr && m_is_frameset_document) {
+        const bool frameset_open = find_open_element("frameset", false) != nullptr;
+        const bool allowed       = equals_ignore_case(token.name(), "noframes") ||
+                             (frameset_open && equals_ignore_case(token.name(), "frame"));
+        if (!allowed) {
+            parse_error(ErrorCode::InvalidNesting, "Start tag ignored in frameset document", m_last_position);
             return;
         }
     } else if (m_fragment_context == nullptr && find_open_element("template", false) == nullptr) {
@@ -439,6 +442,12 @@ void TreeBuilder::process_frameset_start_tag(const Token& token) {
         auto* frameset = const_cast<Element*>(
             insert_node(create_element(token), current_element())->as_element());
         push_element(frameset);
+        return;
+    }
+
+    // after-frameset：根 frameset 已关闭后再来 <frameset> → 忽略。
+    if (m_is_frameset_document) {
+        parse_error(ErrorCode::InvalidNesting, "Unexpected <frameset> after frameset", m_last_position);
         return;
     }
 
