@@ -45,8 +45,9 @@ bool ClassSelector::can_quick_reject(const Element& element) const {
 // ==================== IdSelector Implementation ====================
 
 bool IdSelector::matches(const Element& element) const {
-    const auto id = element.attr("id");
-    return id.has_value() && *id == m_id_name;
+    // 用编译期 Attr::Id 常量取值，免每个元素重解析 "id"→id。m_id_name 恒非空，
+    // 故空视图（缺失或 id=""）不会误匹配。
+    return element.get_attribute(attr::kId, "id") == m_id_name;
 }
 
 bool IdSelector::can_quick_reject(const Element& element) const {

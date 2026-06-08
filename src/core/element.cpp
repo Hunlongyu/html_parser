@@ -193,16 +193,16 @@ size_t Element::attribute_count() const noexcept {
 }
 
 std::string_view Element::id() const noexcept {
-    return get_attribute("id");
+    return get_attribute(attr::kId, "id");  // 用编译期 Attr 常量，免每次 from_name_ci
 }
 
 std::string_view Element::class_name() const noexcept {
-    return get_attribute("class");
+    return get_attribute(attr::kClass, "class");
 }
 
 std::vector<std::string_view> Element::class_names() const noexcept {
     std::vector<std::string_view> names;
-    for_each_class_token(get_attribute("class"), [&names](const std::string_view token) {
+    for_each_class_token(get_attribute(attr::kClass, "class"), [&names](const std::string_view token) {
         names.push_back(token);
         return false;  // 收集全部，不提前停止
     });
@@ -213,7 +213,7 @@ bool Element::has_class(const std::string_view class_name) const noexcept {
     if (class_name.empty()) {
         return false;
     }
-    return for_each_class_token(get_attribute("class"),
+    return for_each_class_token(get_attribute(attr::kClass, "class"),
                                 [class_name](const std::string_view token) { return token == class_name; });
 }
 
