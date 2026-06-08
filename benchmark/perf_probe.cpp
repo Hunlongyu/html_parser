@@ -61,7 +61,7 @@ double min_ms(const std::vector<double>& v) {
 }  // namespace
 
 int main() {
-    const auto files = bench::example_html_files();
+    const auto files = bench::all_bench_files();
     const Options opts = Options::performance();
 
     std::printf("%-14s %10s %8s | %10s %10s %10s | %10s %10s %10s %8s | %s\n",

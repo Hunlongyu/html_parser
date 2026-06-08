@@ -182,6 +182,41 @@ inline auto example_html_files() -> std::vector<fs::path> {
     return files;
 }
 
+// 可复现的「真实体量」语料目录（事实标准大文件，如 WHATWG HTML 规范单页）。
+// 大文件不入 git（见 .gitignore），用 benchmark/fetch_corpus 脚本按 SHA256SUMS 拉取。
+inline auto corpus_html_root() -> fs::path {
+#ifdef HPS_SOURCE_DIR
+    return fs::path(HPS_SOURCE_DIR) / "benchmark" / "corpus";
+#else
+    return fs::current_path() / "benchmark" / "corpus";
+#endif
+}
+
+// 返回语料目录下所有 .html（按文件名排序，稳定可复现）。目录不存在时返回空。
+inline auto corpus_html_files() -> std::vector<fs::path> {
+    std::vector<fs::path> files;
+    const fs::path        root = corpus_html_root();
+    if (!fs::is_directory(root)) {
+        return files;
+    }
+    for (const auto& entry : fs::directory_iterator(root)) {
+        if (entry.is_regular_file() && entry.path().extension() == ".html") {
+            files.push_back(entry.path());
+        }
+    }
+    std::sort(files.begin(), files.end());
+    return files;
+}
+
+// 小样例 + 真实体量语料，合并为一组基准输入。
+inline auto all_bench_files() -> std::vector<fs::path> {
+    std::vector<fs::path> files = example_html_files();
+    for (auto& f : corpus_html_files()) {
+        files.push_back(std::move(f));
+    }
+    return files;
+}
+
 inline auto recommended_iterations(const std::size_t input_bytes) -> int {
     if (input_bytes < 10 * KIB) {
         return 400;

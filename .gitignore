@@ -16,3 +16,6 @@ enc_temp_folder/
 CMakeSettings.json
 Folder.DotSettings
 .idea/
+
+# 性能语料：大文件不入 git（用 benchmark/fetch_corpus.sh 按 SHA256SUMS 拉取）
+benchmark/corpus/*.html

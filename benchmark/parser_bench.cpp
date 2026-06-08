@@ -24,7 +24,7 @@ auto count_nodes(const Node& node) -> std::size_t {
 
 int main() {
     try {
-        const auto files = bench::example_html_files();
+        const auto files = bench::all_bench_files();
         if (files.empty()) {
             std::cerr << "Error: no example HTML files found under " << bench::example_html_root() << std::endl;
             return 1;
