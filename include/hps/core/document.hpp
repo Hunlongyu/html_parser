@@ -180,7 +180,7 @@ class Document : public Node {
      * @brief 在本文档的 arena 中创建一个元素/文本/注释/DOCTYPE 节点。
      *
      * 返回的节点由本 Document 拥有（随 Document 一同释放）；用 add_child / 兄弟 API
-     * 把它挂进树。比手动 new + unique_ptr 更快（无逐节点 malloc），也更不易出错。
+     * 把它挂进树。arena 分配无逐节点 malloc，且单一所有者（Document）更不易出错。
      */
     [[nodiscard]] Element*     create_element(std::string_view name, NamespaceKind ns = NamespaceKind::Html);
     [[nodiscard]] TextNode*    create_text(std::string_view text);

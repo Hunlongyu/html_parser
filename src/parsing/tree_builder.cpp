@@ -9,7 +9,6 @@
 #include "hps/utils/string_utils.hpp"
 
 #include <algorithm>
-#include <array>
 #include <cassert>
 #include <ranges>
 #include <string_view>
@@ -169,53 +168,6 @@ const std::vector<HPSError>& TreeBuilder::errors() const noexcept {
 
 std::vector<HPSError> TreeBuilder::consume_errors() {
     return std::move(m_errors);
-}
-
-void TreeBuilder::apply_foreign_content_breakout(const Tag tag) {
-    // 外来内容（SVG/MathML）中的 breakout 起始标签：弹出外来元素回到 HTML 上下文，
-    // 再按 HTML 规则继续处理该标签（如 <svg><g><p> 中的 <p> 应成为 HTML 段落）。
-    if (current_insertion_namespace() == NamespaceKind::Html || !tag::is_foreign_breakout(tag)) {
-        return;
-    }
-    while (m_element_stack.size() > m_stack_floor && current_element() != nullptr &&
-           current_element()->namespace_kind() != NamespaceKind::Html) {
-        m_element_stack.pop_back();
-    }
-}
-
-void TreeBuilder::handle_a_start_tag() {
-    // <a> 起始：若活动格式化列表（最后一个 marker 之后）已有 <a>，先跑 AAA 并清理之。
-    Element* open_a = nullptr;
-    for (size_t i = m_active_formatting.size(); i > 0; --i) {
-        Element* entry = m_active_formatting[i - 1];
-        if (entry == nullptr) {
-            break;
-        }
-        if (entry->tag() == tag::kA) {
-            open_a = entry;
-            break;
-        }
-    }
-    if (open_a == nullptr) {
-        return;
-    }
-    parse_error(ErrorCode::InvalidNesting, "Unexpected nested <a>", m_last_position);
-    static_cast<void>(run_adoption_agency(tag::kA));
-    remove_from_active_formatting(open_a);
-    if (const auto it = std::ranges::find(m_element_stack, open_a); it != m_element_stack.end()) {
-        m_element_stack.erase(it);
-    }
-}
-
-void TreeBuilder::handle_nobr_start_tag() {
-    // <nobr> 起始：先重建；若已有 nobr 在 scope 内，跑 AAA 后再重建。
-    reconstruct_active_formatting_elements();
-    if (Element* open_nobr = find_open_element(tag::kNobr, false);
-        open_nobr != nullptr && has_element_in_scope(open_nobr)) {
-        parse_error(ErrorCode::InvalidNesting, "Unexpected nested <nobr>", m_last_position);
-        static_cast<void>(run_adoption_agency(tag::kNobr));
-        reconstruct_active_formatting_elements();
-    }
 }
 
 void TreeBuilder::process_start_tag(const Token& token) {
@@ -446,6 +398,54 @@ void TreeBuilder::process_frameset_start_tag(const Token& token) {
         insert_node(create_element(token), m_html_element)->as_element());
     push_element(frameset);
     m_is_frameset_document = true;
+}
+
+// process_start_tag 的可拆分子步骤（与 tree_builder.hpp 声明顺序一致）。
+void TreeBuilder::apply_foreign_content_breakout(const Tag tag) {
+    // 外来内容（SVG/MathML）中的 breakout 起始标签：弹出外来元素回到 HTML 上下文，
+    // 再按 HTML 规则继续处理该标签（如 <svg><g><p> 中的 <p> 应成为 HTML 段落）。
+    if (current_insertion_namespace() == NamespaceKind::Html || !tag::is_foreign_breakout(tag)) {
+        return;
+    }
+    while (m_element_stack.size() > m_stack_floor && current_element() != nullptr &&
+           current_element()->namespace_kind() != NamespaceKind::Html) {
+        m_element_stack.pop_back();
+    }
+}
+
+void TreeBuilder::handle_a_start_tag() {
+    // <a> 起始：若活动格式化列表（最后一个 marker 之后）已有 <a>，先跑 AAA 并清理之。
+    Element* open_a = nullptr;
+    for (size_t i = m_active_formatting.size(); i > 0; --i) {
+        Element* entry = m_active_formatting[i - 1];
+        if (entry == nullptr) {
+            break;
+        }
+        if (entry->tag() == tag::kA) {
+            open_a = entry;
+            break;
+        }
+    }
+    if (open_a == nullptr) {
+        return;
+    }
+    parse_error(ErrorCode::InvalidNesting, "Unexpected nested <a>", m_last_position);
+    static_cast<void>(run_adoption_agency(tag::kA));
+    remove_from_active_formatting(open_a);
+    if (const auto it = std::ranges::find(m_element_stack, open_a); it != m_element_stack.end()) {
+        m_element_stack.erase(it);
+    }
+}
+
+void TreeBuilder::handle_nobr_start_tag() {
+    // <nobr> 起始：先重建；若已有 nobr 在 scope 内，跑 AAA 后再重建。
+    reconstruct_active_formatting_elements();
+    if (Element* open_nobr = find_open_element(tag::kNobr, false);
+        open_nobr != nullptr && has_element_in_scope(open_nobr)) {
+        parse_error(ErrorCode::InvalidNesting, "Unexpected nested <nobr>", m_last_position);
+        static_cast<void>(run_adoption_agency(tag::kNobr));
+        reconstruct_active_formatting_elements();
+    }
 }
 
 void TreeBuilder::process_end_tag(const Token& token) {
@@ -1644,21 +1644,6 @@ Element* TreeBuilder::find_open_element(
         }
         Element* element = m_element_stack[index - 1];
         if (element->tag() == target) {
-            return element;
-        }
-    }
-    return nullptr;
-}
-
-Element* TreeBuilder::find_open_element_by_name(
-    const std::string_view tag_name,
-    const bool include_fragment_base) const noexcept {
-    for (size_t index = m_element_stack.size(); index > 0; --index) {
-        if (!include_fragment_base && index <= m_stack_floor) {
-            break;
-        }
-        Element* element = m_element_stack[index - 1];
-        if (equals_ignore_case(element->tag_name(), tag_name)) {
             return element;
         }
     }

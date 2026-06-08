@@ -6,9 +6,7 @@
 #include "hps/core/element.hpp"
 #include "hps/core/text_node.hpp"
 
-#include <algorithm>
 #include <cassert>
-#include <utility>
 
 namespace hps {
 Node::Node(const NodeType type) noexcept

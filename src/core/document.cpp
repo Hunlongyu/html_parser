@@ -13,7 +13,7 @@
 #include "serializer.hpp"
 
 #include <algorithm>
-#include <sstream>
+#include <cctype>
 
 namespace hps {
 namespace {
@@ -95,11 +95,11 @@ void Document::ensure_query_indexes() const {
 }
 
 std::string Document::text_content() const {
-    std::stringstream ss;
+    std::string out;
     for (auto child = first_child(); child; child = child->next_sibling()) {
-        ss << child->text_content();
+        out += child->text_content();
     }
-    return ss.str();
+    return out;
 }
 
 std::string Document::title() const {

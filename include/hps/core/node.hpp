@@ -1,8 +1,8 @@
 #pragma once
 #include "hps/hps_fwd.hpp"
 
-#include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace hps {
@@ -19,12 +19,12 @@ class Node {
      */
     virtual ~Node() = default;
 
-    // 禁用拷贝构造和拷贝赋值，因为 unique_ptr 不能拷贝
+    // 节点由 Document 的 arena 拥有、以裸指针互相引用，本身不可拷贝。
     Node(const Node&)            = delete;
     Node& operator=(const Node&) = delete;
 
-    // 禁用移动构造和移动赋值，因为 Node 对象地址变化会导致子节点的 m_parent 指针失效
-    // 且 DOM 节点通常由 unique_ptr 管理，应移动指针而不是对象本身
+    // 禁用移动：节点地址变化会让子/父/兄弟的链接指针全部失效。需要重排树时移动的是
+    // 指针（remove_child/append_child），而非节点对象本身。
     Node(Node&&)            = delete;
     Node& operator=(Node&&) = delete;
 

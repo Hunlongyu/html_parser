@@ -79,6 +79,17 @@ bool for_each_class_token(const std::string_view classes, Visit visit) {
     return false;
 }
 
+// 在属性表中按整数 id（已知属性 → O(1) 整数比较）或按名（自定义 → 大小写不敏感）查找。
+const Attribute* find_attr(const std::vector<Attribute>& attrs, const Attr id, const std::string_view name) noexcept {
+    for (const auto& a : attrs) {
+        const bool match = id != Attr::Unknown ? (a.id() == id) : equals_ignore_case(a.name(), name);
+        if (match) {
+            return &a;
+        }
+    }
+    return nullptr;
+}
+
 }  // namespace
 
 Element::Element(const std::string_view name, const NamespaceKind namespace_kind)
@@ -144,19 +155,6 @@ std::string_view Element::namespace_uri() const noexcept {
     }
     return "http://www.w3.org/1999/xhtml";
 }
-
-namespace {
-// 在属性表中按整数 id（已知属性 → O(1) 整数比较）或按名（自定义 → 大小写不敏感）查找。
-const Attribute* find_attr(const std::vector<Attribute>& attrs, const Attr id, const std::string_view name) noexcept {
-    for (const auto& a : attrs) {
-        const bool match = id != Attr::Unknown ? (a.id() == id) : equals_ignore_case(a.name(), name);
-        if (match) {
-            return &a;
-        }
-    }
-    return nullptr;
-}
-}  // namespace
 
 bool Element::has_attribute(const std::string_view name) const noexcept {
     return find_attr(m_attributes, attr::from_name_ci(name), name) != nullptr;

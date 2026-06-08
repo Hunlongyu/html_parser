@@ -4,6 +4,7 @@
 #include "hps/parsing/options.hpp"
 #include "hps/utils/exception.hpp"
 
+#include <memory>
 #include <utility>
 
 namespace hps {
@@ -249,10 +250,6 @@ class TreeBuilder {
     // 按整数 tag 在开放元素栈中查找最近的匹配（热路径，已知标签）。
     [[nodiscard]] Element* find_open_element(
         Tag tag,
-        bool include_fragment_base = true) const noexcept;
-    // 按名字查找（用于自定义/动态名匹配；自定义标签 tag()==Unknown 无法靠整数区分）。
-    [[nodiscard]] Element* find_open_element_by_name(
-        std::string_view tag_name,
         bool include_fragment_base = true) const noexcept;
     [[nodiscard]] Element* find_open_in_select_scope(Tag tag) const noexcept;
     [[nodiscard]] Element* find_open_table_section() const noexcept;

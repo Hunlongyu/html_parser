@@ -2,6 +2,9 @@
 
 #include "hps/core/node.hpp"
 
+#include <string>
+#include <string_view>
+
 namespace hps {
 
 class TextNode : public Node {

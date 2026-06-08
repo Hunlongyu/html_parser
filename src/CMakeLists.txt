@@ -30,6 +30,7 @@ set(hps_public_headers
     "${PROJECT_SOURCE_DIR}/include/hps/core/document.hpp"
     "${PROJECT_SOURCE_DIR}/include/hps/core/element.hpp"
     "${PROJECT_SOURCE_DIR}/include/hps/core/node.hpp"
+    "${PROJECT_SOURCE_DIR}/include/hps/core/node_arena.hpp"
     "${PROJECT_SOURCE_DIR}/include/hps/core/text_node.hpp"
     "${PROJECT_SOURCE_DIR}/include/hps/hps.hpp"
     "${PROJECT_SOURCE_DIR}/include/hps/hps_fwd.hpp"
@@ -40,11 +41,15 @@ set(hps_public_headers
     "${PROJECT_SOURCE_DIR}/include/hps/query/query.hpp"
     "${PROJECT_SOURCE_DIR}/include/hps/utils/encoding.hpp"
     "${PROJECT_SOURCE_DIR}/include/hps/utils/exception.hpp"
+    # node_arena/string_pool 是 Document 的按值成员，随公共头 document.hpp 暴露，故须导出
+    "${PROJECT_SOURCE_DIR}/include/hps/utils/string_pool.hpp"
     "${PROJECT_SOURCE_DIR}/include/hps/utils/url.hpp"
 )
 
 # 内部实现头文件：参与本库编译，但不随安装导出（不属于公共 ABI 面）
 set(hps_internal_headers
+    "${PROJECT_SOURCE_DIR}/include/hps/core/attr_table.hpp"
+    "${PROJECT_SOURCE_DIR}/include/hps/core/tag_table.hpp"
     "${PROJECT_SOURCE_DIR}/include/hps/parsing/token.hpp"
     "${PROJECT_SOURCE_DIR}/include/hps/parsing/token_builder.hpp"
     "${PROJECT_SOURCE_DIR}/include/hps/parsing/tokenizer.hpp"
@@ -54,7 +59,6 @@ set(hps_internal_headers
     "${PROJECT_SOURCE_DIR}/include/hps/query/css/css_parser.hpp"
     "${PROJECT_SOURCE_DIR}/include/hps/query/css/css_selector.hpp"
     "${PROJECT_SOURCE_DIR}/include/hps/query/css/css_utils.hpp"
-    "${PROJECT_SOURCE_DIR}/include/hps/utils/string_pool.hpp"
     "${PROJECT_SOURCE_DIR}/include/hps/utils/string_utils.hpp"
 )
 
