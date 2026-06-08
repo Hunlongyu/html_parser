@@ -5,6 +5,29 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [0.3.1] - 2026-06-08
+
+进一步逼近 lexbor 的两项内部优化（非破坏）：tokenizer 的 SIMD 扫描与文本节点零拷贝。
+
+### Performance
+
+- **tokenizer memchr 扫描**：Data / Plaintext / RAWTEXT-RCDATA 状态原本逐字符找
+  下一个 `<`，改用 `memchr`（CRT 的 SIMD 实现）批量跳读。文本密集页 tok_ms 提升明显
+  （panlong −37%、shodan −15%、complex −12%），标签密集页温和（fofa/规范单页 −4%）。
+- **文本节点零拷贝**：文本默认零拷贝持有指向源码/字符串池的 `string_view`，仅在相邻
+  文本合并 append 时才物化为自有缓冲。无变换（Raw + 不解码 + Preserve）时直接零拷贝。
+  Preserve 模式（保留文本的真实爬虫场景）下规范单页分配 −23%（34.7 万文本节点零拷贝）、
+  fofa −11%。`performance()` 模式丢弃文本故不受影响。
+
+### Notes
+
+- 一致性保持 1227/1764；362/362 测试通过；AddressSanitizer 全程干净。
+- 评估后**搁置**的项：tokenizer token/属性结构完整复用（需重写全部 consume_* 且破坏
+  `tokenize_all` 拥有契约，ROI 低）；属性 small_vector（内联会膨胀节点、损缓存，且建树
+  已是 CPU 受限，分配下降难转化为时间）。
+
+[0.3.1]: https://github.com/Hunlongyu/html_parser/releases/tag/v0.3.1
+
 ## [0.3.0] - 2026-06-08
 
 用现代 C++ 复刻 lexbor 的高性能 DOM 内存模型（在 0.2.0 节点 arena 之上）：

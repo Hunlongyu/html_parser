@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.28)
 
 project(
     hps
-    VERSION 0.3.0
+    VERSION 0.3.1
     DESCRIPTION "Modern C++20 HTML parser library"
     LANGUAGES CXX
 )
