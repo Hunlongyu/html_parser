@@ -12,7 +12,7 @@ NodeType CommentNode::type() const noexcept {
     return NodeType::Comment;
 }
 
-const std::string& CommentNode::value() const {
+std::string_view CommentNode::value() const noexcept {
     return m_comment;
 }
 

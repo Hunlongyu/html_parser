@@ -1,5 +1,6 @@
 #include "hps/query/css/css_selector.hpp"
 
+#include "hps/core/attr_table.hpp"
 #include "hps/core/element.hpp"
 #include "hps/core/tag_table.hpp"
 #include "hps/utils/string_utils.hpp"
@@ -54,8 +55,15 @@ bool IdSelector::can_quick_reject(const Element& element) const {
 
 // ==================== AttributeSelector Implementation ====================
 
+AttributeSelector::AttributeSelector(const std::string_view attr_name, const AttributeOperator op, const std::string_view value)
+    : CSSSelector(SelectorType::Attribute),
+      m_attr_name(attr_name),
+      m_operator(op),
+      m_value(value),
+      m_attr_id(attr::from_name_ci(attr_name)) {}
+
 bool AttributeSelector::matches(const Element& element) const {
-    if (!element.has_attribute(m_attr_name)) {
+    if (!element.has_attribute(m_attr_id, m_attr_name)) {
         return false;
     }
 
@@ -63,8 +71,7 @@ bool AttributeSelector::matches(const Element& element) const {
         return true;
     }
 
-    const auto& attr_value = element.get_attribute(m_attr_name);
-    return matches_attribute_value(attr_value);
+    return matches_attribute_value(element.get_attribute(m_attr_id, m_attr_name));
 }
 
 std::string AttributeSelector::to_string() const {

@@ -2,6 +2,7 @@
 #include "hps/core/node.hpp"
 #include "hps/core/node_arena.hpp"
 #include "hps/hps_fwd.hpp"
+#include "hps/utils/string_pool.hpp"
 
 #include <optional>
 #include <string>
@@ -187,6 +188,14 @@ class Document : public Node {
     [[nodiscard]] DoctypeNode* create_doctype(
         std::string_view name, std::string_view public_id, std::string_view system_id, bool has_identifiers);
 
+    /**
+     * @brief 把字符串稳定化为本文档拥有的视图（用于节点名/属性/文本等）。
+     *
+     * 若 `s` 已是本文档源码 m_html_source 的子串 → 直接返回（零拷贝）；否则拷入文档的
+     * StringPool。两种情形得到的视图都与本 Document 同生命周期，安全。
+     */
+    [[nodiscard]] std::string_view intern(std::string_view s);
+
     // Document Modification
     /**
      * @brief 把一个（本文档 arena 创建的）节点挂为文档的子节点。
@@ -212,7 +221,8 @@ class Document : public Node {
     void ensure_query_indexes() const;
     void index_element_subtree(const Element& element) const;
 
-    NodeArena m_arena; /**< 拥有本文档全部 DOM 节点的 arena（节点生命周期 = 文档生命周期） */
+    NodeArena  m_arena;   /**< 拥有本文档全部 DOM 节点的 arena（节点生命周期 = 文档生命周期） */
+    StringPool m_strings; /**< 非源码子串的稳定存储（节点名/属性值/注释等的驻留池） */
 
     std::string m_html_source; /**< 原始 HTML 源代码 */
     std::string m_base_url;     /**< 文档来源 URL（页面地址），来自 Options::base_url */

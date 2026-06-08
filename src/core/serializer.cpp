@@ -122,7 +122,7 @@ void append_escaped_attribute(const std::string_view value, std::string& out) {
 }
 
 void serialize_element(const Element& element, std::string& out) {
-    const std::string& tag = element.tag_name();
+    const std::string_view tag = element.tag_name();
 
     out += '<';
     out += tag;

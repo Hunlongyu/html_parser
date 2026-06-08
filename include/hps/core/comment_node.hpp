@@ -19,10 +19,10 @@ class CommentNode : public Node {
     [[nodiscard]] NodeType type() const noexcept override;
 
     /**
-     * @brief 注释内容
-     * @return 注释内容
+     * @brief 注释内容（视图，指向文档字符串池/源码，文档存活期间有效）
+     * @return 注释内容视图
      */
-    [[nodiscard]] const std::string& value() const;
+    [[nodiscard]] std::string_view value() const noexcept;
 
     /**
      * @brief 面向文本提取时的内容
@@ -49,7 +49,7 @@ class CommentNode : public Node {
     [[nodiscard]] size_t length() const noexcept;
 
   private:
-    std::string m_comment;
+    std::string_view m_comment;  /**< 注释内容视图（驻留：文档池/源码） */
 };
 
 }  // namespace hps

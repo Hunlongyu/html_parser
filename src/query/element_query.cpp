@@ -523,7 +523,7 @@ std::vector<std::string> ElementQuery::extract_attributes(const std::string_view
     std::vector<std::string> attributes;
     for (const auto& element : m_elements) {
         if (element && element->has_attribute(attr_name)) {
-            attributes.push_back(element->get_attribute(attr_name));
+            attributes.emplace_back(element->get_attribute(attr_name));
         }
     }
     return attributes;

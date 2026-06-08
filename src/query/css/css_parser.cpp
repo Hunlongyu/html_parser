@@ -1195,10 +1195,10 @@ bool PseudoElementSelector::matches(const Element& element) const {
             // ::before 和 ::after 可以应用于大多数元素
             // 但通常不应用于替换元素（如 img, input 等）
             {
-                const std::string& tag = element.tag_name();
+                const std::string_view tag = element.tag_name();
                 // 排除不支持 ::before/::after 的替换元素
                 static constexpr std::array<std::string_view, 17> replaced_elements = {"img", "input", "textarea", "select", "option", "br", "hr", "area", "base", "col", "embed", "link", "meta", "param", "source", "track", "wbr"};
-                return !std::ranges::any_of(replaced_elements, [&tag](const auto replaced_tag) { return equals_ignore_case(tag, replaced_tag); });
+                return !std::ranges::any_of(replaced_elements, [tag](const auto replaced_tag) { return equals_ignore_case(tag, replaced_tag); });
             }
 
         case ElementType::FirstLine:
@@ -1206,9 +1206,9 @@ bool PseudoElementSelector::matches(const Element& element) const {
             // ::first-line 和 ::first-letter 只能应用于块级元素
             // 这里简化处理，检查是否为常见的块级元素
             {
-                const std::string&                        tag            = element.tag_name();
+                const std::string_view                            tag            = element.tag_name();
                 static constexpr std::array<std::string_view, 18> block_elements = {"div", "p", "h1", "h2", "h3", "h4", "h5", "h6", "article", "section", "header", "footer", "main", "aside", "nav", "blockquote", "pre", "address"};
-                return std::ranges::any_of(block_elements, [&tag](const auto block_tag) { return equals_ignore_case(tag, block_tag); });
+                return std::ranges::any_of(block_elements, [tag](const auto block_tag) { return equals_ignore_case(tag, block_tag); });
             }
     }
     return false;

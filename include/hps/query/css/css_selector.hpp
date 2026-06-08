@@ -195,11 +195,8 @@ class IdSelector : public CSSSelector {
 // 属性选择器 [attr], [attr=value]
 class AttributeSelector : public CSSSelector {
   public:
-    AttributeSelector(std::string_view attr_name, AttributeOperator op, std::string_view value = "")
-        : CSSSelector(SelectorType::Attribute),
-          m_attr_name(attr_name),
-          m_operator(op),
-          m_value(value) {}
+    // 构造时把属性名整数化为 Attr（已知属性 → 匹配时整数比较；自定义 → 回退按名）。
+    AttributeSelector(std::string_view attr_name, AttributeOperator op, std::string_view value = "");
 
     [[nodiscard]] bool        matches(const Element& element) const override;
     [[nodiscard]] std::string to_string() const override;
@@ -224,6 +221,7 @@ class AttributeSelector : public CSSSelector {
     std::string_view  m_attr_name;
     AttributeOperator m_operator;
     std::string_view  m_value;
+    Attr              m_attr_id;  ///< 整数化属性名 id；Attr::Unknown 表示自定义（回退按名）
 
     [[nodiscard]] bool matches_attribute_value(std::string_view attr_value) const;
 };

@@ -12,7 +12,7 @@ NodeType TextNode::type() const noexcept {
     return NodeType::Text;
 }
 
-const std::string& TextNode::value() const {
+std::string_view TextNode::value() const noexcept {
     return m_text;
 }
 

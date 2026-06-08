@@ -82,15 +82,11 @@ const DoctypeNode* Node::as_doctype() const noexcept {
 }
 
 const Document* Node::owner_document() const noexcept {
-    const Node* current = this;
-    while (current && current->m_parent) {
-        current = current->m_parent;
-    }
-    return current ? current->as_document() : nullptr;
+    return m_owner_document;  // 创建时由 Document 工厂写入；O(1)，无需上溯父链。
 }
 
 Document* Node::owner_document_mut() noexcept {
-    return const_cast<Document*>(std::as_const(*this).owner_document());
+    return m_owner_document;
 }
 
 void Node::invalidate_document_query_cache() noexcept {

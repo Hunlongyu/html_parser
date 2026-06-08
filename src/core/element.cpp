@@ -1,5 +1,7 @@
 #include "hps/core/element.hpp"
 
+#include "hps/core/attr_table.hpp"
+#include "hps/core/document.hpp"
 #include "hps/core/tag_table.hpp"
 #include "hps/core/text_node.hpp"
 #include "hps/query/element_query.hpp"
@@ -119,7 +121,7 @@ std::string Element::outer_html() const {
     return out;
 }
 
-const std::string& Element::tag_name() const noexcept {
+std::string_view Element::tag_name() const noexcept {
     return m_name;
 }
 
@@ -143,22 +145,43 @@ std::string_view Element::namespace_uri() const noexcept {
     return "http://www.w3.org/1999/xhtml";
 }
 
+namespace {
+// 在属性表中按整数 id（已知属性 → O(1) 整数比较）或按名（自定义 → 大小写不敏感）查找。
+const Attribute* find_attr(const std::vector<Attribute>& attrs, const Attr id, const std::string_view name) noexcept {
+    for (const auto& a : attrs) {
+        const bool match = id != Attr::Unknown ? (a.id() == id) : equals_ignore_case(a.name(), name);
+        if (match) {
+            return &a;
+        }
+    }
+    return nullptr;
+}
+}  // namespace
+
 bool Element::has_attribute(const std::string_view name) const noexcept {
-    return std::ranges::any_of(m_attributes, [name](const Attribute& attr) { return equals_ignore_case(attr.name(), name); });
+    return find_attr(m_attributes, attr::from_name_ci(name), name) != nullptr;
 }
 
-const std::string& Element::get_attribute(const std::string_view name) const noexcept {
-    static const std::string empty_string;
-    const auto               it = std::ranges::find_if(m_attributes, [name](const Attribute& attr) { return equals_ignore_case(attr.name(), name); });
-    return it != m_attributes.end() ? it->value() : empty_string;
+bool Element::has_attribute(const Attr id, const std::string_view name) const noexcept {
+    return find_attr(m_attributes, id, name) != nullptr;
+}
+
+std::string_view Element::get_attribute(const std::string_view name) const noexcept {
+    const Attribute* a = find_attr(m_attributes, attr::from_name_ci(name), name);
+    return a != nullptr ? a->value() : std::string_view{};
+}
+
+std::string_view Element::get_attribute(const Attr id, const std::string_view name) const noexcept {
+    const Attribute* a = find_attr(m_attributes, id, name);
+    return a != nullptr ? a->value() : std::string_view{};
 }
 
 std::optional<std::string_view> Element::attr(const std::string_view name) const noexcept {
-    const auto it = std::ranges::find_if(m_attributes, [name](const Attribute& attr) { return equals_ignore_case(attr.name(), name); });
-    if (it == m_attributes.end()) {
+    const Attribute* a = find_attr(m_attributes, attr::from_name_ci(name), name);
+    if (a == nullptr) {
         return std::nullopt;
     }
-    return std::string_view(it->value());
+    return a->value();
 }
 
 const std::vector<Attribute>& Element::attributes() const noexcept {
@@ -169,11 +192,11 @@ size_t Element::attribute_count() const noexcept {
     return m_attributes.size();
 }
 
-const std::string& Element::id() const noexcept {
+std::string_view Element::id() const noexcept {
     return get_attribute("id");
 }
 
-const std::string& Element::class_name() const noexcept {
+std::string_view Element::class_name() const noexcept {
     return get_attribute("class");
 }
 
@@ -252,11 +275,19 @@ std::vector<Node*> Element::take_children() {
 }
 
 void Element::add_attribute(std::string_view name, std::string_view value, const bool has_value) {
-    const auto it = std::ranges::find_if(m_attributes, [name](const Attribute& attr) { return equals_ignore_case(attr.name(), name); });
+    const Attr      id  = attr::from_name_ci(name);
+    Document* const doc = owner_document_mut();
+    // 驻留为稳定视图（源码零拷贝 / 否则入文档池）；arena 节点恒有 owner_document。
+    const std::string_view iname  = doc != nullptr ? doc->intern(name) : name;
+    const std::string_view ivalue = doc != nullptr ? doc->intern(value) : value;
+
+    const auto it = std::ranges::find_if(m_attributes, [id, name](const Attribute& a) {
+        return id != Attr::Unknown ? a.id() == id : equals_ignore_case(a.name(), name);
+    });
     if (it != m_attributes.end()) {
-        it->set_value(value, has_value);
+        it->set_value(ivalue, has_value);
     } else {
-        m_attributes.emplace_back(name, value, has_value);
+        m_attributes.emplace_back(id, iname, ivalue, has_value);
     }
     invalidate_document_query_cache();
 }

@@ -63,9 +63,10 @@ class Element : public Node {
     // Element Specific Properties
     /**
      * @brief 获取元素标签名
-     * @return 元素的标签名（例如 "div", "p", "a"）。
+     * @return 元素标签名视图（如 "div"）。已知标签指向静态表，自定义/保留大小写指向
+     *         文档字符串池；均与文档同生命周期。
      */
-    [[nodiscard]] const std::string& tag_name() const noexcept;
+    [[nodiscard]] std::string_view tag_name() const noexcept;
 
     /**
      * @brief 获取元素的整数化标签 id（驻留后的 Tag）
@@ -97,11 +98,26 @@ class Element : public Node {
     [[nodiscard]] bool has_attribute(std::string_view name) const noexcept;
 
     /**
+     * @brief 按预解析的整数 id 检查属性（CSS 属性选择器热路径，避免每次重解析名字）
+     * @param id 整数化属性名 id（Attr::Unknown 时按 name 回退）
+     * @param name 原始属性名（用于自定义/未知属性的回退比较）
+     */
+    [[nodiscard]] bool has_attribute(Attr id, std::string_view name) const noexcept;
+
+    /**
      * @brief 获取指定属性的值
      * @param name 属性名（忽略大小写）
-     * @return 属性值，如果属性不存在则返回空字符串
+     * @return 属性值视图，如果属性不存在则返回空视图（文档存活期间有效）
      */
-    [[nodiscard]] const std::string& get_attribute(std::string_view name) const noexcept;
+    [[nodiscard]] std::string_view get_attribute(std::string_view name) const noexcept;
+
+    /**
+     * @brief 按预解析的整数 id 取属性值（CSS 属性选择器热路径）
+     * @param id 整数化属性名 id（Attr::Unknown 时按 name 回退）
+     * @param name 原始属性名（自定义/未知属性回退用）
+     * @return 属性值视图，不存在则空视图
+     */
+    [[nodiscard]] std::string_view get_attribute(Attr id, std::string_view name) const noexcept;
 
     /**
      * @brief 获取指定属性的值（可区分“不存在”与“空值”）
@@ -127,15 +143,15 @@ class Element : public Node {
 
     /**
      * @brief 获取 ID 属性值
-     * @return ID 值，如果元素没有 ID 属性则返回空字符串
+     * @return ID 值视图，如果元素没有 ID 属性则返回空视图
      */
-    [[nodiscard]] const std::string& id() const noexcept;
+    [[nodiscard]] std::string_view id() const noexcept;
 
     /**
      * @brief 获取 class 属性的原始值
-     * @return class 属性值，如果元素没有 class 属性则返回空字符串
+     * @return class 属性值视图，如果元素没有 class 属性则返回空视图
      */
-    [[nodiscard]] const std::string& class_name() const noexcept;
+    [[nodiscard]] std::string_view class_name() const noexcept;
 
     /**
      * @brief 获取所有 CSS 类名
@@ -222,7 +238,7 @@ class Element : public Node {
     void add_attribute(std::string_view name, std::string_view value, bool has_value = true);
 
   private:
-    std::string            m_name;            /**< 标签名（保留原始大小写；池化留待 Phase 3） */
+    std::string_view       m_name;            /**< 标签名视图（静态表 / 文档池；保留原始大小写） */
     Tag                    m_tag;             /**< 整数化标签 id（构造时由 m_name 归一化解析） */
     NamespaceKind          m_namespace_kind;  /**< 命名空间 */
     std::vector<Attribute> m_attributes;      /**< 属性列表 */

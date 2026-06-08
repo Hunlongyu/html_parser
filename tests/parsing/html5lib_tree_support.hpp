@@ -226,7 +226,7 @@ inline void serialize_node(const hps::Node& node, std::vector<std::string>& line
                 case hps::NamespaceKind::MathML: ns_prefix = "math "; break;
                 case hps::NamespaceKind::Html:   break;
             }
-            lines.push_back("| " + indent + "<" + ns_prefix + element->tag_name() + ">");
+            lines.push_back("| " + indent + "<" + ns_prefix + std::string(element->tag_name()) + ">");
             // html5lib：属性按名称字典序输出；外来元素的 xlink:/xml:/xmlns: 写成命名空间形式。
             const bool is_foreign = !ns_prefix.empty();
             std::vector<std::pair<std::string, std::string>> attrs;

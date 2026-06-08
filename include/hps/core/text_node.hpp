@@ -16,10 +16,13 @@ class TextNode : public Node {
     [[nodiscard]] NodeType type() const noexcept override;
 
     /**
-     * @brief 获取文本内容（原始字符串引用）
-     * @return 该文本节点的内容
+     * @brief 获取文本内容（视图）
+     * @return 该文本节点内容的视图（指向节点自有缓冲，节点存活期间有效）
+     *
+     * 文本节点的存储仍为可增长的 std::string（相邻文本 token 需就地追加合并），但对外
+     * 统一暴露 string_view，与其它节点保持一致。
      */
-    [[nodiscard]] const std::string& value() const;
+    [[nodiscard]] std::string_view value() const noexcept;
 
     /**
      * @brief 获取文本内容（Node 多态接口；对文本节点即其自身内容）

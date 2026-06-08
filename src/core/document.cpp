@@ -3,6 +3,7 @@
 #include "hps/core/comment_node.hpp"
 #include "hps/core/doctype_node.hpp"
 #include "hps/core/element.hpp"
+#include "hps/core/tag_table.hpp"
 #include "hps/core/text_node.hpp"
 #include "hps/query/element_query.hpp"
 #include "hps/query/query.hpp"
@@ -27,7 +28,22 @@ std::string normalize_tag_key(const std::string_view tag_name) {
 Document::Document(std::string html_content, std::string base_url)
     : Node(NodeType::Document),
       m_html_source(std::move(html_content)),
-      m_base_url(std::move(base_url)) {}
+      m_base_url(std::move(base_url)) {
+    // 文档自身的 owner 即自身；其 arena/池创建的节点在工厂里写入各自的 owner。
+    m_owner_document = this;
+}
+
+std::string_view Document::intern(const std::string_view s) {
+    if (s.empty()) {
+        return {};
+    }
+    // 已是源码（m_html_source）子串 → 零拷贝；否则拷入字符串池。两者都与本文档同生命周期。
+    const char* base = m_html_source.data();
+    if (!m_html_source.empty() && s.data() >= base && s.data() + s.size() <= base + m_html_source.size()) {
+        return s;
+    }
+    return m_strings.add(s);
+}
 
 NodeType Document::type() const noexcept {
     return NodeType::Document;
@@ -148,7 +164,7 @@ std::string Document::get_meta_content(const std::string_view name) const {
     for (const auto& meta : meta_elements) {
         const auto meta_name = trim_whitespace(meta->get_attribute("name"));
         if (!meta_name.empty() && equals_ignore_case(meta_name, name)) {
-            return meta->get_attribute("content");
+            return std::string(meta->get_attribute("content"));
         }
     }
     return {};
@@ -159,7 +175,7 @@ std::string Document::get_meta_property(const std::string_view property) const {
     for (const auto& meta : meta_elements) {
         const auto meta_property = trim_whitespace(meta->get_attribute("property"));
         if (!meta_property.empty() && equals_ignore_case(meta_property, property)) {
-            return meta->get_attribute("content");
+            return std::string(meta->get_attribute("content"));
         }
     }
     return {};
@@ -269,20 +285,32 @@ ElementQuery Document::css(const std::string_view selector) const {
 }
 
 Element* Document::create_element(const std::string_view name, const NamespaceKind ns) {
-    return m_arena.make<Element>(name, ns);
+    // 逐字小写的已知标签 → 用静态名（零池零拷贝）；其余（自定义/保留大小写/外来）驻留。
+    const Tag              t      = tag::from_name_ci(name);
+    const std::string_view stable = (t != Tag::Unknown && name == tag::static_name(t)) ? tag::static_name(t) : intern(name);
+    Element* element          = m_arena.make<Element>(stable, ns);
+    element->m_owner_document = this;
+    return element;
 }
 
 TextNode* Document::create_text(const std::string_view text) {
-    return m_arena.make<TextNode>(text);
+    // 文本节点自持可增长 std::string（相邻文本合并需追加），不驻留；仅记录 owner。
+    TextNode* node          = m_arena.make<TextNode>(text);
+    node->m_owner_document  = this;
+    return node;
 }
 
 CommentNode* Document::create_comment(const std::string_view text) {
-    return m_arena.make<CommentNode>(text);
+    CommentNode* node      = m_arena.make<CommentNode>(intern(text));
+    node->m_owner_document = this;
+    return node;
 }
 
 DoctypeNode* Document::create_doctype(
     const std::string_view name, const std::string_view public_id, const std::string_view system_id, const bool has_identifiers) {
-    return m_arena.make<DoctypeNode>(name, public_id, system_id, has_identifiers);
+    DoctypeNode* node      = m_arena.make<DoctypeNode>(name, public_id, system_id, has_identifiers);
+    node->m_owner_document = this;
+    return node;
 }
 
 Node* Document::add_child(Node* child) {

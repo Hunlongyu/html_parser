@@ -233,12 +233,17 @@ class Node {
     void remove_child(Node* child);
 
   private:
-    NodeType m_type;
-    Node*    m_parent{nullptr};
-    Node*    m_first_child{nullptr};  ///< 侵入式子节点链表头（arena 拥有节点）
-    Node*    m_last_child{nullptr};   ///< 侵入式子节点链表尾
-    Node*    m_prev_sibling{nullptr};
-    Node*    m_next_sibling{nullptr};
+    // Document 在工厂中创建节点后写入本指针（友元访问）：节点的拥有文档持有其 arena
+    // 与字符串池。owner_document() 因此为 O(1)，且供 add_attribute 等就地驻留字符串。
+    friend class Document;
+
+    NodeType  m_type;
+    Document* m_owner_document{nullptr};  ///< 创建该节点的 Document（拥有 arena 与字符串池）
+    Node*     m_parent{nullptr};
+    Node*     m_first_child{nullptr};  ///< 侵入式子节点链表头（arena 拥有节点）
+    Node*     m_last_child{nullptr};   ///< 侵入式子节点链表尾
+    Node*     m_prev_sibling{nullptr};
+    Node*     m_next_sibling{nullptr};
 };
 
 }  // namespace hps

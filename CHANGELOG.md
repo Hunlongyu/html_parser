@@ -5,6 +5,47 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [0.3.0] - 2026-06-08
+
+用现代 C++ 复刻 lexbor 的高性能 DOM 内存模型（在 0.2.0 节点 arena 之上）：
+**名字整数化（tag-id / attr-id）+ 字符串 arena**。建树与 CSS 匹配的热路径以整数
+比较取代字符串比较；节点名/属性/注释改为指向 Document 字符串池/源码的 string_view，
+消除大量逐节点 std::string 分配。
+
+### Changed (BREAKING)
+
+- **访问器返回 string_view**：`Element::tag_name()`、`get_attribute()`、`id()`、
+  `class_name()`、`Attribute::name()`/`value()`、`TextNode::value()`、
+  `CommentNode::value()` 由 `const std::string&` 改为 `std::string_view`
+  （指向 Document 拥有的源码/字符串池，与文档同生命周期）。多数用法（打印、比较、
+  传 string_view）源码兼容；持久保存引用的调用方需调整。
+- **Attribute 重构为轻量值类型**：持 `Attr` 整数 id + 名/值视图；移除 `TokenAttribute`
+  构造与 `set_name`。
+- 节点创建一律经 `Document::create_*` 工厂（驻留字符串 + 记录 owner_document）。
+
+### Added
+
+- **整数化标签/属性名**：`enum class Tag` / `Attr` + 内部 `tag_table.hpp` / `attr_table.hpp`
+  （已知名排序主表、编译期标志表、命名常量；static_assert 保证完整性）。
+  新增 `Element::tag()`、`Attribute::id()`。
+- `Document::intern()`（源码子串零拷贝 / 否则入 StringPool）；`Node::owner_document`
+  指针使 `owner_document()` 降为 O(1)（消除原父链上溯）。
+- 性能语料：接入 WHATWG HTML 规范单页（事实标准大文件）作为基准输入。
+
+### Fixed
+
+- **tokenizer O(n²)（大文档）**：错误位置原本每次从源码起点扫描算行列；大页面产生
+  O(n) 可恢复错误 → 退化为 O(n²)。改为增量行列计算（O(n)，行列结果不变）。
+  WHATWG 规范单页（15.5MB）解析由 ~4 分钟降至 ~280ms。
+
+### Performance
+
+- 建树字符串比较整数化：tree-build 时间下降约 11%–34%。
+- 名字/属性/注释池化：tree-build 分配下降约 24%–30%（a/node 由 ~2.85 降至 ~2.43）。
+- 一致性保持 1227/1764；全程 AddressSanitizer 干净（含 15.5MB 规范单页全量回读 + 序列化）。
+
+[0.3.0]: https://github.com/Hunlongyu/html_parser/releases/tag/v0.3.0
+
 ## [0.2.0] - 2026-06-06
 
 DOM 节点所有权模型重构为 **arena 分配**：全部节点改由 `Document` 的单调

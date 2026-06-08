@@ -32,6 +32,17 @@ enum class Tag : std::uint16_t {
     Unknown = 0,
 };
 
+/**
+ * @brief 驻留后的属性名标识（整数化属性名）。
+ *
+ * 与 Tag 同理：已知属性名映射到稳定小整数 id；未知/自定义（如 data-* / aria-*）为
+ * `Attr::Unknown`，回退按名比较。属性查找与 CSS 属性匹配在热路径上以整数比较取代
+ * 字符串比较。
+ */
+enum class Attr : std::uint16_t {
+    Unknown = 0,
+};
+
 enum class TokenType : std::uint8_t {
     OPEN,          /// <tag ...>
     CLOSE,         /// </tag>

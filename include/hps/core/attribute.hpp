@@ -1,169 +1,84 @@
 #pragma once
 
-#include "hps/parsing/token_attribute.hpp"
+#include "hps/hps_fwd.hpp"
 
 #include <string>
+#include <string_view>
 
 namespace hps {
 
 /**
- * @brief HTML 属性类
+ * @brief HTML 属性（轻量值类型）
  *
- * Attribute 类表示 HTML 元素的一个属性，包含属性名、属性值以及是否有值的标志。
- * 支持无值属性（如 disabled、checked）和有值属性（如 id="value"、class="value"）。
- * 该类提供了属性的创建、访问、修改和字符串化功能。
+ * 持有：整数化属性名 id（Attr，已知属性 → 整数比较）、属性名与属性值的 string_view
+ * （指向 Document 拥有的源码/字符串池，与文档同生命周期），以及“是否带值”标志。
+ * 属性本身不拥有字符串——驻留由 Element::add_attribute 经其 owner_document 完成。
  */
 class Attribute {
   public:
-    /**
-     * @brief 默认构造函数
-     *
-     * 创建一个空的属性对象，属性名和值都为空字符串，has_value 为 false。
-     */
     constexpr Attribute() noexcept = default;
 
     /**
-     * @brief 构造函数
-     * @param name 属性名
-     * @param value 属性值，默认为空字符串
-     * @param hv 是否有值标志，默认为 true
-     *
-     * 创建一个具有指定名称和值的属性。
-     * 对于无值属性（如 disabled），应将 hv 设置为 false。
+     * @brief 构造（名/值须已由调用方驻留为稳定视图）
+     * @param id 整数化属性名 id（未知/自定义为 Attr::Unknown）
+     * @param name 属性名视图（驻留后稳定）
+     * @param value 属性值视图（驻留后稳定）
+     * @param has_value 是否带值（区分 disabled 与 disabled=""）
      */
-    explicit Attribute(const std::string_view name, const std::string_view value = {}, const bool hv = true) noexcept
-        : m_name(name),
+    Attribute(const Attr id, const std::string_view name, const std::string_view value, const bool has_value) noexcept
+        : m_id(id),
+          m_name(name),
           m_value(value),
-          m_has_value(hv) {}
+          m_has_value(has_value) {}
 
-    /**
-     * @brief 从 TokenAttribute 构造
-     * @param attr TokenAttribute 对象
-     *
-     * 从解析器生成的 TokenAttribute 对象创建 Attribute 实例。
-     * 用于将解析阶段的属性信息转换为 DOM 树中的属性对象。
-     */
-    explicit Attribute(const TokenAttribute& attr)
-        : m_name(attr.name),
-          m_value(attr.value),
-          m_has_value(attr.has_value) {}
+    /** @brief 整数化属性名 id（已知属性用于 O(1) 整数比较；自定义为 Attr::Unknown） */
+    [[nodiscard]] Attr id() const noexcept {
+        return m_id;
+    }
 
-    // Attribute Access Methods
-    /**
-     * @brief 获取属性名
-     * @return 属性名的常量引用
-     */
-    [[nodiscard]] const std::string& name() const noexcept {
+    /** @brief 属性名（视图，文档存活期间有效） */
+    [[nodiscard]] std::string_view name() const noexcept {
         return m_name;
     }
 
-    /**
-     * @brief 获取属性值
-     * @return 属性值的常量引用
-     */
-    [[nodiscard]] const std::string& value() const noexcept {
+    /** @brief 属性值（视图，文档存活期间有效） */
+    [[nodiscard]] std::string_view value() const noexcept {
         return m_value;
     }
 
-    /**
-     * @brief 检查属性是否有值
-     * @return 如果属性有值则返回 true，否则返回 false
-     *
-     * 用于区分有值属性（如 id="value"）和无值属性（如 disabled）。
-     */
+    /** @brief 是否带值（false 表示无值属性，如 disabled） */
     [[nodiscard]] bool has_value() const noexcept {
         return m_has_value;
     }
 
-    // String Representation
     /**
-     * @brief 将属性转换为字符串表示
-     * @return 属性的字符串表示形式
-     *
-     * 对于有值属性，返回格式为 'name="value"'；
-     * 对于无值属性，仅返回属性名。
-     * 例如：id="header" 或 disabled
+     * @brief 字符串化：带值返回 `name="value"`；无值返回 `name`。
      */
     [[nodiscard]] std::string to_string() const {
         if (!m_has_value) {
-            return m_name;
+            return std::string(m_name);
         }
-        return m_name + "=\"" + m_value + "\"";
-    }
-
-    // Attribute Modification Methods
-    /**
-     * @brief 设置属性名（string 版本）
-     * @param name 新的属性名
-     */
-    void set_name(const std::string& name) noexcept {
-        m_name = name;
+        std::string out;
+        out.reserve(m_name.size() + m_value.size() + 3);
+        out.append(m_name).append("=\"").append(m_value).push_back('"');
+        return out;
     }
 
     /**
-     * @brief 设置属性名（string 右值引用版本）
-     * @param name 新的属性名
-     */
-    void set_name(std::string&& name) noexcept {
-        m_name = std::move(name);
-    }
-
-    /**
-     * @brief 设置属性名（string_view 版本）
-     * @param name 新的属性名
-     */
-    void set_name(const std::string_view name) noexcept {
-        m_name = name;
-    }
-
-    /**
-     * @brief 设置属性值（string 版本）
-     * @param value 新的属性值
-     * @param has_value 是否有值标志，默认为 true
-     *
-     * 设置属性的值和有值标志。可以用于将有值属性转换为无值属性，
-     * 或者将无值属性转换为有值属性。
-     */
-    void set_value(const std::string& value, const bool has_value = true) noexcept {
-        m_value     = value;
-        m_has_value = has_value;
-    }
-
-    /**
-     * @brief 设置属性值（string 右值引用版本）
-     * @param value 新的属性值
-     * @param has_value 是否有值标志，默认为 true
-     */
-    void set_value(std::string&& value, const bool has_value = true) noexcept {
-        m_value     = std::move(value);
-        m_has_value = has_value;
-    }
-
-    /**
-     * @brief 设置属性值（string_view 版本）
-     * @param value 新的属性值
-     * @param has_value 是否有值标志，默认为 true
+     * @brief 设置属性值（value 须为调用方已驻留的稳定视图）
      */
     void set_value(const std::string_view value, const bool has_value = true) noexcept {
         m_value     = value;
         m_has_value = has_value;
     }
 
-    // Comparison Operators
-    /**
-     * @brief 三路比较操作符
-     * @param other 要比较的另一个 Attribute 对象
-     * @return 比较结果
-     *
-     * 提供完整的比较功能，支持 ==, !=, <, <=, >, >= 操作符。
-     * 比较顺序：首先比较属性名，然后比较属性值，最后比较 has_value 标志。
-     */
     auto operator<=>(const Attribute& other) const = default;
 
   private:
-    std::string m_name;              /**< 属性名 */
-    std::string m_value;             /**< 属性值 */
-    bool        m_has_value = false; /**< 是否有值标志，false 表示无值属性（如 disabled） */
+    Attr             m_id = Attr::Unknown;  /**< 整数化属性名 id */
+    std::string_view m_name;                /**< 属性名（驻留视图） */
+    std::string_view m_value;               /**< 属性值（驻留视图） */
+    bool             m_has_value = false;   /**< 是否带值 */
 };
 
 }  // namespace hps
