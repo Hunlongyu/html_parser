@@ -1054,8 +1054,27 @@ void Tokenizer::record_recoverable_error(const ErrorCode code, const std::string
     }
 }
 
+Location Tokenizer::location_at_pos() noexcept {
+    const size_t end = m_pos > m_source.size() ? m_source.size() : m_pos;
+    if (end < m_loc_pos) {
+        // 罕见的位置回退：全量计算，且不污染增量游标。
+        return Location::from_position(m_source, end);
+    }
+    for (size_t i = m_loc_pos; i < end; ++i) {
+        if (m_source[i] == '\n') {
+            ++m_loc_line;
+            m_loc_col = 1;
+        } else {
+            ++m_loc_col;
+        }
+    }
+    m_loc_pos = end;
+    return Location(end, m_loc_line, m_loc_col);
+}
+
 void Tokenizer::record_error(ErrorCode code, const std::string& message) {
-    m_errors.emplace_back(code, message, Location::from_position(m_source, m_pos));
+    // 增量行列计算：避免每个错误都从头扫描源码（大文档上会退化为 O(n²)）。
+    m_errors.emplace_back(code, message, location_at_pos());
 }
 
 void Tokenizer::transition_to_data_state() {

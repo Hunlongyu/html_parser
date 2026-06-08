@@ -352,6 +352,10 @@ class Tokenizer {
     void finish_boolean_attribute();
     void finish_attribute(std::string_view value);
 
+    // 当前 m_pos 处的 Location（行/列）。增量计算：词法器位置单调前进，故只扫描自上次
+    // 之后的增量，所有错误合计 O(n)，避免每个错误都从头扫描造成的 O(n²)。
+    [[nodiscard]] Location location_at_pos() noexcept;
+
   private:
     // ==================== 核心状态成员变量 ====================
 
@@ -368,6 +372,11 @@ class Tokenizer {
     std::vector<HPSError> m_errors;            ///< 解析过程中收集的所有错误信息列表
     std::string           m_char_ref_buffer;   ///< 字符引用解析缓冲区，用于处理HTML实体
     size_t                m_attr_value_start;  ///< 属性值起始位置（Zero-Copy优化）
+
+    // 增量行列计算的游标（随错误位置单调前进，把每次 O(pos) 的全量扫描摊销为 O(n)）。
+    size_t m_loc_pos  = 0;
+    size_t m_loc_line = 1;
+    size_t m_loc_col  = 1;
 };
 
 }  // namespace hps
