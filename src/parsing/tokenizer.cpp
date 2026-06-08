@@ -3,6 +3,8 @@
 #include "hps/utils/exception.hpp"
 #include "hps/utils/string_utils.hpp"
 
+#include <cstring>
+
 namespace {
 
 [[nodiscard]] auto text_parsing_state_for_tag(const std::string_view tag_name) noexcept -> hps::TokenizerState {
@@ -169,9 +171,12 @@ std::optional<Token> Tokenizer::consume_data_state() {
     }
 
     const size_t start = m_pos;
-    while (has_more() && current_char() != '<') {
-        advance();
-    }
+    // 用 memchr 批量跳到下一个 '<'（CRT 的 SIMD 实现），代替逐字符扫描。
+    // advance() 仅 ++m_pos 无副作用，故直接置位等价。'&' 不在此停（实体在文本 token
+    // 整体解码），因此只需找 '<'。
+    const char* const base = m_source.data();
+    const void* const hit  = std::memchr(base + m_pos, '<', m_source.size() - m_pos);
+    m_pos                  = hit != nullptr ? static_cast<size_t>(static_cast<const char*>(hit) - base) : m_source.size();
     if (start < m_pos) {
         return emit_text_token(m_source.substr(start, m_pos - start));
     }
@@ -840,7 +845,15 @@ std::optional<Token> Tokenizer::consume_raw_text_until_end_tag(const bool decode
             m_pos = saved_pos;
             advance();
         } else {
-            advance();
+            // 非结束标签处：用 memchr 跳到下一个 '<'（至少前进一个字符，避免停在当前 '<'）。
+            const size_t from = m_pos + 1;
+            if (from >= m_source.size()) {
+                m_pos = m_source.size();
+            } else {
+                const char* const b = m_source.data();
+                const void* const h = std::memchr(b + from, '<', m_source.size() - from);
+                m_pos = h != nullptr ? static_cast<size_t>(static_cast<const char*>(h) - b) : m_source.size();
+            }
         }
     }
 
@@ -856,9 +869,7 @@ std::optional<Token> Tokenizer::consume_raw_text_until_end_tag(const bool decode
 
 std::optional<Token> Tokenizer::consume_plaintext_state() {
     const size_t start = m_pos;
-    while (has_more()) {
-        advance();
-    }
+    m_pos              = m_source.size();  // plaintext 一直消费到结尾
     if (start < m_pos) {
         return emit_text_token(m_source.substr(start, m_pos - start));
     }
