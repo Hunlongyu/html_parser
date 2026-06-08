@@ -294,9 +294,10 @@ Element* Document::create_element(const std::string_view name, const NamespaceKi
 }
 
 TextNode* Document::create_text(const std::string_view text) {
-    // 文本节点自持可增长 std::string（相邻文本合并需追加），不驻留；仅记录 owner。
-    TextNode* node          = m_arena.make<TextNode>(text);
-    node->m_owner_document  = this;
+    // 驻留为稳定视图：源码子串零拷贝，否则入池（bump，比 std::string malloc 更省）。
+    // 文本节点默认零拷贝持有此视图；若后续相邻文本合并 append，再物化为自有缓冲。
+    TextNode* node         = m_arena.make<TextNode>(intern(text));
+    node->m_owner_document = this;
     return node;
 }
 

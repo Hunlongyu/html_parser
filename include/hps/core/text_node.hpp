@@ -17,10 +17,11 @@ class TextNode : public Node {
 
     /**
      * @brief 获取文本内容（视图）
-     * @return 该文本节点内容的视图（指向节点自有缓冲，节点存活期间有效）
+     * @return 该文本节点内容的视图，文档存活期间有效
      *
-     * 文本节点的存储仍为可增长的 std::string（相邻文本 token 需就地追加合并），但对外
-     * 统一暴露 string_view，与其它节点保持一致。
+     * 默认零拷贝：内容是指向 Document 字符串池/源码的视图（未发生合并时）。一旦有相邻
+     * 文本 token 追加合并，则物化为节点自有的可增长 std::string。两种情形对外都暴露
+     * string_view。
      */
     [[nodiscard]] std::string_view value() const noexcept;
 
@@ -55,7 +56,10 @@ class TextNode : public Node {
     void append_text(std::string_view text);
 
   private:
-    std::string m_text;
+    // 零拷贝默认：m_view 指向池/源码;一旦 append 合并则物化到 m_owned。
+    std::string_view m_view;                 /**< 内容视图（未物化时有效） */
+    std::string      m_owned;                /**< 合并后物化的可增长缓冲 */
+    bool             m_materialized = false; /**< true 表示已落为 m_owned */
 };
 
 }  // namespace hps

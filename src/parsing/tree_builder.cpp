@@ -575,48 +575,52 @@ void TreeBuilder::process_text(const Token& token) {
         ensure_body_element();
     }
 
-    std::string processed_text(text);
+    // 无变换（Raw + 不解码实体 + Preserve 空白）→ 直接用源码视图,零拷贝（intern 会识别
+    // 为源码子串而不复制,文本节点零分配持有）。其余情形才落到 buffer 做变换。
+    const bool needs_transform =
+        m_options.text_processing_mode == TextProcessingMode::Decode || m_options.decode_entities ||
+        m_options.whitespace_mode != WhitespaceMode::Preserve;
 
-    switch (m_options.text_processing_mode) {
-        case TextProcessingMode::Raw:
-            break;
-        case TextProcessingMode::Decode:
+    std::string      buffer;   // 仅在需变换时使用
+    std::string_view content;  // 最终要插入的内容（源码视图 / buffer 视图）
+    if (!needs_transform) {
+        content = text;
+    } else {
+        std::string processed_text(text);
+        if (m_options.text_processing_mode == TextProcessingMode::Decode) {
             processed_text = decode_html_entities(processed_text);
-            break;
-    }
-
-    if (m_options.decode_entities && m_options.text_processing_mode == TextProcessingMode::Raw) {
-        processed_text = decode_html_entities(processed_text);
-    }
-
-    std::string final_text;
-    switch (m_options.whitespace_mode) {
-        case WhitespaceMode::Preserve:
-            final_text = processed_text;
-            break;
-        case WhitespaceMode::Normalize:
-            final_text = normalize_whitespace(processed_text);
-            break;
-        case WhitespaceMode::Trim:
-            final_text = std::string(trim_whitespace(processed_text));
-            break;
-        case WhitespaceMode::Remove:
+        }
+        if (m_options.decode_entities && m_options.text_processing_mode == TextProcessingMode::Raw) {
+            processed_text = decode_html_entities(processed_text);
+        }
+        switch (m_options.whitespace_mode) {
+            case WhitespaceMode::Preserve:
+                buffer = std::move(processed_text);
+                break;
+            case WhitespaceMode::Normalize:
+                buffer = normalize_whitespace(processed_text);
+                break;
+            case WhitespaceMode::Trim:
+                buffer = std::string(trim_whitespace(processed_text));
+                break;
+            case WhitespaceMode::Remove:
+                return;
+        }
+        if (buffer.empty()) {
             return;
+        }
+        content = buffer;
     }
 
-    if (final_text.empty()) {
-        return;
-    }
-
-    if (should_foster_parent_text() && !is_all_whitespace(final_text)) {
+    if (should_foster_parent_text() && !is_all_whitespace(content)) {
         const auto [parent, before] = foster_parent_insertion_point();
-        insert_text_before(final_text, parent, before);
+        insert_text_before(content, parent, before);
         return;
     }
 
     // body 文本插入前重建活动格式化元素（重新打开被隐式关闭的 <b>/<i>/… ）。
     reconstruct_active_formatting_elements();
-    insert_text(final_text);
+    insert_text(content);
 }
 
 void TreeBuilder::process_comment(const Token& token) const {
