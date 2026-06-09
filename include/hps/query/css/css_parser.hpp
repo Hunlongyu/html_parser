@@ -6,6 +6,7 @@
 #include "css_lexer.hpp"
 #include "css_selector.hpp"
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>

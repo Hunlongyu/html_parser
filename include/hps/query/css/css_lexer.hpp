@@ -2,6 +2,7 @@
 #include "hps/utils/string_pool.hpp"
 
 #include <algorithm>
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>

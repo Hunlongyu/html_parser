@@ -4,8 +4,9 @@
 #include "css_selector.hpp"
 #include "hps/utils/string_utils.hpp"
 
-#include <memory>
+#include <cstdint>
 #include <list>
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>

@@ -3,6 +3,7 @@
 #include "hps/hps_fwd.hpp"
 #include "hps/utils/string_pool.hpp"
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <string_view>

@@ -12,6 +12,7 @@
 #include <fstream>
 #include <iterator>
 #include <optional>
+#include <stdexcept>
 
 namespace hps {
 namespace {
