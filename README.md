@@ -259,7 +259,7 @@ doc->outer_html();                  // 整个文档树序列化（反映解析�
 ## 📦 快速安装
 
 ### 系统要求
-- C++20 兼容编译器（MSVC 2022+）
+- C++20 兼容编译器（CI 三平台覆盖：MSVC 2022+ / GCC / Clang）
 - CMake 3.28+
 
 ### 推荐构建入口
@@ -286,11 +286,29 @@ ctest --preset dev-debug
 - `package`：用于安装/导出的精简 Release 构建
 
 ### CMake 集成
+
+本库以**源码分发**为主：使用者用自己的工具链按需构建（C++ 无统一 ABI，源码集成最稳）。
+默认产出**静态库**；如需动态库，配置时加 `-DBUILD_SHARED_LIBS=ON`。
+
+**方式一 · FetchContent（推荐）** —— 直接拉取某个发布 tag，无需把源码 vendor 进你的仓库：
+```cmake
+include(FetchContent)
+FetchContent_Declare(
+    hps
+    GIT_REPOSITORY https://github.com/Hunlongyu/html_parser.git
+    GIT_TAG        v0.3.1  # 固定到具体发布 tag
+)
+FetchContent_MakeAvailable(hps)
+target_link_libraries(your_target PRIVATE hps::hps)
+```
+
+**方式二 · add_subdirectory** —— 已把源码放进你的工程（子模块/vendor）时：
 ```cmake
 add_subdirectory(path/to/hps)
 target_link_libraries(your_target PRIVATE hps::hps)
 ```
 
+**方式三 · find_package** —— 已 `cmake --install` 安装到系统或某个前缀时：
 ```cmake
 find_package(hps CONFIG REQUIRED)
 target_link_libraries(your_target PRIVATE hps::hps)
