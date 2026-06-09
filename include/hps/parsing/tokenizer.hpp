@@ -362,7 +362,7 @@ class Tokenizer {
     std::string_view m_source;   ///< 输入HTML字符串视图，保存待解析的源代码
     size_t           m_pos;      ///< 当前解析位置索引，指向下一个要处理的字符
     TokenizerState   m_state;    ///< 当前词法分析器状态，控制解析行为
-    const Options&   m_options;  ///< 解析配置
+    Options          m_options;  ///< 解析配置（按值持有：避免悬垂引用绑定临时 Options）
 
     // ==================== 解析辅助成员变量 ====================
 

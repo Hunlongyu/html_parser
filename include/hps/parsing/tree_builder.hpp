@@ -273,7 +273,7 @@ class TreeBuilder {
     std::vector<Element*>     m_active_formatting;  ///< 活动格式化元素列表（nullptr 为 marker）
     std::vector<std::string>  m_ignored_element_stack;  ///< 超过深度限制后跳过的元素栈
     std::vector<HPSError>     m_errors;         ///< 解析错误列表，收集处理过程中的错误
-    const Options&            m_options;        ///< 解析选项
+    Options                   m_options;        ///< 解析选项（按值持有：避免悬垂引用绑定临时 Options）
     size_t                    m_last_position = 0;  ///< 最近处理到的源码位置
     Element*                  m_html_element = nullptr;  ///< 文档 html 元素
     Element*                  m_head_element = nullptr;  ///< 文档 head 元素
