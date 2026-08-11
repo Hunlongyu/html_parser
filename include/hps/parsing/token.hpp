@@ -96,6 +96,12 @@ class Token {
      */
     [[nodiscard]] bool doctype_has_identifiers() const noexcept;
 
+    /**
+     * @brief 文本 token 的字符引用是否已由 tokenizer 解码
+     * @return true 表示 TreeBuilder 不应再次解码该值
+     */
+    [[nodiscard]] bool entities_decoded() const noexcept;
+
     // === 类型修改器 ===
 
     /**
@@ -125,6 +131,9 @@ class Token {
      * @brief 设置DOCTYPE force-quirks 标志
      */
     void set_doctype_force_quirks(bool force_quirks) noexcept;
+
+    /** @brief 标记文本 token 已完成上下文相关的字符引用解码。 */
+    void set_entities_decoded(bool decoded = true) noexcept;
 
     // === 属性管理（重要的扩展功能）===
 
@@ -242,15 +251,16 @@ class Token {
     [[nodiscard]] bool is_tag(std::string_view name) const noexcept;
 
   private:
-    TokenType                   m_type;        ///< Token类型，决定了Token的基本行为
-    std::string                 m_name;        ///< Token名称，对于标签是标签名，对于文本通常为空
-    std::string_view            m_value;       ///< Token值，用于零拷贝场景（指向源码）
-    std::string                 m_value_owned; ///< Token值，用于拥有所有权的场景（动态内容）
-    std::string                 m_doctype_public_id;  ///< DOCTYPE public identifier
-    std::string                 m_doctype_system_id;  ///< DOCTYPE system identifier
-    bool                        m_doctype_force_quirks{false}; ///< DOCTYPE quirks flag
-    bool                        m_doctype_has_identifiers{false}; ///< 是否声明了 PUBLIC/SYSTEM
-    std::vector<TokenAttribute> m_attrs;       ///< 属性列表，存储标签的所有属性信息
+    TokenType                   m_type;                            ///< Token类型，决定了Token的基本行为
+    std::string                 m_name;                            ///< Token名称，对于标签是标签名，对于文本通常为空
+    std::string_view            m_value;                           ///< Token值，用于零拷贝场景（指向源码）
+    std::string                 m_value_owned;                     ///< Token值，用于拥有所有权的场景（动态内容）
+    std::string                 m_doctype_public_id;               ///< DOCTYPE public identifier
+    std::string                 m_doctype_system_id;               ///< DOCTYPE system identifier
+    bool                        m_doctype_force_quirks{false};     ///< DOCTYPE quirks flag
+    bool                        m_doctype_has_identifiers{false};  ///< 是否声明了 PUBLIC/SYSTEM
+    bool                        m_entities_decoded{false};         ///< 文本值是否已经过字符引用解码
+    std::vector<TokenAttribute> m_attrs;                           ///< 属性列表，存储标签的所有属性信息
 };
 
 }  // namespace hps

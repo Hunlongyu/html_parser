@@ -99,15 +99,25 @@ option(HPS_HTML5LIB_CONFORMANCE "Fetch full html5lib-tests and run the tree-cons
 if(HPS_HTML5LIB_CONFORMANCE)
     set(HPS_HTML5LIB_TESTS_GIT_REPOSITORY "https://github.com/html5lib/html5lib-tests.git"
         CACHE STRING "Git repository for html5lib-tests data (override for a mirror)")
-    set(HPS_HTML5LIB_TESTS_GIT_TAG "master"
-        CACHE STRING "Git tag/branch for html5lib-tests data")
+    # 该提交是上游把 tree-construction 数据迁往 WPT 前的最后一个版本。
+    # 固定提交保证 conformance 基线可复现，不随上游 master 布局变化而失效。
+    set(_HPS_HTML5LIB_TESTS_PIN "9329e64694e7835d0dcff9811e22856ef6ad16f9")
+    if(DEFINED HPS_HTML5LIB_TESTS_GIT_TAG AND HPS_HTML5LIB_TESTS_GIT_TAG STREQUAL "master")
+        # 迁移旧版本写入 CMakeCache.txt 的默认值；否则已有构建目录会一直追踪已删除该目录的 master。
+        set(HPS_HTML5LIB_TESTS_GIT_TAG "${_HPS_HTML5LIB_TESTS_PIN}"
+            CACHE STRING "Git tag/branch for html5lib-tests data" FORCE)
+    else()
+        set(HPS_HTML5LIB_TESTS_GIT_TAG "${_HPS_HTML5LIB_TESTS_PIN}"
+            CACHE STRING "Git tag/branch for html5lib-tests data")
+    endif()
+    unset(_HPS_HTML5LIB_TESTS_PIN)
 
     include(FetchContent)
     FetchContent_Declare(
         html5lib_tests
         GIT_REPOSITORY "${HPS_HTML5LIB_TESTS_GIT_REPOSITORY}"
         GIT_TAG "${HPS_HTML5LIB_TESTS_GIT_TAG}"
-        GIT_SHALLOW TRUE
+        GIT_SHALLOW FALSE
     )
     FetchContent_MakeAvailable(html5lib_tests)
 

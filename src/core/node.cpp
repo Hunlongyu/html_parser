@@ -97,8 +97,19 @@ Node* Node::append_child(Node* child) {
     if (child == nullptr) {
         return nullptr;
     }
-    // 前置条件（仅 debug 校验，release 下编译为空）：节点不能挂到自身之下，
-    // 且必须是“游离”节点——已在树上的节点需先 remove_child/take_children 再挂。
+
+    // 这些条件不能只靠 assert：公开 DOM API 在 Release 下也必须拒绝会破坏侵入式链表
+    // 或跨越 arena 生命周期的挂载。双方都未归属 Document 时可组成调用方自管的临时树；
+    // 只要一方属于 Document，双方就必须来自同一个 arena。
+    if (child->m_parent != nullptr || child->m_owner_document != m_owner_document) {
+        return nullptr;
+    }
+    for (const Node* ancestor = this; ancestor != nullptr; ancestor = ancestor->m_parent) {
+        if (ancestor == child) {
+            return nullptr;  // 包括 self-child 与把祖先挂到其后代之下形成环。
+        }
+    }
+
     assert(child != this && "append_child: 不能把节点挂到自身之下");
     assert(child->m_parent == nullptr && "append_child: 节点已在树上，应先摘除再挂载");
     child->m_parent       = this;
@@ -117,6 +128,16 @@ Node* Node::insert_child_before(Node* child, const Node* before) {
     if (child == nullptr) {
         return nullptr;
     }
+
+    if (child->m_parent != nullptr || child->m_owner_document != m_owner_document) {
+        return nullptr;
+    }
+    for (const Node* ancestor = this; ancestor != nullptr; ancestor = ancestor->m_parent) {
+        if (ancestor == child) {
+            return nullptr;
+        }
+    }
+
     assert(child != this && "insert_child_before: 不能把节点挂到自身之下");
     assert(child->m_parent == nullptr && "insert_child_before: 节点已在树上，应先摘除再挂载");
     if (before == nullptr) {

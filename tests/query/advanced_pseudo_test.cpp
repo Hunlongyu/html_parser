@@ -44,25 +44,25 @@ TEST(CSSSelectorTest, PseudoClassWhere) {
 
 TEST(CSSSelectorTest, PseudoClassHas) {
     Document doc("");
-    Element parent("div");
+    Element* parent = doc.create_element("div");
     Element* child = doc.create_element("span");
     child->add_attribute("class", "foo");
 
-    parent.add_child(child);
+    parent->add_child(child);
 
     // div:has(.foo) matches parent
-    EXPECT_TRUE(parse("div:has(.foo)")->matches(parent));
+    EXPECT_TRUE(parse("div:has(.foo)")->matches(*parent));
     
     // div:has(.bar) does not match
-    EXPECT_FALSE(parse("div:has(.bar)")->matches(parent));
+    EXPECT_FALSE(parse("div:has(.bar)")->matches(*parent));
     
     // div:has(span) matches
-    EXPECT_TRUE(parse("div:has(span)")->matches(parent));
+    EXPECT_TRUE(parse("div:has(span)")->matches(*parent));
 }
 
 TEST(CSSSelectorTest, PseudoClassHasSupportsRelativeSelectors) {
     Document doc("");
-    Element parent("div");
+    Element* parent = doc.create_element("div");
 
     Element* first = doc.create_element("span");
     first->add_attribute("class", "lead");
@@ -74,10 +74,10 @@ TEST(CSSSelectorTest, PseudoClassHasSupportsRelativeSelectors) {
     second->add_attribute("class", "target");
 
     Element* first_ptr = first;
-    parent.add_child(first);
-    parent.add_child(second);
+    parent->add_child(first);
+    parent->add_child(second);
 
-    EXPECT_TRUE(parse("div:has(> span.target)")->matches(parent));
+    EXPECT_TRUE(parse("div:has(> span.target)")->matches(*parent));
     EXPECT_TRUE(parse("span:has(+ span.target)")->matches(*first_ptr));
     EXPECT_TRUE(parse("span:has(~ span.target)")->matches(*first_ptr));
     EXPECT_FALSE(parse("span:has(+ em.nested)")->matches(*first_ptr));

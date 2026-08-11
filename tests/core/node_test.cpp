@@ -1,10 +1,12 @@
+#include "hps/core/node.hpp"
+
 #include "hps/core/comment_node.hpp"
 #include "hps/core/document.hpp"
 #include "hps/core/element.hpp"
-#include "hps/core/node.hpp"
 #include "hps/core/text_node.hpp"
 
 #include <gtest/gtest.h>
+
 #include <memory>
 
 namespace hps::tests {
@@ -94,7 +96,7 @@ TEST(NodeTest, AppendChildIgnoresNullptr) {
 
 TEST(NodeTest, SingleChildHasNoSiblingsAndParentLinksSet) {
     NodeTestHarness parent(NodeType::Element);
-    auto            child = std::make_unique<NodeTestHarness>(NodeType::Text);
+    auto            child     = std::make_unique<NodeTestHarness>(NodeType::Text);
     const Node*     child_ptr = child.get();
 
     parent.append_child(child.get());
@@ -115,8 +117,58 @@ TEST(NodeTest, SingleChildHasNoSiblingsAndParentLinksSet) {
     EXPECT_EQ(children[0], child_ptr);
 }
 
-TEST(NodeTest, TypePredicatesAndDynamicCastsWork) {
+TEST(NodeTest, RejectsAlreadyAttachedAndCrossDocumentChildren) {
+    Document first("");
+    Document second("");
+
+    Element* first_parent   = first.create_element("div");
+    Element* second_parent  = second.create_element("section");
+    Element* attached_child = first.create_element("span");
+    Element* foreign_child  = first.create_element("em");
+
+    ASSERT_EQ(first_parent->add_child(attached_child), attached_child);
+    EXPECT_EQ(first_parent->add_child(attached_child), nullptr);
+    EXPECT_EQ(second_parent->add_child(foreign_child), nullptr);
+
+    EXPECT_EQ(attached_child->parent(), first_parent);
+    EXPECT_EQ(foreign_child->parent(), nullptr);
+    EXPECT_EQ(first_parent->first_child(), attached_child);
+    EXPECT_FALSE(second_parent->has_children());
+}
+
+TEST(NodeTest, RejectsMixedDocumentAndStandaloneOwnership) {
     Document doc("");
+    Element  standalone_parent("div");
+    Element  standalone_child("span");
+    Element* owned_parent = doc.create_element("section");
+    Element* owned_child  = doc.create_element("em");
+
+    EXPECT_EQ(standalone_parent.add_child(owned_child), nullptr);
+    EXPECT_EQ(owned_parent->add_child(&standalone_child), nullptr);
+    EXPECT_FALSE(standalone_parent.has_children());
+    EXPECT_FALSE(owned_parent->has_children());
+    EXPECT_EQ(owned_child->parent(), nullptr);
+    EXPECT_EQ(standalone_child.parent(), nullptr);
+}
+
+TEST(NodeTest, RejectsAncestorCycle) {
+    Document doc("");
+    Element* root  = doc.create_element("div");
+    Element* child = doc.create_element("section");
+    Element* leaf  = doc.create_element("span");
+
+    ASSERT_EQ(root->add_child(child), child);
+    ASSERT_EQ(child->add_child(leaf), leaf);
+
+    EXPECT_EQ(leaf->add_child(root), nullptr);
+    EXPECT_EQ(root->parent(), nullptr);
+    EXPECT_EQ(child->parent(), root);
+    EXPECT_EQ(leaf->parent(), child);
+    EXPECT_FALSE(leaf->has_children());
+}
+
+TEST(NodeTest, TypePredicatesAndDynamicCastsWork) {
+    Document     doc("");
     Element*     html = doc.create_element("html");
     TextNode*    text = doc.create_text("t");
     CommentNode* comm = doc.create_comment("c");

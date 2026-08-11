@@ -138,10 +138,8 @@ class TreeBuilder {
      * @return 新创建的Element裸指针（所有权归 Document arena）
      */
     [[nodiscard]] Element* create_element(const Token& token);
-    [[nodiscard]] Element* create_element(
-        const Token& token,
-        NamespaceKind namespace_kind);
-    static void merge_token_attributes(Element& element, const Token& token);
+    [[nodiscard]] Element* create_element(const Token& token, NamespaceKind namespace_kind);
+    void                   merge_token_attributes(Element& element, const Token& token) const;
 
     /**
      * @brief 浅克隆元素（标签名/命名空间/属性），在 Document arena 中分配
@@ -162,7 +160,7 @@ class TreeBuilder {
      *
      * 在当前元素下创建并插入文本节点。
      */
-    void insert_text(std::string_view text) const;
+    void insert_text(std::string_view text);
 
     /**
      * @brief 插入注释节点
@@ -190,7 +188,7 @@ class TreeBuilder {
      * 返回栈顶元素但不移除它，用于确定新节点的插入位置。
      */
     [[nodiscard]] Element* current_element() const;
-    [[nodiscard]] bool is_on_stack(const Element* element) const noexcept;
+    [[nodiscard]] bool     is_on_stack(const Element* element) const noexcept;
 
     /**
      * @brief 关闭元素直到遇到指定标签
@@ -209,48 +207,47 @@ class TreeBuilder {
      *
      * 如果当前栈顶元素是可以被新标签隐含关闭的（如 <p> 遇到 <p>），则自动关闭栈顶元素。
      */
-    void check_implicit_close(Tag tag);
-    void ensure_html_element();
-    void ensure_head_element();
-    void ensure_body_element();
-    void close_head_element_if_open();
-    void prepare_table_context_for_start_tag(Tag tag);
-    void prepare_select_context_for_start_tag(Tag tag);
-    [[nodiscard]] bool handle_table_end_tag(Tag tag);
-    [[nodiscard]] bool handle_select_end_tag(Tag tag);
-    void close_open_table_content_before_container(Tag container, bool close_matching_tag = true);
-    void ensure_table_section(std::string_view tag_name = "tbody");
-    void ensure_table_row();
-    void ensure_colgroup();
-    void close_colgroup_for_non_col_token();
-    Node* insert_node(Node* child, Node* parent) const;
-    Node* insert_node_before(Node* child, Node* parent, const Node* before) const;
-    void insert_text_before(std::string_view text, Node* parent, const Node* before) const;
+    void                           check_implicit_close(Tag tag);
+    void                           ensure_html_element();
+    void                           ensure_head_element();
+    void                           ensure_body_element();
+    void                           close_head_element_if_open();
+    void                           prepare_table_context_for_start_tag(Tag tag);
+    void                           prepare_select_context_for_start_tag(Tag tag);
+    [[nodiscard]] bool             handle_table_end_tag(Tag tag);
+    [[nodiscard]] bool             handle_select_end_tag(Tag tag);
+    void                           close_open_table_content_before_container(Tag container, bool close_matching_tag = true);
+    void                           ensure_table_section(std::string_view tag_name = "tbody");
+    void                           ensure_table_row();
+    void                           ensure_colgroup();
+    void                           close_colgroup_for_non_col_token();
+    Node*                          insert_node(Node* child, Node* parent) const;
+    Node*                          insert_node_before(Node* child, Node* parent, const Node* before) const;
+    void                           insert_text_before(std::string_view text, Node* parent, const Node* before);
+    [[nodiscard]] std::string_view limit_text_for_node(std::string_view text, size_t existing_length);
 
-    [[nodiscard]] NamespaceKind current_insertion_namespace() const noexcept;
-    [[nodiscard]] NamespaceKind namespace_for_start_tag(Tag tag) const noexcept;
-    [[nodiscard]] static bool is_all_whitespace(std::string_view text) noexcept;
-    [[nodiscard]] bool should_foster_parent_text() const noexcept;
-    [[nodiscard]] bool should_foster_parent_element(Tag tag) const noexcept;
+    [[nodiscard]] NamespaceKind                 current_insertion_namespace() const noexcept;
+    [[nodiscard]] NamespaceKind                 namespace_for_start_tag(Tag tag) const noexcept;
+    [[nodiscard]] static bool                   is_all_whitespace(std::string_view text) noexcept;
+    [[nodiscard]] bool                          should_foster_parent_text() const noexcept;
+    [[nodiscard]] bool                          should_foster_parent_element(Tag tag) const noexcept;
     [[nodiscard]] std::pair<Node*, const Node*> foster_parent_insertion_point() const noexcept;
-    void close_foster_parented_elements_before_table_token() noexcept;
+    void                                        close_foster_parented_elements_before_table_token() noexcept;
 
     // ===== 活动格式化元素列表 + 领养机构算法（HTML5 in-body 的格式化元素处理）=====
-    void push_active_formatting(Element* element);
-    void push_active_formatting_marker();
-    void clear_active_formatting_to_last_marker();
-    void remove_from_active_formatting(const Element* element);
-    void reconstruct_active_formatting_elements();
-    [[nodiscard]] bool run_adoption_agency(Tag subject);
-    [[nodiscard]] bool is_in_active_formatting(const Element* element) const noexcept;
-    [[nodiscard]] bool has_element_in_scope(const Element* target) const noexcept;
+    void                      push_active_formatting(Element* element);
+    void                      push_active_formatting_marker();
+    void                      clear_active_formatting_to_last_marker();
+    void                      remove_from_active_formatting(const Element* element);
+    void                      reconstruct_active_formatting_elements();
+    [[nodiscard]] bool        run_adoption_agency(Tag subject);
+    [[nodiscard]] bool        is_in_active_formatting(const Element* element) const noexcept;
+    [[nodiscard]] bool        has_element_in_scope(const Element* target) const noexcept;
     [[nodiscard]] static bool is_special_element(const Element& element) noexcept;
     [[nodiscard]] static bool same_formatting_element(const Element& a, const Element& b) noexcept;
-    Element* insert_html_element_at_current(Element* element);
+    Element*                  insert_html_element_at_current(Element* element);
     // 按整数 tag 在开放元素栈中查找最近的匹配（热路径，已知标签）。
-    [[nodiscard]] Element* find_open_element(
-        Tag tag,
-        bool include_fragment_base = true) const noexcept;
+    [[nodiscard]] Element* find_open_element(Tag tag, bool include_fragment_base = true) const noexcept;
     [[nodiscard]] Element* find_open_in_select_scope(Tag tag) const noexcept;
     [[nodiscard]] Element* find_open_table_section() const noexcept;
     [[nodiscard]] Element* find_open_table_row() const noexcept;
@@ -268,20 +265,20 @@ class TreeBuilder {
     void parse_error(ErrorCode code, const std::string& message, size_t position = 0);
 
   private:
-    std::shared_ptr<Document> m_document;       ///< 目标文档对象，存储构建的DOM树
-    std::vector<Element*>     m_element_stack;  ///< 元素栈，跟踪当前的嵌套结构
-    std::vector<Element*>     m_active_formatting;  ///< 活动格式化元素列表（nullptr 为 marker）
-    std::vector<std::string>  m_ignored_element_stack;  ///< 超过深度限制后跳过的元素栈
-    std::vector<HPSError>     m_errors;         ///< 解析错误列表，收集处理过程中的错误
-    Options                   m_options;        ///< 解析选项（按值持有：避免悬垂引用绑定临时 Options）
-    size_t                    m_last_position = 0;  ///< 最近处理到的源码位置
-    Element*                  m_html_element = nullptr;  ///< 文档 html 元素
-    Element*                  m_head_element = nullptr;  ///< 文档 head 元素
-    Element*                  m_body_element = nullptr;  ///< 文档 body 元素
-    Element*                  m_fragment_context = nullptr;  ///< fragment 解析上下文元素
-    size_t                    m_stack_floor      = 0;        ///< fragment 栈底，不允许弹出
-    bool                      m_head_closed  = false;    ///< head 是否已经结束
-    bool                      m_is_frameset_document = false;  ///< 是否为 frameset 文档（无 body）
+    std::shared_ptr<Document> m_document;                        ///< 目标文档对象，存储构建的DOM树
+    std::vector<Element*>     m_element_stack;                   ///< 元素栈，跟踪当前的嵌套结构
+    std::vector<Element*>     m_active_formatting;               ///< 活动格式化元素列表（nullptr 为 marker）
+    std::vector<std::string>  m_ignored_element_stack;           ///< 超过深度限制后跳过的元素栈
+    std::vector<HPSError>     m_errors;                          ///< 解析错误列表，收集处理过程中的错误
+    Options                   m_options;                         ///< 解析选项（按值持有：避免悬垂引用绑定临时 Options）
+    size_t                    m_last_position        = 0;        ///< 最近处理到的源码位置
+    Element*                  m_html_element         = nullptr;  ///< 文档 html 元素
+    Element*                  m_head_element         = nullptr;  ///< 文档 head 元素
+    Element*                  m_body_element         = nullptr;  ///< 文档 body 元素
+    Element*                  m_fragment_context     = nullptr;  ///< fragment 解析上下文元素
+    size_t                    m_stack_floor          = 0;        ///< fragment 栈底，不允许弹出
+    bool                      m_head_closed          = false;    ///< head 是否已经结束
+    bool                      m_is_frameset_document = false;    ///< 是否为 frameset 文档（无 body）
 };
 
 }  // namespace hps

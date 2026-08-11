@@ -95,8 +95,8 @@ TEST(CSSSelectorTest, AttributeSelector) {
 TEST(CSSSelectorTest, CombinatorSelector) {
     // Structure: div#parent > span#child + span#sibling
     Document doc("");
-    Element parent("div");
-    parent.add_attribute("id", "parent");
+    Element* parent = doc.create_element("div");
+    parent->add_attribute("id", "parent");
 
     Element* child = doc.create_element("span");
     child->add_attribute("id", "child");
@@ -107,8 +107,8 @@ TEST(CSSSelectorTest, CombinatorSelector) {
     Element* child_ptr = child;
     Element* sibling_ptr = sibling;
 
-    parent.add_child(child);
-    parent.add_child(sibling);
+    parent->add_child(child);
+    parent->add_child(sibling);
     
     // Child combinator >
     EXPECT_TRUE(parse("div > span")->matches(*child_ptr));
@@ -126,7 +126,7 @@ TEST(CSSSelectorTest, CombinatorSelector) {
 
 TEST(CSSSelectorTest, SiblingCombinatorsIgnoreNonElementNodes) {
     Document doc("");
-    Element parent("div");
+    Element* parent = doc.create_element("div");
 
     Element* first = doc.create_element("span");
     first->add_attribute("id", "child");
@@ -135,9 +135,9 @@ TEST(CSSSelectorTest, SiblingCombinatorsIgnoreNonElementNodes) {
     second->add_attribute("id", "sibling");
 
     Element* second_ptr = second;
-    parent.add_child(first);
-    parent.add_child(doc.create_text(" "));
-    parent.add_child(second);
+    parent->add_child(first);
+    parent->add_child(doc.create_text(" "));
+    parent->add_child(second);
 
     EXPECT_TRUE(parse("#child + span")->matches(*second_ptr));
     EXPECT_TRUE(parse("#child ~ span")->matches(*second_ptr));
@@ -175,15 +175,15 @@ TEST(CSSSelectorTest, CompoundSelector) {
 
 TEST(CSSSelectorTest, PseudoClassFirstChild) {
     Document doc("");
-    Element parent("div");
+    Element* parent = doc.create_element("div");
     Element* child1 = doc.create_element("p");
     Element* child2 = doc.create_element("p");
 
     Element* p1 = child1;
     Element* p2 = child2;
 
-    parent.add_child(child1);
-    parent.add_child(child2);
+    parent->add_child(child1);
+    parent->add_child(child2);
     
     EXPECT_TRUE(parse("p:first-child")->matches(*p1));
     EXPECT_FALSE(parse("p:first-child")->matches(*p2));

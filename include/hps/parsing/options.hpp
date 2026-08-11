@@ -174,14 +174,28 @@ class Options {
      * @return 如果是void元素返回true，否则返回false
      */
     [[nodiscard]] bool is_void_element(std::string_view tag_name) const {
+        const auto equals_html_name = [tag_name](const std::string_view candidate) {
+            if (candidate.size() != tag_name.size()) {
+                return false;
+            }
+            for (size_t i = 0; i < tag_name.size(); ++i) {
+                const char lhs = tag_name[i] >= 'A' && tag_name[i] <= 'Z' ? static_cast<char>(tag_name[i] - 'A' + 'a') : tag_name[i];
+                const char rhs = candidate[i] >= 'A' && candidate[i] <= 'Z' ? static_cast<char>(candidate[i] - 'A' + 'a') : candidate[i];
+                if (lhs != rhs) {
+                    return false;
+                }
+            }
+            return true;
+        };
+
         if (!void_elements.empty()) {
-            return void_elements.contains(std::string(tag_name));
+            return std::ranges::any_of(void_elements, equals_html_name);
         }
 
-        // 优化的二分查找，避免构建 set
+        // 集合很小，线性扫描即可同时保持 HTML 标签名大小写不敏感语义。
         static constexpr std::array<std::string_view, 20> default_void_tags = {"area", "base", "basefont", "br", "col", "command", "embed", "frame", "hr", "img", "input", "isindex", "keygen", "link", "menuitem", "meta", "param", "source", "track", "wbr"};
 
-        return std::binary_search(default_void_tags.begin(), default_void_tags.end(), tag_name);
+        return std::ranges::any_of(default_void_tags, equals_html_name);
     }
 
     // ==================== 配置选项 ====================
@@ -197,8 +211,8 @@ class Options {
     std::string        br_text              = "\n";                      ///< 自定义文本（InsertCustom 时使用）
 
     // 高级选项
-    bool preserve_case = false;  ///< ✅ 是否保持标签和属性名大小写，默认转为小写
-    bool decode_entities = false; ///< ✅ 是否解码HTML实体，默认不解码（Zero-Copy优化）
+    bool preserve_case   = false;  ///< ✅ 是否保持标签和属性名大小写，默认转为小写
+    bool decode_entities = false;  ///< ✅ 是否解码HTML实体，默认不解码（Zero-Copy优化）
 
     // 编码选项（仅作用于 parse_bytes / parse_file 等以原始字节为输入的入口）
     std::string encoding;  ///< 强制输入编码标签（如 "gbk"、"shift_jis"、"big5"）；为空时自动嗅探（BOM/<meta charset>/UTF-8 启发式）
