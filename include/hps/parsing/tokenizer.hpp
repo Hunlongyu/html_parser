@@ -294,11 +294,11 @@ class Tokenizer {
      * @param data 文本内容，默认为空字符串
      * @return 包含指定文本的 Token
      */
-    static Token create_text_token(std::string_view data = "");
-    static Token create_text_token(std::string&&) = delete;  // Prevent dangling references
-    static Token create_owned_text_token(std::string&& data);
+    static Token         create_text_token(std::string_view data = "");
+    static Token         create_text_token(std::string&&) = delete;  // Prevent dangling references
+    static Token         create_owned_text_token(std::string&& data, bool entities_decoded = false);
     std::optional<Token> emit_text_token(std::string_view data);
-    std::optional<Token> emit_owned_text_token(std::string data);
+    std::optional<Token> emit_owned_text_token(std::string data, bool entities_decoded = false);
 
     /**
      * @brief 创建注释 Token

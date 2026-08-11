@@ -1,13 +1,13 @@
-#include "hps/hps.hpp"
 #include "hps/core/element.hpp"
 #include "hps/core/text_node.hpp"
+#include "hps/hps.hpp"
+
+#include <gtest/gtest.h>
 
 #include <filesystem>
 #include <fstream>
 #include <ranges>
 #include <string>
-
-#include <gtest/gtest.h>
 
 namespace {
 bool has_error_code(const std::vector<hps::HPSError>& errors, const hps::ErrorCode code) {
@@ -44,8 +44,8 @@ TEST(HTMLParser, EnforcesMaxTokens) {
 }
 
 TEST(HTMLParser, ParseFileUsesFileContent) {
-    const auto temp_path = std::filesystem::temp_directory_path() / "hps_html_parser_test.html";
-    const std::string html = "<div>Hello</div>";
+    const auto        temp_path = std::filesystem::temp_directory_path() / "hps_html_parser_test.html";
+    const std::string html      = "<div>Hello</div>";
 
     write_binary_file(temp_path, html);
 
@@ -58,8 +58,8 @@ TEST(HTMLParser, ParseFileUsesFileContent) {
 }
 
 TEST(HTMLParser, ParseFileStripsUtf8Bom) {
-    const auto temp_path = std::filesystem::temp_directory_path() / "hps_html_parser_test_utf8_bom.html";
-    const std::string html = "<div>Hello</div>";
+    const auto        temp_path = std::filesystem::temp_directory_path() / "hps_html_parser_test_utf8_bom.html";
+    const std::string html      = "<div>Hello</div>";
     write_binary_file(temp_path, std::string("\xEF\xBB\xBF", 3) + html);
 
     const auto res = hps::parse_file_with_error(temp_path.string(), hps::Options{});
@@ -202,7 +202,7 @@ TEST(HTMLParser, MathDescendantsStillCarryMathNamespace) {
     ASSERT_NE(document, nullptr);
 
     const auto* math = document->query_selector("math");
-    const auto* mi = document->query_selector("math mi");
+    const auto* mi   = document->query_selector("math mi");
     ASSERT_NE(math, nullptr);
     ASSERT_NE(mi, nullptr);
 
@@ -224,8 +224,8 @@ TEST(HTMLParser, RawtextAndRcdataContentsStayAsText) {
     )");
     ASSERT_NE(document, nullptr);
 
-    const auto* style = document->query_selector("style");
-    const auto* title = document->query_selector("title");
+    const auto* style    = document->query_selector("style");
+    const auto* title    = document->query_selector("title");
     const auto* textarea = document->query_selector("textarea");
 
     ASSERT_NE(style, nullptr);
@@ -246,7 +246,7 @@ TEST(HTMLParser, RcdataDecodesEntitiesDuringTokenization) {
     ASSERT_NE(document, nullptr);
 
     const auto* textarea = document->query_selector("textarea");
-    const auto* title = document->query_selector("title");
+    const auto* title    = document->query_selector("title");
     ASSERT_NE(textarea, nullptr);
     ASSERT_NE(title, nullptr);
 
@@ -304,8 +304,7 @@ TEST(HTMLParser, SelectOptionsImplicitlyClosePreviousOption) {
 }
 
 TEST(HTMLParser, SelectOptgroupClosesOpenOptionAndPreviousOptgroup) {
-    const auto document =
-        hps::parse("<select><optgroup label=\"one\"><option>a<optgroup label=\"two\"><option>b</select>");
+    const auto document = hps::parse("<select><optgroup label=\"one\"><option>a<optgroup label=\"two\"><option>b</select>");
     ASSERT_NE(document, nullptr);
 
     const auto* select = document->query_selector("select");
@@ -320,7 +319,7 @@ TEST(HTMLParser, SelectOptgroupClosesOpenOptionAndPreviousOptgroup) {
     EXPECT_EQ(children[0]->as_element()->get_attribute("label"), "one");
     EXPECT_EQ(children[1]->as_element()->get_attribute("label"), "two");
 
-    const auto first_group_children = children[0]->children();
+    const auto first_group_children  = children[0]->children();
     const auto second_group_children = children[1]->children();
     ASSERT_EQ(first_group_children.size(), 1u);
     ASSERT_EQ(second_group_children.size(), 1u);
@@ -369,8 +368,7 @@ TEST(HTMLParser, DuplicateAnchorStartTagClosesPreviousAnchor) {
 }
 
 TEST(HTMLParser, NestedFormStartTagIsIgnored) {
-    const auto document =
-        hps::parse("<div><form id=\"outer\"><input name=\"a\"><form id=\"inner\"><input name=\"b\"></form></form></div>");
+    const auto document = hps::parse("<div><form id=\"outer\"><input name=\"a\"><form id=\"inner\"><input name=\"b\"></form></form></div>");
     ASSERT_NE(document, nullptr);
 
     const auto forms = document->query_selector_all("form");
@@ -412,7 +410,7 @@ TEST(HTMLParser, NestedTableInsideCellRemainsInsideCell) {
     EXPECT_EQ(row_children[0]->as_element()->tag_name(), "td");
 
     const auto* outer_cell = row_children[0]->as_element();
-    const auto children = outer_cell->children();
+    const auto  children   = outer_cell->children();
     ASSERT_EQ(children.size(), 3u);
     ASSERT_TRUE(children[0]->is_text());
     ASSERT_TRUE(children[1]->is_element());
@@ -511,8 +509,7 @@ TEST(HTMLParser, ParseFragmentUsesRcdataContextState) {
 }
 
 TEST(HTMLParser, ParseFragmentSelectContextClosesOptionsAndOptgroups) {
-    const auto document =
-        hps::parse_fragment("<optgroup label=\"one\"><option>a<optgroup label=\"two\"><option>b", "select");
+    const auto document = hps::parse_fragment("<optgroup label=\"one\"><option>a<optgroup label=\"two\"><option>b", "select");
     ASSERT_NE(document, nullptr);
 
     const auto children = document->children();
@@ -729,7 +726,65 @@ TEST(HTMLParser, DecodeEntitiesOptionDecodesNamedAndNumericEntities) {
 
     const auto* paragraph = document->query_selector("p");
     ASSERT_NE(paragraph, nullptr);
-    EXPECT_EQ(paragraph->text_content(), "&<>\"'\xC2\xA0" "AA");  // &nbsp; → U+00A0
+    EXPECT_EQ(paragraph->text_content(),
+              "&<>\"'\xC2\xA0"
+              "AA");  // &nbsp; → U+00A0
+}
+
+TEST(HTMLParser, RcdataEntitiesAreDecodedExactlyOnce) {
+    for (const bool use_decode_entities_option : {true, false}) {
+        hps::Options opts;
+        if (use_decode_entities_option) {
+            opts.decode_entities = true;
+        } else {
+            opts.text_processing_mode = hps::TextProcessingMode::Decode;
+        }
+
+        const auto document = hps::parse("<textarea>&amp;lt;</textarea><title>&amp;amp;</title>", opts);
+        ASSERT_NE(document, nullptr);
+
+        const auto* textarea = document->query_selector("textarea");
+        const auto* title    = document->query_selector("title");
+        ASSERT_NE(textarea, nullptr);
+        ASSERT_NE(title, nullptr);
+        EXPECT_EQ(textarea->text_content(), "&lt;");
+        EXPECT_EQ(title->text_content(), "&amp;");
+    }
+}
+
+TEST(HTMLParser, DecodeEntitiesOptionAlsoDecodesAttributeValues) {
+    hps::Options opts;
+    opts.decode_entities = true;
+
+    const auto document = hps::parse("<a href='?a=1&amp;b=2' title='&notit; &notin;' data-n='&#65;'>x</a>", opts);
+    ASSERT_NE(document, nullptr);
+
+    const auto* anchor = document->query_selector("a");
+    ASSERT_NE(anchor, nullptr);
+    EXPECT_EQ(anchor->get_attribute("href"), "?a=1&b=2");
+    EXPECT_EQ(anchor->get_attribute("title"), std::string("&notit; \xE2\x88\x89"));
+    EXPECT_EQ(anchor->get_attribute("data-n"), "A");
+}
+
+TEST(HTMLParser, PreserveCaseStillRecognizesHtmlVoidElements) {
+    hps::Options opts;
+    opts.preserve_case = true;
+
+    const auto document = hps::parse("<div>A<BR>B<IMG src=x>C</div>", opts);
+    ASSERT_NE(document, nullptr);
+
+    const auto* div = document->query_selector("div");
+    const auto* br  = document->query_selector("br");
+    const auto* img = document->query_selector("img");
+    ASSERT_NE(div, nullptr);
+    ASSERT_NE(br, nullptr);
+    ASSERT_NE(img, nullptr);
+    EXPECT_FALSE(br->has_children());
+    EXPECT_FALSE(img->has_children());
+    EXPECT_EQ(br->parent(), div);
+    EXPECT_EQ(img->parent(), div);
+    EXPECT_EQ(div->text_content(), "ABC");
+    EXPECT_EQ(div->outer_html(), "<div>A<BR>B<IMG src=\"x\">C</div>");
 }
 
 TEST(HTMLParser, EnforcesMaxDepthBySkippingTooDeepSubtrees) {
@@ -762,7 +817,7 @@ TEST(HTMLParser, EnforcesMaxAttributesPerElement) {
 
 TEST(HTMLParser, EnforcesAttributeLengthLimits) {
     hps::Options opts;
-    opts.max_attribute_name_length = 3;
+    opts.max_attribute_name_length  = 3;
     opts.max_attribute_value_length = 2;
 
     const auto res = hps::parse_with_error("<div long='1' ok='1234'></div>", opts);
@@ -787,4 +842,28 @@ TEST(HTMLParser, EnforcesMaxTextLength) {
     const auto* div = res.document->query_selector("div");
     ASSERT_NE(div, nullptr);
     EXPECT_EQ(div->text_content(), "abc");
+}
+
+TEST(HTMLParser, EnforcesMaxTextLengthAcrossMergedTokens) {
+    hps::Options opts;
+    opts.max_text_length = 3;
+    opts.comment_mode    = hps::CommentMode::Remove;
+
+    const auto res = hps::parse_with_error("<p>abc<!-- split -->def</p>", opts);
+    ASSERT_NE(res.document, nullptr);
+    ASSERT_TRUE(has_error_code(res.errors, hps::ErrorCode::TextTooLong));
+
+    const auto* paragraph = res.document->query_selector("p");
+    ASSERT_NE(paragraph, nullptr);
+    EXPECT_EQ(paragraph->text_content(), "abc");
+    ASSERT_EQ(paragraph->children().size(), 1u);
+}
+
+TEST(HTMLParser, EnforcesMergedTextLimitInStrictMode) {
+    hps::Options opts;
+    opts.max_text_length = 3;
+    opts.comment_mode    = hps::CommentMode::Remove;
+    opts.error_handling  = hps::ErrorHandlingMode::Strict;
+
+    EXPECT_THROW((void)hps::parse("<p>abc<!-- split -->def</p>", opts), hps::HPSException);
 }

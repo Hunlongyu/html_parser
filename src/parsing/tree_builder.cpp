@@ -20,40 +20,70 @@ namespace {
 
 // SVG 属性大小写修正（HTML 词法器全小写 → 还原 camelCase）。HTML5「adjust SVG attributes」表。
 [[nodiscard]] std::string_view adjust_svg_attribute_name(const std::string_view name) {
-    static const std::unordered_map<std::string_view, std::string_view> table = {
-        {"attributename", "attributeName"}, {"attributetype", "attributeType"},
-        {"basefrequency", "baseFrequency"}, {"baseprofile", "baseProfile"},
-        {"calcmode", "calcMode"}, {"clippathunits", "clipPathUnits"},
-        {"diffuseconstant", "diffuseConstant"}, {"edgemode", "edgeMode"},
-        {"filterunits", "filterUnits"}, {"glyphref", "glyphRef"},
-        {"gradienttransform", "gradientTransform"}, {"gradientunits", "gradientUnits"},
-        {"kernelmatrix", "kernelMatrix"}, {"kernelunitlength", "kernelUnitLength"},
-        {"keypoints", "keyPoints"}, {"keysplines", "keySplines"}, {"keytimes", "keyTimes"},
-        {"lengthadjust", "lengthAdjust"}, {"limitingconeangle", "limitingConeAngle"},
-        {"markerheight", "markerHeight"}, {"markerunits", "markerUnits"}, {"markerwidth", "markerWidth"},
-        {"maskcontentunits", "maskContentUnits"}, {"maskunits", "maskUnits"},
-        {"numoctaves", "numOctaves"}, {"pathlength", "pathLength"},
-        {"patterncontentunits", "patternContentUnits"}, {"patterntransform", "patternTransform"},
-        {"patternunits", "patternUnits"}, {"pointsatx", "pointsAtX"}, {"pointsaty", "pointsAtY"},
-        {"pointsatz", "pointsAtZ"}, {"preservealpha", "preserveAlpha"},
-        {"preserveaspectratio", "preserveAspectRatio"}, {"primitiveunits", "primitiveUnits"},
-        {"refx", "refX"}, {"refy", "refY"}, {"repeatcount", "repeatCount"}, {"repeatdur", "repeatDur"},
-        {"requiredextensions", "requiredExtensions"}, {"requiredfeatures", "requiredFeatures"},
-        {"specularconstant", "specularConstant"}, {"specularexponent", "specularExponent"},
-        {"spreadmethod", "spreadMethod"}, {"startoffset", "startOffset"},
-        {"stddeviation", "stdDeviation"}, {"stitchtiles", "stitchTiles"},
-        {"surfacescale", "surfaceScale"}, {"systemlanguage", "systemLanguage"},
-        {"tablevalues", "tableValues"}, {"targetx", "targetX"}, {"targety", "targetY"},
-        {"textlength", "textLength"}, {"viewbox", "viewBox"}, {"viewtarget", "viewTarget"},
-        {"xchannelselector", "xChannelSelector"}, {"ychannelselector", "yChannelSelector"},
-        {"zoomandpan", "zoomAndPan"}};
-    const auto it = table.find(name);
+    static const std::unordered_map<std::string_view, std::string_view> table = {{"attributename", "attributeName"},
+                                                                                 {"attributetype", "attributeType"},
+                                                                                 {"basefrequency", "baseFrequency"},
+                                                                                 {"baseprofile", "baseProfile"},
+                                                                                 {"calcmode", "calcMode"},
+                                                                                 {"clippathunits", "clipPathUnits"},
+                                                                                 {"diffuseconstant", "diffuseConstant"},
+                                                                                 {"edgemode", "edgeMode"},
+                                                                                 {"filterunits", "filterUnits"},
+                                                                                 {"glyphref", "glyphRef"},
+                                                                                 {"gradienttransform", "gradientTransform"},
+                                                                                 {"gradientunits", "gradientUnits"},
+                                                                                 {"kernelmatrix", "kernelMatrix"},
+                                                                                 {"kernelunitlength", "kernelUnitLength"},
+                                                                                 {"keypoints", "keyPoints"},
+                                                                                 {"keysplines", "keySplines"},
+                                                                                 {"keytimes", "keyTimes"},
+                                                                                 {"lengthadjust", "lengthAdjust"},
+                                                                                 {"limitingconeangle", "limitingConeAngle"},
+                                                                                 {"markerheight", "markerHeight"},
+                                                                                 {"markerunits", "markerUnits"},
+                                                                                 {"markerwidth", "markerWidth"},
+                                                                                 {"maskcontentunits", "maskContentUnits"},
+                                                                                 {"maskunits", "maskUnits"},
+                                                                                 {"numoctaves", "numOctaves"},
+                                                                                 {"pathlength", "pathLength"},
+                                                                                 {"patterncontentunits", "patternContentUnits"},
+                                                                                 {"patterntransform", "patternTransform"},
+                                                                                 {"patternunits", "patternUnits"},
+                                                                                 {"pointsatx", "pointsAtX"},
+                                                                                 {"pointsaty", "pointsAtY"},
+                                                                                 {"pointsatz", "pointsAtZ"},
+                                                                                 {"preservealpha", "preserveAlpha"},
+                                                                                 {"preserveaspectratio", "preserveAspectRatio"},
+                                                                                 {"primitiveunits", "primitiveUnits"},
+                                                                                 {"refx", "refX"},
+                                                                                 {"refy", "refY"},
+                                                                                 {"repeatcount", "repeatCount"},
+                                                                                 {"repeatdur", "repeatDur"},
+                                                                                 {"requiredextensions", "requiredExtensions"},
+                                                                                 {"requiredfeatures", "requiredFeatures"},
+                                                                                 {"specularconstant", "specularConstant"},
+                                                                                 {"specularexponent", "specularExponent"},
+                                                                                 {"spreadmethod", "spreadMethod"},
+                                                                                 {"startoffset", "startOffset"},
+                                                                                 {"stddeviation", "stdDeviation"},
+                                                                                 {"stitchtiles", "stitchTiles"},
+                                                                                 {"surfacescale", "surfaceScale"},
+                                                                                 {"systemlanguage", "systemLanguage"},
+                                                                                 {"tablevalues", "tableValues"},
+                                                                                 {"targetx", "targetX"},
+                                                                                 {"targety", "targetY"},
+                                                                                 {"textlength", "textLength"},
+                                                                                 {"viewbox", "viewBox"},
+                                                                                 {"viewtarget", "viewTarget"},
+                                                                                 {"xchannelselector", "xChannelSelector"},
+                                                                                 {"ychannelselector", "yChannelSelector"},
+                                                                                 {"zoomandpan", "zoomAndPan"}};
+    const auto                                                          it    = table.find(name);
     return it != table.end() ? it->second : name;
 }
 
 // 外来元素属性名修正（SVG 大小写表；MathML definitionurl → definitionURL）。
-[[nodiscard]] std::string_view adjust_foreign_attribute_name(
-    const std::string_view name, const NamespaceKind ns) {
+[[nodiscard]] std::string_view adjust_foreign_attribute_name(const std::string_view name, const NamespaceKind ns) {
     if (ns == NamespaceKind::Svg) {
         return adjust_svg_attribute_name(name);
     }
@@ -73,10 +103,7 @@ TreeBuilder::TreeBuilder(const std::shared_ptr<Document>& document, const Option
     m_ignored_element_stack.reserve(8);
 }
 
-TreeBuilder::TreeBuilder(
-    const std::shared_ptr<Document>& document,
-    const Options& options,
-    Element* fragment_context)
+TreeBuilder::TreeBuilder(const std::shared_ptr<Document>& document, const Options& options, Element* fragment_context)
     : TreeBuilder(document, options) {
     m_fragment_context = fragment_context;
     if (m_fragment_context != nullptr) {
@@ -219,9 +246,7 @@ void TreeBuilder::process_start_tag(const Token& token) {
     // "in body"：游离的表格结构起始标签（caption/col/colgroup/tbody/td/tfoot/th/thead/tr，
     // 无打开的 table 时）按 HTML5 忽略。仅在 HTML 插入上下文生效（含 MathML/SVG 集成点内），
     // 故 <math><mo><tr> 的 <tr> 被忽略，而 <math><tr> 仍作为 math 命名空间元素保留。
-    if (m_fragment_context == nullptr && current_insertion_namespace() == NamespaceKind::Html &&
-        tag::is_table_structure(tg) && tg != tag::kTable &&
-        find_open_element(tag::kTable, false) == nullptr) {
+    if (m_fragment_context == nullptr && current_insertion_namespace() == NamespaceKind::Html && tag::is_table_structure(tg) && tg != tag::kTable && find_open_element(tag::kTable, false) == nullptr) {
         parse_error(ErrorCode::InvalidNesting, "Stray table-structure start tag ignored in body", m_last_position);
         return;
     }
@@ -248,11 +273,8 @@ void TreeBuilder::process_start_tag(const Token& token) {
     }
     prepare_select_context_for_start_tag(tg);
 
-    const size_t content_depth =
-        static_cast<size_t>(std::ranges::count_if(m_element_stack, [this](const Element* element) {
-            return element != m_html_element && element != m_head_element && element != m_body_element;
-        }));
-    const size_t next_depth = content_depth + 1;
+    const size_t content_depth = static_cast<size_t>(std::ranges::count_if(m_element_stack, [this](const Element* element) { return element != m_html_element && element != m_head_element && element != m_body_element; }));
+    const size_t next_depth    = content_depth + 1;
     if (next_depth > m_options.max_depth) {
         parse_error(ErrorCode::TooDeep, "Nesting depth limit exceeded at <" + std::string(token.name()) + ">", m_last_position);
         if (!m_options.is_void_element(token.name()) && token.type() != TokenType::CLOSE_SELF) {
@@ -362,8 +384,7 @@ void TreeBuilder::process_frameset_start_tag(const Token& token) {
 
     // 嵌套 frameset：已在 frameset 内 → 原位插入。
     if (find_open_element(tag::kFrameset, false) != nullptr) {
-        auto* frameset = const_cast<Element*>(
-            insert_node(create_element(token), current_element())->as_element());
+        auto* frameset = const_cast<Element*>(insert_node(create_element(token), current_element())->as_element());
         push_element(frameset);
         return;
     }
@@ -394,8 +415,7 @@ void TreeBuilder::process_frameset_start_tag(const Token& token) {
         m_body_element = nullptr;
     }
 
-    auto* frameset = const_cast<Element*>(
-        insert_node(create_element(token), m_html_element)->as_element());
+    auto* frameset = const_cast<Element*>(insert_node(create_element(token), m_html_element)->as_element());
     push_element(frameset);
     m_is_frameset_document = true;
 }
@@ -407,8 +427,7 @@ void TreeBuilder::apply_foreign_content_breakout(const Tag tag) {
     if (current_insertion_namespace() == NamespaceKind::Html || !tag::is_foreign_breakout(tag)) {
         return;
     }
-    while (m_element_stack.size() > m_stack_floor && current_element() != nullptr &&
-           current_element()->namespace_kind() != NamespaceKind::Html) {
+    while (m_element_stack.size() > m_stack_floor && current_element() != nullptr && current_element()->namespace_kind() != NamespaceKind::Html) {
         m_element_stack.pop_back();
     }
 }
@@ -440,8 +459,7 @@ void TreeBuilder::handle_a_start_tag() {
 void TreeBuilder::handle_nobr_start_tag() {
     // <nobr> 起始：先重建；若已有 nobr 在 scope 内，跑 AAA 后再重建。
     reconstruct_active_formatting_elements();
-    if (Element* open_nobr = find_open_element(tag::kNobr, false);
-        open_nobr != nullptr && has_element_in_scope(open_nobr)) {
+    if (Element* open_nobr = find_open_element(tag::kNobr, false); open_nobr != nullptr && has_element_in_scope(open_nobr)) {
         parse_error(ErrorCode::InvalidNesting, "Unexpected nested <nobr>", m_last_position);
         static_cast<void>(run_adoption_agency(tag::kNobr));
         reconstruct_active_formatting_elements();
@@ -468,10 +486,8 @@ void TreeBuilder::process_end_tag(const Token& token) {
     // in-body 处理，仅切换插入模式（after-body / after-after-body），并不弹出已打开的
     // 表格内容。对我们的简化构建器而言等价于“忽略”——若照常拆栈会毁掉 foster parenting
     // 的插入点（例如 <table><td>...</html>foo 中的 foo 应留在 <td> 内）。
-    if (m_fragment_context == nullptr && (tg == tag::kBody || tg == tag::kHtml) &&
-        find_open_element(tag::kTable, false) != nullptr) {
-        parse_error(ErrorCode::MismatchedTag,
-                    "Ignoring </" + std::string(tag_name) + "> while a table is open", m_last_position);
+    if (m_fragment_context == nullptr && (tg == tag::kBody || tg == tag::kHtml) && find_open_element(tag::kTable, false) != nullptr) {
+        parse_error(ErrorCode::MismatchedTag, "Ignoring </" + std::string(tag_name) + "> while a table is open", m_last_position);
         return;
     }
     if (m_fragment_context == nullptr && tg == tag::kBody) {
@@ -536,10 +552,8 @@ void TreeBuilder::process_end_tag(const Token& token) {
             break;
         }
     }
-    const auto matches = [&](const Element* el) {
-        return tg != Tag::Unknown ? el->tag() == tg : equals_ignore_case(el->tag_name(), tag_name);
-    };
-    bool found_in_scope = false;
+    const auto matches        = [&](const Element* el) { return tg != Tag::Unknown ? el->tag() == tg : equals_ignore_case(el->tag_name(), tag_name); };
+    bool       found_in_scope = false;
     for (size_t i = m_element_stack.size(); i > scope_floor; --i) {
         if (matches(m_element_stack[i - 1])) {
             found_in_scope = true;
@@ -570,16 +584,13 @@ void TreeBuilder::process_text(const Token& token) {
     if (m_fragment_context == nullptr && current_element() == m_head_element && !is_all_whitespace(text)) {
         close_head_element_if_open();
     }
-    if (m_fragment_context == nullptr &&
-        (current_element() == nullptr || current_element() == m_html_element)) {
+    if (m_fragment_context == nullptr && (current_element() == nullptr || current_element() == m_html_element)) {
         ensure_body_element();
     }
 
     // 无变换（Raw + 不解码实体 + Preserve 空白）→ 直接用源码视图,零拷贝（intern 会识别
     // 为源码子串而不复制,文本节点零分配持有）。其余情形才落到 buffer 做变换。
-    const bool needs_transform =
-        m_options.text_processing_mode == TextProcessingMode::Decode || m_options.decode_entities ||
-        m_options.whitespace_mode != WhitespaceMode::Preserve;
+    const bool needs_transform = m_options.text_processing_mode == TextProcessingMode::Decode || m_options.decode_entities || m_options.whitespace_mode != WhitespaceMode::Preserve;
 
     std::string      buffer;   // 仅在需变换时使用
     std::string_view content;  // 最终要插入的内容（源码视图 / buffer 视图）
@@ -587,10 +598,10 @@ void TreeBuilder::process_text(const Token& token) {
         content = text;
     } else {
         std::string processed_text(text);
-        if (m_options.text_processing_mode == TextProcessingMode::Decode) {
+        if (m_options.text_processing_mode == TextProcessingMode::Decode && !token.entities_decoded()) {
             processed_text = decode_html_entities(processed_text);
         }
-        if (m_options.decode_entities && m_options.text_processing_mode == TextProcessingMode::Raw) {
+        if (m_options.decode_entities && m_options.text_processing_mode == TextProcessingMode::Raw && !token.entities_decoded()) {
             processed_text = decode_html_entities(processed_text);
         }
         switch (m_options.whitespace_mode) {
@@ -647,11 +658,7 @@ void TreeBuilder::process_doctype(const Token& token) {
         return;
     }
 
-    DoctypeNode* doctype = m_document->create_doctype(
-        token.name(),
-        token.doctype_public_id(),
-        token.doctype_system_id(),
-        token.doctype_has_identifiers());
+    DoctypeNode* doctype = m_document->create_doctype(token.name(), token.doctype_public_id(), token.doctype_system_id(), token.doctype_has_identifiers());
     insert_node(doctype, m_document.get());
 }
 
@@ -659,9 +666,7 @@ Element* TreeBuilder::create_element(const Token& token) {
     return create_element(token, NamespaceKind::Html);
 }
 
-Element* TreeBuilder::create_element(
-    const Token& token,
-    const NamespaceKind namespace_kind) {
+Element* TreeBuilder::create_element(const Token& token, const NamespaceKind namespace_kind) {
     Element* element = m_document->create_element(token.name(), namespace_kind);
     merge_token_attributes(*element, token);
     return element;
@@ -675,13 +680,16 @@ Element* TreeBuilder::clone_element_shallow(const Element& source) const {
     return clone;
 }
 
-void TreeBuilder::merge_token_attributes(Element& element, const Token& token) {
+void TreeBuilder::merge_token_attributes(Element& element, const Token& token) const {
     const NamespaceKind ns = element.namespace_kind();
     for (const auto& attr : token.attrs()) {
-        const std::string_view name =
-            ns == NamespaceKind::Html ? std::string_view(attr.name)
-                                      : adjust_foreign_attribute_name(attr.name, ns);
-        element.add_attribute(name, attr.value, attr.has_value);
+        const std::string_view name = ns == NamespaceKind::Html ? std::string_view(attr.name) : adjust_foreign_attribute_name(attr.name, ns);
+        if (m_options.decode_entities && attr.has_value) {
+            const std::string decoded = decode_html_attribute_entities(attr.value);
+            element.add_attribute(name, decoded, true);
+        } else {
+            element.add_attribute(name, attr.value, attr.has_value);
+        }
     }
 }
 
@@ -708,10 +716,7 @@ Node* TreeBuilder::insert_node(Node* child, Node* parent) const {
     return nullptr;
 }
 
-Node* TreeBuilder::insert_node_before(
-    Node* child,
-    Node* parent,
-    const Node* before) const {
+Node* TreeBuilder::insert_node_before(Node* child, Node* parent, const Node* before) const {
     if (child == nullptr) {
         return nullptr;
     }
@@ -726,7 +731,26 @@ Node* TreeBuilder::insert_node_before(
     return nullptr;
 }
 
-void TreeBuilder::insert_text(std::string_view text) const {
+std::string_view TreeBuilder::limit_text_for_node(const std::string_view text, const size_t existing_length) {
+    if (text.empty()) {
+        return {};
+    }
+
+    const size_t limit = m_options.max_text_length;
+    if (existing_length >= limit) {
+        parse_error(ErrorCode::TextTooLong, "Text node length limit exceeded", m_last_position);
+        return {};
+    }
+
+    const size_t remaining = limit - existing_length;
+    if (text.size() > remaining) {
+        parse_error(ErrorCode::TextTooLong, "Text node length limit exceeded", m_last_position);
+        return text.substr(0, remaining);
+    }
+    return text;
+}
+
+void TreeBuilder::insert_text(std::string_view text) {
     if (text.empty()) {
         return;
     }
@@ -741,10 +765,19 @@ void TreeBuilder::insert_text(std::string_view text) const {
     if (parent) {
         if (Node* last = parent->last_child_mut()) {
             if (last->type() == NodeType::Text) {
-                static_cast<TextNode*>(last)->append_text(text);
+                auto* text_node = static_cast<TextNode*>(last);
+                text            = limit_text_for_node(text, text_node->length());
+                if (!text.empty()) {
+                    text_node->append_text(text);
+                }
                 return;
             }
         }
+    }
+
+    text = limit_text_for_node(text, 0);
+    if (text.empty()) {
+        return;
     }
 
     TextNode* text_node = m_document->create_text(text);
@@ -755,10 +788,7 @@ void TreeBuilder::insert_text(std::string_view text) const {
     }
 }
 
-void TreeBuilder::insert_text_before(
-    std::string_view text,
-    Node* parent,
-    const Node* before) const {
+void TreeBuilder::insert_text_before(std::string_view text, Node* parent, const Node* before) {
     if (text.empty() || parent == nullptr) {
         return;
     }
@@ -771,7 +801,16 @@ void TreeBuilder::insert_text_before(
     }
 
     if (previous != nullptr && previous->type() == NodeType::Text) {
-        static_cast<TextNode*>(previous)->append_text(text);
+        auto* text_node = static_cast<TextNode*>(previous);
+        text            = limit_text_for_node(text, text_node->length());
+        if (!text.empty()) {
+            text_node->append_text(text);
+        }
+        return;
+    }
+
+    text = limit_text_for_node(text, 0);
+    if (text.empty()) {
         return;
     }
 
@@ -807,8 +846,7 @@ Element* TreeBuilder::current_element() const {
 }
 
 bool TreeBuilder::is_on_stack(const Element* element) const noexcept {
-    return element != nullptr &&
-           std::ranges::find(m_element_stack, element) != m_element_stack.end();
+    return element != nullptr && std::ranges::find(m_element_stack, element) != m_element_stack.end();
 }
 
 void TreeBuilder::close_elements_until(const Tag target, const bool report_auto_close_errors) {
@@ -859,22 +897,14 @@ void TreeBuilder::check_implicit_close(const Tag tg) {
         // <p> 会被这些块级起始标签隐式关闭（HTML5「have a p element in button scope」组，
         // 含 h1–h6/pre/listing/form/plaintext/xmp/table/hr 等）。
         const bool closes_paragraph = cur == tag::kP && tag::is_p_closer(tg);
-        const bool closes_list_item =
-            (cur == tag::kLi && tg == tag::kLi) ||
-            ((cur == tag::kDd || cur == tag::kDt) && (tg == tag::kDd || tg == tag::kDt));
-        const bool closes_button = cur == tag::kButton && tg == tag::kButton;
+        const bool closes_list_item = (cur == tag::kLi && tg == tag::kLi) || ((cur == tag::kDd || cur == tag::kDt) && (tg == tag::kDd || tg == tag::kDt));
+        const bool closes_button    = cur == tag::kButton && tg == tag::kButton;
         // 一个 h1–h6 起始标签会关闭当前打开的 h1–h6（标题不可嵌套）。
-        const bool closes_heading = tag::is_heading(cur) && tag::is_heading(tg);
-        const bool closes_table_cell =
-            tag::is_table_cell(cur) &&
-            (tag::is_table_cell(tg) || tg == tag::kTr || tag::is_table_section(tg));
-        const bool closes_table_row =
-            cur == tag::kTr && (tg == tag::kTr || tag::is_table_section(tg) || tg == tag::kTable);
-        const bool closes_table_section =
-            tag::is_table_section(cur) && (tag::is_table_section(tg) || tg == tag::kTable);
-        const bool should_pop_current =
-            closes_paragraph || closes_list_item || closes_button || closes_heading ||
-            closes_table_cell || closes_table_row || closes_table_section;
+        const bool closes_heading       = tag::is_heading(cur) && tag::is_heading(tg);
+        const bool closes_table_cell    = tag::is_table_cell(cur) && (tag::is_table_cell(tg) || tg == tag::kTr || tag::is_table_section(tg));
+        const bool closes_table_row     = cur == tag::kTr && (tg == tag::kTr || tag::is_table_section(tg) || tg == tag::kTable);
+        const bool closes_table_section = tag::is_table_section(cur) && (tag::is_table_section(tg) || tg == tag::kTable);
+        const bool should_pop_current   = closes_paragraph || closes_list_item || closes_button || closes_heading || closes_table_cell || closes_table_row || closes_table_section;
 
         if (should_pop_current) {
             m_element_stack.pop_back();
@@ -917,7 +947,7 @@ void TreeBuilder::ensure_body_element() {
     if (!m_head_element) {
         Element* head_element = m_document->create_element("head");
         m_head_element        = const_cast<Element*>(insert_node(head_element, m_html_element)->as_element());
-        m_head_closed = true;
+        m_head_closed         = true;
     } else if (!m_head_closed) {
         close_head_element_if_open();
     }
@@ -1015,8 +1045,7 @@ void TreeBuilder::prepare_select_context_for_start_tag(const Tag tg) {
 }
 
 bool TreeBuilder::handle_table_end_tag(const Tag tg) {
-    if (tg == tag::kTable || tg == tag::kTr || tag::is_table_section(tg) ||
-        tag::is_table_cell(tg) || tg == tag::kCaption || tg == tag::kColgroup) {
+    if (tg == tag::kTable || tg == tag::kTr || tag::is_table_section(tg) || tag::is_table_cell(tg) || tg == tag::kCaption || tg == tag::kColgroup) {
         close_foster_parented_elements_before_table_token();
     }
 
@@ -1131,9 +1160,7 @@ bool TreeBuilder::handle_select_end_tag(const Tag tg) {
     return false;
 }
 
-void TreeBuilder::close_open_table_content_before_container(
-    const Tag container,
-    const bool close_matching_tag) {
+void TreeBuilder::close_open_table_content_before_container(const Tag container, const bool close_matching_tag) {
     if (find_open_table_cell() != nullptr) {
         close_elements_until(find_open_table_cell()->tag(), false);
     }
@@ -1160,9 +1187,8 @@ void TreeBuilder::ensure_table_section(const std::string_view tag_name) {
         return;
     }
 
-    Element* section = m_document->create_element(tag_name);
-    auto* section_ptr =
-        const_cast<Element*>(insert_node(section, find_open_element(tag::kTable))->as_element());
+    Element* section     = m_document->create_element(tag_name);
+    auto*    section_ptr = const_cast<Element*>(insert_node(section, find_open_element(tag::kTable))->as_element());
     push_if_absent(section_ptr);
 }
 
@@ -1177,9 +1203,8 @@ void TreeBuilder::ensure_table_row() {
         return;
     }
 
-    Element* row = m_document->create_element("tr");
-    auto* row_ptr =
-        const_cast<Element*>(insert_node(row, section)->as_element());
+    Element* row     = m_document->create_element("tr");
+    auto*    row_ptr = const_cast<Element*>(insert_node(row, section)->as_element());
     push_if_absent(row_ptr);
 }
 
@@ -1188,9 +1213,8 @@ void TreeBuilder::ensure_colgroup() {
         return;
     }
 
-    Element* colgroup = m_document->create_element("colgroup");
-    auto* colgroup_ptr =
-        const_cast<Element*>(insert_node(colgroup, find_open_element(tag::kTable))->as_element());
+    Element* colgroup     = m_document->create_element("colgroup");
+    auto*    colgroup_ptr = const_cast<Element*>(insert_node(colgroup, find_open_element(tag::kTable))->as_element());
     push_if_absent(colgroup_ptr);
 }
 
@@ -1272,9 +1296,7 @@ bool TreeBuilder::should_foster_parent_element(const Tag tg) const noexcept {
 std::pair<Node*, const Node*> TreeBuilder::foster_parent_insertion_point() const noexcept {
     Element* table = find_open_element(tag::kTable);
     if (table == nullptr) {
-        return {current_element() != nullptr ? static_cast<Node*>(current_element())
-                                             : static_cast<Node*>(m_document.get()),
-                nullptr};
+        return {current_element() != nullptr ? static_cast<Node*>(current_element()) : static_cast<Node*>(m_document.get()), nullptr};
     }
 
     if (table == m_fragment_context) {
@@ -1312,9 +1334,7 @@ bool TreeBuilder::is_special_element(const Element& element) noexcept {
     const Tag t = element.tag();
     if (element.namespace_kind() != NamespaceKind::Html) {
         // 外来内容里的集成点元素亦视作 special（scope 边界）。
-        return t == tag::kForeignObject || t == tag::kDesc || t == tag::kTitle ||
-               t == tag::kMi || t == tag::kMo || t == tag::kMn || t == tag::kMs ||
-               t == tag::kMtext || t == tag::kAnnotationXml;
+        return t == tag::kForeignObject || t == tag::kDesc || t == tag::kTitle || t == tag::kMi || t == tag::kMo || t == tag::kMn || t == tag::kMs || t == tag::kMtext || t == tag::kAnnotationXml;
     }
     return tag::is_special(t);
 }
@@ -1329,9 +1349,7 @@ bool TreeBuilder::same_formatting_element(const Element& a, const Element& b) no
         return false;
     }
     for (const auto& attr : aa) {
-        const bool found = std::ranges::any_of(ba, [&attr](const auto& other) {
-            return other.name() == attr.name() && other.value() == attr.value();
-        });
+        const bool found = std::ranges::any_of(ba, [&attr](const auto& other) { return other.name() == attr.name() && other.value() == attr.value(); });
         if (!found) {
             return false;
         }
@@ -1340,8 +1358,7 @@ bool TreeBuilder::same_formatting_element(const Element& a, const Element& b) no
 }
 
 bool TreeBuilder::is_in_active_formatting(const Element* element) const noexcept {
-    return element != nullptr &&
-           std::ranges::find(m_active_formatting, element) != m_active_formatting.end();
+    return element != nullptr && std::ranges::find(m_active_formatting, element) != m_active_formatting.end();
 }
 
 void TreeBuilder::remove_from_active_formatting(const Element* element) {
@@ -1386,8 +1403,7 @@ void TreeBuilder::push_active_formatting(Element* element) {
 }
 
 Element* TreeBuilder::insert_html_element_at_current(Element* element) {
-    Node* parent = m_element_stack.empty() ? static_cast<Node*>(m_document.get())
-                                           : static_cast<Node*>(current_element());
+    Node* parent = m_element_stack.empty() ? static_cast<Node*>(m_document.get()) : static_cast<Node*>(current_element());
     return const_cast<Element*>(insert_node(element, parent)->as_element());
 }
 
@@ -1425,9 +1441,7 @@ bool TreeBuilder::has_element_in_scope(const Element* target) const noexcept {
         }
         const Tag t = element->tag();
         if (element->namespace_kind() == NamespaceKind::Html) {
-            if (t == tag::kApplet || t == tag::kCaption || t == tag::kHtml || t == tag::kTable ||
-                tag::is_table_cell(t) || t == tag::kMarquee || t == tag::kObject ||
-                t == tag::kTemplate) {
+            if (t == tag::kApplet || t == tag::kCaption || t == tag::kHtml || t == tag::kTable || tag::is_table_cell(t) || t == tag::kMarquee || t == tag::kObject || t == tag::kTemplate) {
                 return false;
             }
         } else {
@@ -1461,9 +1475,7 @@ void move_node_into(Node* node, Element* new_parent, const Node* before) {
 
 bool TreeBuilder::run_adoption_agency(const Tag subject) {
     // 1. 当前节点即 subject 且不在活动格式化列表：直接弹出。
-    if (Element* current = current_element();
-        current != nullptr && current->namespace_kind() == NamespaceKind::Html &&
-        current->tag() == subject && !is_in_active_formatting(current)) {
+    if (Element* current = current_element(); current != nullptr && current->namespace_kind() == NamespaceKind::Html && current->tag() == subject && !is_in_active_formatting(current)) {
         m_element_stack.pop_back();
         return true;
     }
@@ -1563,19 +1575,15 @@ bool TreeBuilder::run_adoption_agency(const Tag subject) {
             }
 
             // 克隆 node，在活动格式化列表与开放栈中原位替换。
-            auto* clone = const_cast<Element*>(
-                common_ancestor->add_child(clone_element_shallow(*node))->as_element());
-            if (const auto afe_it = std::ranges::find(m_active_formatting, node);
-                afe_it != m_active_formatting.end()) {
+            auto* clone = const_cast<Element*>(common_ancestor->add_child(clone_element_shallow(*node))->as_element());
+            if (const auto afe_it = std::ranges::find(m_active_formatting, node); afe_it != m_active_formatting.end()) {
                 *afe_it = clone;
             }
             m_element_stack[node_index] = clone;
-            node = clone;
+            node                        = clone;
 
             if (last_node == furthest_block) {
-                bookmark = static_cast<size_t>(
-                               std::ranges::find(m_active_formatting, node) - m_active_formatting.begin()) +
-                           1;
+                bookmark = static_cast<size_t>(std::ranges::find(m_active_formatting, node) - m_active_formatting.begin()) + 1;
             }
 
             // 把 last_node 挂到 node 之下。
@@ -1584,9 +1592,7 @@ bool TreeBuilder::run_adoption_agency(const Tag subject) {
         }
 
         // 9. 把 last_node 放到 common ancestor 的“合适位置”（表格上下文需 foster）。
-        if (const Tag ca = common_ancestor->tag();
-            should_foster_parent_element(ca) || ca == tag::kTable ||
-            tag::is_table_section(ca) || ca == tag::kTr) {
+        if (const Tag ca = common_ancestor->tag(); should_foster_parent_element(ca) || ca == tag::kTable || tag::is_table_section(ca) || ca == tag::kTr) {
             const auto [parent, before] = foster_parent_insertion_point();
             if (auto* parent_el = parent ? const_cast<Element*>(parent->as_element()) : nullptr) {
                 move_node_into(last_node, parent_el, before);
@@ -1598,8 +1604,7 @@ bool TreeBuilder::run_adoption_agency(const Tag subject) {
         }
 
         // 10. 克隆 formatting_element，把 furthest block 的所有子节点搬到克隆下，再挂回 furthest block。
-        auto* fe_clone = const_cast<Element*>(
-            furthest_block->add_child(clone_element_shallow(*formatting_element))->as_element());
+        auto* fe_clone = const_cast<Element*>(furthest_block->add_child(clone_element_shallow(*formatting_element))->as_element());
         for (auto* child = const_cast<Node*>(furthest_block->first_child()); child != nullptr;) {
             auto* next = const_cast<Node*>(child->next_sibling());
             if (child != fe_clone) {
@@ -1620,24 +1625,19 @@ bool TreeBuilder::run_adoption_agency(const Tag subject) {
         if (bookmark > m_active_formatting.size()) {
             bookmark = m_active_formatting.size();
         }
-        m_active_formatting.insert(
-            m_active_formatting.begin() + static_cast<std::ptrdiff_t>(bookmark), fe_clone);
+        m_active_formatting.insert(m_active_formatting.begin() + static_cast<std::ptrdiff_t>(bookmark), fe_clone);
 
-        if (const auto fe_stk = std::ranges::find(m_element_stack, formatting_element);
-            fe_stk != m_element_stack.end()) {
+        if (const auto fe_stk = std::ranges::find(m_element_stack, formatting_element); fe_stk != m_element_stack.end()) {
             m_element_stack.erase(fe_stk);
         }
-        if (const auto fb_stk = std::ranges::find(m_element_stack, furthest_block);
-            fb_stk != m_element_stack.end()) {
+        if (const auto fb_stk = std::ranges::find(m_element_stack, furthest_block); fb_stk != m_element_stack.end()) {
             m_element_stack.insert(fb_stk + 1, fe_clone);
         }
     }
     return true;
 }
 
-Element* TreeBuilder::find_open_element(
-    const Tag target,
-    const bool include_fragment_base) const noexcept {
+Element* TreeBuilder::find_open_element(const Tag target, const bool include_fragment_base) const noexcept {
     for (size_t index = m_element_stack.size(); index > 0; --index) {
         if (!include_fragment_base && index <= m_stack_floor) {
             break;

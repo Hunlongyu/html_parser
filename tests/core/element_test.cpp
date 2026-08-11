@@ -63,34 +63,34 @@ TEST(ElementTest, ClassHelpersWorkWithWhitespaceSeparatedTokens) {
 
 TEST(ElementTest, OwnTextOnlyIncludesDirectTextNodes) {
     Document doc("");
-    Element  root("div");
-    root.add_child(doc.create_text("A"));
+    Element* root = doc.create_element("div");
+    root->add_child(doc.create_text("A"));
 
     Element* child = doc.create_element("span");
     child->add_child(doc.create_text("B"));
-    root.add_child(child);
+    root->add_child(child);
 
-    root.add_child(doc.create_text("C"));
+    root->add_child(doc.create_text("C"));
 
-    EXPECT_EQ(root.own_text(), "AC");
-    EXPECT_EQ(root.text_content(), "ABC");
+    EXPECT_EQ(root->own_text(), "AC");
+    EXPECT_EQ(root->text_content(), "ABC");
 }
 
 TEST(ElementTest, TextContentIgnoresCommentNodes) {
     Document doc("");
-    Element  root("div");
-    root.add_child(doc.create_text("A"));
-    root.add_child(doc.create_comment("hidden"));
+    Element* root = doc.create_element("div");
+    root->add_child(doc.create_text("A"));
+    root->add_child(doc.create_comment("hidden"));
 
     Element* child = doc.create_element("span");
     child->add_child(doc.create_text("B"));
     child->add_child(doc.create_comment("nested"));
-    root.add_child(child);
+    root->add_child(child);
 
-    root.add_child(doc.create_text("C"));
+    root->add_child(doc.create_text("C"));
 
-    EXPECT_EQ(root.own_text(), "AC");
-    EXPECT_EQ(root.text_content(), "ABC");
+    EXPECT_EQ(root->own_text(), "AC");
+    EXPECT_EQ(root->text_content(), "ABC");
 }
 
 TEST(ElementTest, BooleanAttributeSemanticsCanBeStored) {
@@ -110,7 +110,7 @@ TEST(ElementTest, BooleanAttributeSemanticsCanBeStored) {
 
 TEST(ElementTest, RecursiveFindByIdSearchesDescendants) {
     Document doc("");
-    Element  root("div");
+    Element* root = doc.create_element("div");
     Element* a = doc.create_element("a");
     Element* b = doc.create_element("b");
 
@@ -118,15 +118,15 @@ TEST(ElementTest, RecursiveFindByIdSearchesDescendants) {
     const auto* target_ptr = b;
 
     a->add_child(b);
-    root.add_child(a);
+    root->add_child(a);
 
-    EXPECT_EQ(root.get_element_by_id("target"), target_ptr);
-    EXPECT_EQ(root.get_element_by_id("missing"), nullptr);
+    EXPECT_EQ(root->get_element_by_id("target"), target_ptr);
+    EXPECT_EQ(root->get_element_by_id("missing"), nullptr);
 }
 
 TEST(ElementTest, RecursiveCollectByTagNameAndClassName) {
     Document doc("");
-    Element  root("div");
+    Element* root = doc.create_element("div");
 
     Element* a = doc.create_element("p");
     a->add_attribute("class", "x");
@@ -141,16 +141,16 @@ TEST(ElementTest, RecursiveCollectByTagNameAndClassName) {
     const auto* b_ptr = b;
     const auto* c_ptr = c;
 
-    root.add_child(a);
-    root.add_child(b);
-    root.add_child(c);
+    root->add_child(a);
+    root->add_child(b);
+    root->add_child(c);
 
-    const auto ps = root.get_elements_by_tag_name("p");
+    const auto ps = root->get_elements_by_tag_name("p");
     ASSERT_EQ(ps.size(), 2u);
     EXPECT_EQ(ps[0], a_ptr);
     EXPECT_EQ(ps[1], c_ptr);
 
-    const auto xs = root.get_elements_by_class_name("x");
+    const auto xs = root->get_elements_by_class_name("x");
     ASSERT_EQ(xs.size(), 2u);
     EXPECT_EQ(xs[0], a_ptr);
     EXPECT_EQ(xs[1], b_ptr);

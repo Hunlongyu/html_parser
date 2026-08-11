@@ -1,4 +1,5 @@
 #include "hps/utils/string_utils.hpp"
+
 #include <gtest/gtest.h>
 
 namespace hps::tests {
@@ -7,14 +8,14 @@ TEST(StringUtilsTest, CharacterChecks) {
     EXPECT_TRUE(is_letter('a'));
     EXPECT_TRUE(is_letter('Z'));
     EXPECT_FALSE(is_letter('1'));
-    
+
     EXPECT_TRUE(is_whitespace(' '));
     EXPECT_TRUE(is_whitespace('\n'));
     EXPECT_FALSE(is_whitespace('a'));
-    
+
     EXPECT_TRUE(is_digit('0'));
     EXPECT_FALSE(is_digit('a'));
-    
+
     EXPECT_TRUE(is_hex_digit('F'));
     EXPECT_TRUE(is_hex_digit('a'));
     EXPECT_FALSE(is_hex_digit('G'));
@@ -36,7 +37,7 @@ TEST(StringUtilsTest, TrimWhitespace) {
 TEST(StringUtilsTest, StringMatching) {
     EXPECT_TRUE(starts_with_ignore_case("Hello World", "hello"));
     EXPECT_FALSE(starts_with_ignore_case("Hello World", "world"));
-    
+
     EXPECT_TRUE(equals_ignore_case("foo", "FOO"));
     EXPECT_FALSE(equals_ignore_case("foo", "bar"));
 }
@@ -46,7 +47,9 @@ TEST(StringUtilsTest, NormalizeWhitespace) {
 }
 
 TEST(StringUtilsTest, DecodeEntities) {
-    EXPECT_EQ(decode_html_entities("a&nbsp;b"), "a\xC2\xA0" "b");  // U+00A0
+    EXPECT_EQ(decode_html_entities("a&nbsp;b"),
+              "a\xC2\xA0"
+              "b");  // U+00A0
     EXPECT_EQ(decode_html_entities("a&amp;b&lt;c&gt;"), "a&b<c>");
     EXPECT_EQ(decode_html_entities("&quot;&apos;"), "\"'");
     EXPECT_EQ(decode_html_entities("&#65;&#x41;"), "AA");
@@ -61,4 +64,12 @@ TEST(StringUtilsTest, DecodeEntities) {
     EXPECT_EQ(decode_html_entities("&#0;"), std::string("\xEF\xBF\xBD"));    // U+FFFD
 }
 
-} // namespace hps::tests
+TEST(StringUtilsTest, DecodeAttributeEntitiesUsesAttributeContextRules) {
+    EXPECT_EQ(decode_html_attribute_entities("?a=1&amp;b=2"), "?a=1&b=2");
+    EXPECT_EQ(decode_html_attribute_entities("&notin;"), std::string("\xE2\x88\x89"));
+    EXPECT_EQ(decode_html_attribute_entities("&notit;"), "&notit;");
+    EXPECT_EQ(decode_html_attribute_entities("&amp=value"), "&amp=value");
+    EXPECT_EQ(decode_html_attribute_entities("&#65;&#x41;"), "AA");
+}
+
+}  // namespace hps::tests

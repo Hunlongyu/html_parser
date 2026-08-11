@@ -22,34 +22,62 @@ namespace {
         return 0xFFFD;
     }
     switch (code_point) {
-        case 0x80: return 0x20AC;
-        case 0x82: return 0x201A;
-        case 0x83: return 0x0192;
-        case 0x84: return 0x201E;
-        case 0x85: return 0x2026;
-        case 0x86: return 0x2020;
-        case 0x87: return 0x2021;
-        case 0x88: return 0x02C6;
-        case 0x89: return 0x2030;
-        case 0x8A: return 0x0160;
-        case 0x8B: return 0x2039;
-        case 0x8C: return 0x0152;
-        case 0x8E: return 0x017D;
-        case 0x91: return 0x2018;
-        case 0x92: return 0x2019;
-        case 0x93: return 0x201C;
-        case 0x94: return 0x201D;
-        case 0x95: return 0x2022;
-        case 0x96: return 0x2013;
-        case 0x97: return 0x2014;
-        case 0x98: return 0x02DC;
-        case 0x99: return 0x2122;
-        case 0x9A: return 0x0161;
-        case 0x9B: return 0x203A;
-        case 0x9C: return 0x0153;
-        case 0x9E: return 0x017E;
-        case 0x9F: return 0x0178;
-        default:   return code_point;
+        case 0x80:
+            return 0x20AC;
+        case 0x82:
+            return 0x201A;
+        case 0x83:
+            return 0x0192;
+        case 0x84:
+            return 0x201E;
+        case 0x85:
+            return 0x2026;
+        case 0x86:
+            return 0x2020;
+        case 0x87:
+            return 0x2021;
+        case 0x88:
+            return 0x02C6;
+        case 0x89:
+            return 0x2030;
+        case 0x8A:
+            return 0x0160;
+        case 0x8B:
+            return 0x2039;
+        case 0x8C:
+            return 0x0152;
+        case 0x8E:
+            return 0x017D;
+        case 0x91:
+            return 0x2018;
+        case 0x92:
+            return 0x2019;
+        case 0x93:
+            return 0x201C;
+        case 0x94:
+            return 0x201D;
+        case 0x95:
+            return 0x2022;
+        case 0x96:
+            return 0x2013;
+        case 0x97:
+            return 0x2014;
+        case 0x98:
+            return 0x02DC;
+        case 0x99:
+            return 0x2122;
+        case 0x9A:
+            return 0x0161;
+        case 0x9B:
+            return 0x203A;
+        case 0x9C:
+            return 0x0153;
+        case 0x9E:
+            return 0x017E;
+        case 0x9F:
+            return 0x0178;
+        default:
+            return code_point;
     }
 }
 
@@ -73,8 +101,7 @@ void append_code_point_utf8(std::string& output, const uint32_t code_point) {
 
 }  // namespace
 
-// 解码文本中的 HTML 字符引用（data / RCDATA 上下文）。属性值不走此函数。
-std::string decode_html_entities(const std::string& text) {
+std::string decode_html_entities_impl(const std::string_view input, const bool attribute_context) {
     static const std::unordered_map<std::string_view, std::string_view> entity_map = [] {
         std::unordered_map<std::string_view, std::string_view> map;
         map.reserve(detail::kNamedEntityCount * 2);
@@ -84,9 +111,8 @@ std::string decode_html_entities(const std::string& text) {
         return map;
     }();
 
-    const std::string_view input(text);
-    std::string            out;
-    out.reserve(text.size());
+    std::string out;
+    out.reserve(input.size());
 
     size_t i = 0;
     while (i < input.size()) {
@@ -109,8 +135,7 @@ std::string decode_html_entities(const std::string& text) {
                 const char ch = input[j];
                 unsigned   digit;
                 if (hex && is_hex_digit(ch)) {
-                    digit = is_digit(ch) ? static_cast<unsigned>(ch - '0')
-                                         : static_cast<unsigned>(to_lower(ch) - 'a' + 10);
+                    digit = is_digit(ch) ? static_cast<unsigned>(ch - '0') : static_cast<unsigned>(to_lower(ch) - 'a' + 10);
                 } else if (!hex && is_digit(ch)) {
                     digit = static_cast<unsigned>(ch - '0');
                 } else {
@@ -142,6 +167,12 @@ std::string decode_html_entities(const std::string& text) {
             for (size_t len = max_len; len >= 1; --len) {
                 const auto it = entity_map.find(input.substr(i + 1, len));
                 if (it != entity_map.end()) {
+                    const bool   has_semicolon = !it->first.empty() && it->first.back() == ';';
+                    const size_t next_pos      = i + 1 + len;
+                    if (attribute_context && !has_semicolon && next_pos < input.size() && (is_alnum(input[next_pos]) || input[next_pos] == '=')) {
+                        // HTML ambiguous-ampersand rule：属性值里此类旧式无分号引用不解码。
+                        break;
+                    }
                     out.append(it->second);
                     i += 1 + len;
                     matched = true;
@@ -158,6 +189,15 @@ std::string decode_html_entities(const std::string& text) {
     }
 
     return out;
+}
+
+// 解码文本中的 HTML 字符引用（data / RCDATA 上下文）。
+std::string decode_html_entities(const std::string& text) {
+    return decode_html_entities_impl(text, /*attribute_context=*/false);
+}
+
+std::string decode_html_attribute_entities(const std::string_view text) {
+    return decode_html_entities_impl(text, /*attribute_context=*/true);
 }
 
 std::string normalize_whitespace(const std::string& text) {

@@ -156,6 +156,13 @@ inline bool is_valid_identifier_char(std::string_view input, const size_t pos) {
 [[nodiscard]] std::string decode_html_entities(const std::string& text);
 
 /**
+ * @brief 按 HTML 属性值上下文解码字符引用
+ *
+ * 与文本上下文的区别是：旧式无分号命名引用后紧跟 ASCII 字母数字或 '=' 时保持原样。
+ */
+[[nodiscard]] std::string decode_html_attribute_entities(std::string_view text);
+
+/**
  * @brief 标准化空白（连续空白合并为单个空格）
  * @param text 待处理文本
  * @return 标准化后的文本

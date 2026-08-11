@@ -14,7 +14,7 @@ std::unique_ptr<SelectorList> parse(std::string_view selector) {
 
 TEST(CSSSelectorTest, NthOfType) {
     Document doc("");
-    Element parent("div");
+    Element* parent = doc.create_element("div");
 
     // Structure:
     // div
@@ -36,11 +36,11 @@ TEST(CSSSelectorTest, NthOfType) {
     Element* s2_ptr = s2;
     Element* p3_ptr = p3;
 
-    parent.add_child(p1);
-    parent.add_child(s1);
-    parent.add_child(p2);
-    parent.add_child(s2);
-    parent.add_child(p3);
+    parent->add_child(p1);
+    parent->add_child(s1);
+    parent->add_child(p2);
+    parent->add_child(s2);
+    parent->add_child(p3);
 
     // :nth-of-type(1)
     EXPECT_TRUE(parse("p:nth-of-type(1)")->matches(*p1_ptr));
@@ -69,7 +69,7 @@ TEST(CSSSelectorTest, NthOfType) {
 
 TEST(CSSSelectorTest, NthLastOfType) {
     Document doc("");
-    Element parent("div");
+    Element* parent = doc.create_element("div");
 
     // Structure:
     // div
@@ -91,11 +91,11 @@ TEST(CSSSelectorTest, NthLastOfType) {
     Element* s2_ptr = s2;
     Element* p3_ptr = p3;
 
-    parent.add_child(p1);
-    parent.add_child(s1);
-    parent.add_child(p2);
-    parent.add_child(s2);
-    parent.add_child(p3);
+    parent->add_child(p1);
+    parent->add_child(s1);
+    parent->add_child(p2);
+    parent->add_child(s2);
+    parent->add_child(p3);
 
     // :nth-last-of-type(1)
     EXPECT_TRUE(parse("p:nth-last-of-type(1)")->matches(*p3_ptr));

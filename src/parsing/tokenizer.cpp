@@ -32,11 +32,7 @@ namespace hps {
 Tokenizer::Tokenizer(const std::string_view source, const Options& options)
     : Tokenizer(source, options, TokenizerState::Data, {}) {}
 
-Tokenizer::Tokenizer(
-    const std::string_view source,
-    const Options&         options,
-    const TokenizerState   initial_state,
-    const std::string_view last_start_tag)
+Tokenizer::Tokenizer(const std::string_view source, const Options& options, const TokenizerState initial_state, const std::string_view last_start_tag)
     : m_source(source),
       m_pos(0),
       m_state(initial_state),
@@ -543,10 +539,7 @@ std::optional<Token> Tokenizer::consume_self_closing_start_tag_state() {
     }
     record_error(ErrorCode::InvalidToken, "Unexpected character after '/' in self-closing start tag");
     if (m_options.error_handling == ErrorHandlingMode::Strict) {
-        throw HPSException(
-            ErrorCode::InvalidToken,
-            "Unexpected character after '/' in self-closing start tag",
-            Location::from_position(m_source, m_pos));
+        throw HPSException(ErrorCode::InvalidToken, "Unexpected character after '/' in self-closing start tag", Location::from_position(m_source, m_pos));
     }
     m_state = TokenizerState::BeforeAttributeName;
     return {};
@@ -681,13 +674,10 @@ std::optional<Token> Tokenizer::consume_script_data_state() {
 
     while (has_more()) {
         // </script + 终止符（空白 / '/' / '>' / EOF）。
-        if (current_char() == '<' && peek_char() == '/' &&
-            starts_with_ignore_case(m_source.substr(m_pos + 2), closing)) {
-            const size_t saved_pos = m_pos;
-            const size_t after     = m_pos + 2 + closing.size();
-            const bool   appropriate =
-                after >= m_source.size() || is_whitespace(m_source[after]) ||
-                m_source[after] == '/' || m_source[after] == '>';
+        if (current_char() == '<' && peek_char() == '/' && starts_with_ignore_case(m_source.substr(m_pos + 2), closing)) {
+            const size_t saved_pos   = m_pos;
+            const size_t after       = m_pos + 2 + closing.size();
+            const bool   appropriate = after >= m_source.size() || is_whitespace(m_source[after]) || m_source[after] == '/' || m_source[after] == '>';
 
             if (appropriate && escape == 2) {
                 escape = 1;  // double-escaped：</script> 不闭合，退回 escaped。
@@ -730,11 +720,8 @@ std::optional<Token> Tokenizer::consume_script_data_state() {
             continue;
         }
         // escaped → double-escaped：<script + 终止符。
-        if (escape == 1 && current_char() == '<' &&
-            starts_with_ignore_case(m_source.substr(m_pos + 1), "script")) {
-            if (const size_t after = m_pos + 1 + 6;
-                after >= m_source.size() || is_whitespace(m_source[after]) ||
-                m_source[after] == '/' || m_source[after] == '>') {
+        if (escape == 1 && current_char() == '<' && starts_with_ignore_case(m_source.substr(m_pos + 1), "script")) {
+            if (const size_t after = m_pos + 1 + 6; after >= m_source.size() || is_whitespace(m_source[after]) || m_source[after] == '/' || m_source[after] == '>') {
                 escape = 2;
                 m_pos  = after;
                 continue;
@@ -779,14 +766,14 @@ std::optional<Token> Tokenizer::consume_raw_text_until_end_tag(const bool decode
     // RAWTEXT 原样输出；RCDATA 解码字符实体（这是两态唯一的差别）。
     const auto emit_collected = [this, decode_entities](const std::string_view content) -> std::optional<Token> {
         if (decode_entities) {
-            return emit_owned_text_token(decode_html_entities(std::string(content)));
+            return emit_owned_text_token(decode_html_entities(std::string(content)),
+                                         /*entities_decoded=*/true);
         }
         return emit_text_token(content);
     };
 
     while (has_more()) {
-        if (current_char() == '<' && peek_char() == '/' &&
-            starts_with_ignore_case(m_source.substr(m_pos + 2), closing_tag)) {
+        if (current_char() == '<' && peek_char() == '/' && starts_with_ignore_case(m_source.substr(m_pos + 2), closing_tag)) {
             const size_t saved_pos = m_pos;
             m_pos += 2 + closing_tag.size();
 
@@ -852,7 +839,7 @@ std::optional<Token> Tokenizer::consume_raw_text_until_end_tag(const bool decode
             } else {
                 const char* const b = m_source.data();
                 const void* const h = std::memchr(b + from, '<', m_source.size() - from);
-                m_pos = h != nullptr ? static_cast<size_t>(static_cast<const char*>(h) - b) : m_source.size();
+                m_pos               = h != nullptr ? static_cast<size_t>(static_cast<const char*>(h) - b) : m_source.size();
             }
         }
     }
@@ -966,9 +953,10 @@ Token Tokenizer::create_text_token(std::string_view data) {
     return {TokenType::TEXT, "", data};
 }
 
-Token Tokenizer::create_owned_text_token(std::string&& data) {
+Token Tokenizer::create_owned_text_token(std::string&& data, const bool entities_decoded) {
     Token token(TokenType::TEXT, "", "");
     token.set_owned_value(std::move(data));
+    token.set_entities_decoded(entities_decoded);
     return token;
 }
 
@@ -980,10 +968,7 @@ std::optional<Token> Tokenizer::emit_text_token(std::string_view data) {
     if (data.size() > m_options.max_text_length) {
         record_error(ErrorCode::TextTooLong, "Text node length limit exceeded");
         if (m_options.error_handling == ErrorHandlingMode::Strict) {
-            throw HPSException(
-                ErrorCode::TextTooLong,
-                "Text node length limit exceeded",
-                Location::from_position(m_source, m_pos));
+            throw HPSException(ErrorCode::TextTooLong, "Text node length limit exceeded", Location::from_position(m_source, m_pos));
         }
         data = data.substr(0, m_options.max_text_length);
     }
@@ -991,7 +976,7 @@ std::optional<Token> Tokenizer::emit_text_token(std::string_view data) {
     return create_text_token(data);
 }
 
-std::optional<Token> Tokenizer::emit_owned_text_token(std::string data) {
+std::optional<Token> Tokenizer::emit_owned_text_token(std::string data, const bool entities_decoded) {
     if (data.empty()) {
         return {};
     }
@@ -999,15 +984,12 @@ std::optional<Token> Tokenizer::emit_owned_text_token(std::string data) {
     if (data.size() > m_options.max_text_length) {
         record_error(ErrorCode::TextTooLong, "Text node length limit exceeded");
         if (m_options.error_handling == ErrorHandlingMode::Strict) {
-            throw HPSException(
-                ErrorCode::TextTooLong,
-                "Text node length limit exceeded",
-                Location::from_position(m_source, m_pos));
+            throw HPSException(ErrorCode::TextTooLong, "Text node length limit exceeded", Location::from_position(m_source, m_pos));
         }
         data.resize(m_options.max_text_length);
     }
 
-    return create_owned_text_token(std::move(data));
+    return create_owned_text_token(std::move(data), entities_decoded);
 }
 
 Token Tokenizer::create_comment_token(std::string_view comment) {
@@ -1022,10 +1004,7 @@ Token Tokenizer::create_owned_comment_token(std::string&& comment) {
 
 Token Tokenizer::create_doctype_token() {
     Token token(TokenType::DOCTYPE, m_token_builder.tag_name, "");
-    token.set_doctype_identifiers(
-        m_token_builder.doctype_public_id,
-        m_token_builder.doctype_system_id,
-        m_token_builder.doctype_has_identifiers);
+    token.set_doctype_identifiers(m_token_builder.doctype_public_id, m_token_builder.doctype_system_id, m_token_builder.doctype_has_identifiers);
     token.set_doctype_force_quirks(m_token_builder.force_quirks);
     m_token_builder.reset();
     return token;
@@ -1101,10 +1080,7 @@ void Tokenizer::finish_boolean_attribute() {
     if (m_token_builder.attrs.size() >= m_options.max_attributes) {
         record_error(ErrorCode::TooManyAttributes, "Attribute count limit exceeded");
         if (m_options.error_handling == ErrorHandlingMode::Strict) {
-            throw HPSException(
-                ErrorCode::TooManyAttributes,
-                "Attribute count limit exceeded",
-                Location::from_position(m_source, m_pos));
+            throw HPSException(ErrorCode::TooManyAttributes, "Attribute count limit exceeded", Location::from_position(m_source, m_pos));
         }
         m_token_builder.attr_name.clear();
         return;
@@ -1113,10 +1089,7 @@ void Tokenizer::finish_boolean_attribute() {
     if (m_token_builder.attr_name.size() > m_options.max_attribute_name_length) {
         record_error(ErrorCode::AttributeTooLong, "Attribute name length limit exceeded");
         if (m_options.error_handling == ErrorHandlingMode::Strict) {
-            throw HPSException(
-                ErrorCode::AttributeTooLong,
-                "Attribute name length limit exceeded",
-                Location::from_position(m_source, m_pos));
+            throw HPSException(ErrorCode::AttributeTooLong, "Attribute name length limit exceeded", Location::from_position(m_source, m_pos));
         }
         m_token_builder.attr_name.clear();
         return;
@@ -1134,10 +1107,7 @@ void Tokenizer::finish_attribute(const std::string_view value) {
     if (m_token_builder.attrs.size() >= m_options.max_attributes) {
         record_error(ErrorCode::TooManyAttributes, "Attribute count limit exceeded");
         if (m_options.error_handling == ErrorHandlingMode::Strict) {
-            throw HPSException(
-                ErrorCode::TooManyAttributes,
-                "Attribute count limit exceeded",
-                Location::from_position(m_source, m_pos));
+            throw HPSException(ErrorCode::TooManyAttributes, "Attribute count limit exceeded", Location::from_position(m_source, m_pos));
         }
         m_token_builder.attr_name.clear();
         return;
@@ -1146,10 +1116,7 @@ void Tokenizer::finish_attribute(const std::string_view value) {
     if (m_token_builder.attr_name.size() > m_options.max_attribute_name_length) {
         record_error(ErrorCode::AttributeTooLong, "Attribute name length limit exceeded");
         if (m_options.error_handling == ErrorHandlingMode::Strict) {
-            throw HPSException(
-                ErrorCode::AttributeTooLong,
-                "Attribute name length limit exceeded",
-                Location::from_position(m_source, m_pos));
+            throw HPSException(ErrorCode::AttributeTooLong, "Attribute name length limit exceeded", Location::from_position(m_source, m_pos));
         }
         m_token_builder.attr_name.clear();
         return;
@@ -1159,10 +1126,7 @@ void Tokenizer::finish_attribute(const std::string_view value) {
     if (stored_value.size() > m_options.max_attribute_value_length) {
         record_error(ErrorCode::AttributeTooLong, "Attribute value length limit exceeded");
         if (m_options.error_handling == ErrorHandlingMode::Strict) {
-            throw HPSException(
-                ErrorCode::AttributeTooLong,
-                "Attribute value length limit exceeded",
-                Location::from_position(m_source, m_pos));
+            throw HPSException(ErrorCode::AttributeTooLong, "Attribute value length limit exceeded", Location::from_position(m_source, m_pos));
         }
         stored_value = stored_value.substr(0, m_options.max_attribute_value_length);
     }

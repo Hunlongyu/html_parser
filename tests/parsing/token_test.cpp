@@ -1,4 +1,5 @@
 #include "hps/parsing/token.hpp"
+
 #include <gtest/gtest.h>
 
 namespace hps::tests {
@@ -32,21 +33,21 @@ TEST(TokenTest, TypeChecks) {
 
     Token doctype(TokenType::DOCTYPE, "html", "");
     EXPECT_TRUE(doctype.is_doctype());
-    
+
     Token eof(TokenType::DONE, "", "");
     EXPECT_TRUE(eof.is_done());
 }
 
 TEST(TokenTest, Attributes) {
     Token token(TokenType::OPEN, "div", "");
-    
+
     token.add_attr("id", "main");
     token.add_attr("class", "container");
-    token.add_attr("disabled", "", false); // Boolean attribute
+    token.add_attr("disabled", "", false);  // Boolean attribute
 
     const auto& attrs = token.attrs();
     ASSERT_EQ(attrs.size(), 3u);
-    
+
     EXPECT_EQ(attrs[0].name, "id");
     EXPECT_EQ(attrs[0].value, "main");
     EXPECT_TRUE(attrs[0].has_value);
@@ -78,10 +79,10 @@ TEST(TokenTest, AddAttrOverloads) {
 }
 
 TEST(TokenTest, OwnedValue) {
-    Token token(TokenType::TEXT, "", "");
+    Token       token(TokenType::TEXT, "", "");
     std::string dynamic_content = "dynamic content";
     token.set_owned_value(dynamic_content);
-    
+
     EXPECT_EQ(token.value(), "dynamic content");
     // Ensure it's a copy/owned
     dynamic_content = "changed";
@@ -118,6 +119,7 @@ TEST(TokenTest, MoveAssignmentTransfersState) {
 
     Token source(TokenType::TEXT, "", "view");
     source.set_owned_value("owned");
+    source.set_entities_decoded();
     source.add_attr("k", "v");
 
     target = std::move(source);
@@ -125,10 +127,12 @@ TEST(TokenTest, MoveAssignmentTransfersState) {
     EXPECT_EQ(target.type(), TokenType::TEXT);
     EXPECT_TRUE(target.name().empty());
     EXPECT_EQ(target.value(), "owned");
+    EXPECT_TRUE(target.entities_decoded());
+    EXPECT_FALSE(source.entities_decoded());
     ASSERT_EQ(target.attrs().size(), 1u);
     EXPECT_EQ(target.attrs()[0].name, "k");
     EXPECT_EQ(target.attrs()[0].value, "v");
     EXPECT_TRUE(target.attrs()[0].has_value);
 }
 
-} // namespace hps::tests
+}  // namespace hps::tests
